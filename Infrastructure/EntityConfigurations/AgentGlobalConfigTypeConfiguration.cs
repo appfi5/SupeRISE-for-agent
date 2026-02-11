@@ -27,11 +27,11 @@ public class GlobalConfigTypeConfiguration : IEntityTypeConfiguration<AgentGloba
         
         builder.Property(t => t.CreatedAt)
             .IsRequired()
-            .HasDefaultValue(DateTimeOffset.UtcNow);
+            .HasDefaultValue(DateTimeOffset.MinValue);
         
         builder.Property(t => t.UpdatedAt)
             .IsRequired()
-            .HasDefaultValue(DateTimeOffset.UtcNow);
+            .HasDefaultValue(DateTimeOffset.MinValue);
         
         builder.Property(t => t.Deleted)
             .IsRequired()
