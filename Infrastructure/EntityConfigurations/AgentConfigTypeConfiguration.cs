@@ -1,6 +1,7 @@
 using OpenClawWalletServer.Domain.AggregatesModel.AgentConfigAggregate;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using NetCorePal.Extensions.Repository.EntityFrameworkCore;
 
 namespace OpenClawWalletServer.Infrastructure.EntityConfigurations;
 
@@ -16,20 +17,9 @@ public class AgentConfigTypeConfiguration : IEntityTypeConfiguration<AgentConfig
         builder.HasKey(ac => ac.Id);
 
         builder.Property(t => t.Id)
-            .IsRequired()
-            .ValueGeneratedOnAdd();
-        
-        builder.Property(ac => ac.ServerUrl)
-            .IsRequired()
-            .HasMaxLength(256)
-            .HasDefaultValue(string.Empty);
+            .UseGuidVersion7ValueGenerator();
 
-        builder.Property(ac => ac.Code)
-            .IsRequired()
-            .HasMaxLength(128)
-            .HasDefaultValue(string.Empty);
-
-        builder.Property(ac => ac.Token)
+        builder.Property(ac => ac.ApiKey)
             .IsRequired()
             .HasMaxLength(256)
             .HasDefaultValue(string.Empty);

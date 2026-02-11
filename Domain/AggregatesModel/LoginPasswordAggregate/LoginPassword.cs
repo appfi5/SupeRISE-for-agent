@@ -5,7 +5,7 @@ namespace OpenClawWalletServer.Domain.AggregatesModel.LoginPasswordAggregate;
 /// <summary>
 /// 登录密码 Id
 /// </summary>
-public partial record LoginPasswordId : IInt64StronglyTypedId;
+public partial record LoginPasswordId : IGuidStronglyTypedId;
 
 /// <summary>
 /// 登录密码

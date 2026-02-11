@@ -1,6 +1,7 @@
 using OpenClawWalletServer.Domain.AggregatesModel.WhitelistAggregate;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using NetCorePal.Extensions.Repository.EntityFrameworkCore;
 
 namespace OpenClawWalletServer.Infrastructure.EntityConfigurations;
 
@@ -16,8 +17,7 @@ public class WhitelistItemTypeConfiguration : IEntityTypeConfiguration<Whitelist
         builder.HasKey(sr => sr.Id);
 
         builder.Property(sr => sr.Id)
-            .IsRequired()
-            .ValueGeneratedOnAdd();
+            .UseGuidVersion7ValueGenerator();
 
         builder.Property(sr => sr.Address)
             .IsRequired();

@@ -5,7 +5,7 @@ namespace OpenClawWalletServer.Domain.AggregatesModel.AgentGlobalConfigAggregate
 /// <summary>
 /// agent 全局配置
 /// </summary>
-public partial record AgentGlobalConfigId : IInt64StronglyTypedId;
+public partial record AgentGlobalConfigId : IGuidStronglyTypedId;
 
 public class AgentGlobalConfig : Entity<AgentGlobalConfigId>, IAggregateRoot
 {
@@ -21,7 +21,7 @@ public class AgentGlobalConfig : Entity<AgentGlobalConfigId>, IAggregateRoot
     /// <summary>
     /// 行版本，处理并发问题
     /// </summary> 
-    public RowVersion RowVersion { get; private set; } = default!;
+    public RowVersion RowVersion { get; private set; } = null!;
 
     /// <summary>
     /// 创建时间

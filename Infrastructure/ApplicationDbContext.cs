@@ -5,7 +5,6 @@ using OpenClawWalletServer.Domain.AggregatesModel.AgentConfigAggregate;
 using OpenClawWalletServer.Domain.AggregatesModel.AgentGlobalConfigAggregate;
 using OpenClawWalletServer.Domain.AggregatesModel.KeyConfigAggregate;
 using OpenClawWalletServer.Domain.AggregatesModel.LoginPasswordAggregate;
-using OpenClawWalletServer.Domain.AggregatesModel.SendTransactionRecordAggregate;
 using OpenClawWalletServer.Domain.AggregatesModel.SignRecordAggregate;
 using OpenClawWalletServer.Domain.AggregatesModel.WhitelistAggregate;
 
@@ -13,9 +12,8 @@ namespace OpenClawWalletServer.Infrastructure;
 
 public partial class ApplicationDbContext(
     DbContextOptions<ApplicationDbContext> options,
-    IMediator mediator,
-    IServiceProvider provider
-) : AppDbContextBase(options, mediator, provider)
+    IMediator mediator
+) : AppDbContextBase(options, mediator)
 {
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -48,11 +46,6 @@ public partial class ApplicationDbContext(
     /// 签名日志
     /// </summary>
     public DbSet<SignRecord> SignRecords => Set<SignRecord>();
-
-    /// <summary>
-    /// 发送交易日志
-    /// </summary>
-    public DbSet<SendTransactionRecord> SendTransactionRecords => Set<SendTransactionRecord>();
     
     /// <summary>
     /// 全局配置

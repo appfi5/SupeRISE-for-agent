@@ -1,7 +1,7 @@
 using OpenClawWalletServer.Domain.AggregatesModel.LoginPasswordAggregate;
-using OpenClawWalletServer.Shared;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using NetCorePal.Extensions.Repository.EntityFrameworkCore;
 
 namespace OpenClawWalletServer.Infrastructure.EntityConfigurations;
 
@@ -17,8 +17,7 @@ public class LoginPasswordTypeConfiguration : IEntityTypeConfiguration<LoginPass
         builder.HasKey(ac => ac.Id);
 
         builder.Property(t => t.Id)
-            .IsRequired()
-            .ValueGeneratedOnAdd();
+            .UseGuidVersion7ValueGenerator();
 
         builder.Property(t => t.SecretData)
             .IsRequired()

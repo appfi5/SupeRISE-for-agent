@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace OpenClawWalletServer.Migrations
+namespace OpenClawWalletServer.Migrations.KeyDb
 {
     /// <inheritdoc />
     public partial class InitialCreate : Migration

@@ -6,7 +6,7 @@ namespace OpenClawWalletServer.Domain.AggregatesModel.KeyConfigAggregate;
 /// <summary>
 /// 密钥配置 Id
 /// </summary>
-public partial record KeyConfigId : IInt64StronglyTypedId;
+public partial record KeyConfigId : IGuidStronglyTypedId;
 
 /// <summary>
 /// 密钥配置

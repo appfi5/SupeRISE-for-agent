@@ -15,18 +15,17 @@ namespace OpenClawWalletServer.Migrations.ApplicationDb
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "9.0.13");
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.3");
 
             modelBuilder.Entity("OpenClawWalletServer.Domain.AggregatesModel.AgentConfigAggregate.AgentConfig", b =>
                 {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
 
-                    b.Property<string>("Code")
+                    b.Property<string>("ApiKey")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
-                        .HasMaxLength(128)
+                        .HasMaxLength(256)
                         .HasColumnType("TEXT")
                         .HasDefaultValue("");
 
@@ -40,20 +39,6 @@ namespace OpenClawWalletServer.Migrations.ApplicationDb
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(false);
 
-                    b.Property<string>("ServerUrl")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(256)
-                        .HasColumnType("TEXT")
-                        .HasDefaultValue("");
-
-                    b.Property<string>("Token")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(256)
-                        .HasColumnType("TEXT")
-                        .HasDefaultValue("");
-
                     b.Property<DateTime>("UpdateAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT")
@@ -66,9 +51,8 @@ namespace OpenClawWalletServer.Migrations.ApplicationDb
 
             modelBuilder.Entity("OpenClawWalletServer.Domain.AggregatesModel.AgentGlobalConfigAggregate.AgentGlobalConfig", b =>
                 {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .ValueGeneratedOnAdd()
@@ -103,9 +87,8 @@ namespace OpenClawWalletServer.Migrations.ApplicationDb
 
             modelBuilder.Entity("OpenClawWalletServer.Domain.AggregatesModel.KeyConfigAggregate.KeyConfig", b =>
                 {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Address")
                         .IsRequired()
@@ -148,9 +131,8 @@ namespace OpenClawWalletServer.Migrations.ApplicationDb
 
             modelBuilder.Entity("OpenClawWalletServer.Domain.AggregatesModel.LoginPasswordAggregate.LoginPassword", b =>
                 {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
@@ -178,56 +160,10 @@ namespace OpenClawWalletServer.Migrations.ApplicationDb
                     b.ToTable("LoginPassword", (string)null);
                 });
 
-            modelBuilder.Entity("OpenClawWalletServer.Domain.AggregatesModel.SendTransactionRecordAggregate.SendTransactionRecord", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<long>("AgentSendTransactionTaskId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(1024)
-                        .HasColumnType("TEXT")
-                        .HasDefaultValue("");
-
-                    b.Property<int>("CurrencyType")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER")
-                        .HasDefaultValue(0);
-
-                    b.Property<bool>("Deleted")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER")
-                        .HasDefaultValue(false);
-
-                    b.Property<DateTime>("ExecuteTime")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT")
-                        .HasDefaultValue(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
-
-                    b.Property<long>("OrderId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("OrderType")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("SendTransactionRecord", (string)null);
-                });
-
             modelBuilder.Entity("OpenClawWalletServer.Domain.AggregatesModel.SignRecordAggregate.SignRecord", b =>
                 {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<long>("AgentTaskId")
-                        .HasColumnType("INTEGER");
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Content")
                         .IsRequired()
@@ -240,12 +176,6 @@ namespace OpenClawWalletServer.Migrations.ApplicationDb
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(false);
-
-                    b.Property<long>("OrderId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("OrderType")
-                        .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("SignTime")
                         .ValueGeneratedOnAdd()
@@ -264,9 +194,8 @@ namespace OpenClawWalletServer.Migrations.ApplicationDb
 
             modelBuilder.Entity("OpenClawWalletServer.Domain.AggregatesModel.WhitelistAggregate.WhitelistItem", b =>
                 {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Address")
                         .IsRequired()

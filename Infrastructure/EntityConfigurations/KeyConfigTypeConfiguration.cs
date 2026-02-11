@@ -2,6 +2,7 @@ using OpenClawWalletServer.Domain.AggregatesModel.KeyConfigAggregate;
 using OpenClawWalletServer.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using NetCorePal.Extensions.Repository.EntityFrameworkCore;
 
 namespace OpenClawWalletServer.Infrastructure.EntityConfigurations;
 
@@ -14,8 +15,7 @@ public class KeyConfigTypeConfiguration : IEntityTypeConfiguration<KeyConfig>
         builder.HasKey(kc => kc.Id);
 
         builder.Property(kc => kc.Id)
-            .IsRequired()
-            .ValueGeneratedOnAdd();
+            .UseGuidVersion7ValueGenerator();
 
         builder.Property(kc => kc.SignType)
             .IsRequired()

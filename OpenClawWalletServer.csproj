@@ -1,32 +1,38 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
     <PropertyGroup>
-        <TargetFramework>net9.0</TargetFramework>
+        <TargetFramework>net10.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
+        <AllowMissingPrunePackageData>true</AllowMissingPrunePackageData>
+        <NetCorePalVersion>3.2.1</NetCorePalVersion>
     </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="Ckb.Sdk" Version="1.0.0-preview.1.2601230630" />
         <PackageReference Include="FluentValidation" Version="11.5.1"/>
-        <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="8.0.11"/>
+        <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="9.0.13"/>
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.0"/>
         <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.11"/>
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.13">
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.3">
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.13" />
-        <PackageReference Include="NetCorePal.Extensions.Domain.Abstractions" Version="2.4.2" />
-        <PackageReference Include="NetCorePal.Extensions.Dto" Version="3.2.1" />
-        <PackageReference Include="NetCorePal.Extensions.Repository.EntityFrameworkCore" Version="2.4.2" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.3" />
+        <PackageReference Include="NetCorePal.Extensions.Domain.Abstractions" Version="$(NetCorePalVersion)" />
+        <PackageReference Include="NetCorePal.Extensions.Dto" Version="$(NetCorePalVersion)" />
+        <PackageReference Include="NetCorePal.Extensions.Repository.EntityFrameworkCore" Version="$(NetCorePalVersion)" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0"/>
         <PackageReference Include="Swashbuckle.AspNetCore.Newtonsoft" Version="7.2.0" />
-        <PackageReference Include="Nethereum.Web3" Version="4.26.0" />
+        <PackageReference Include="Nethereum.Web3" Version="5.8.0" />
     </ItemGroup>
 
     <ItemGroup>
       <Folder Include="Application\" />
+      <Folder Include="data\" />
+      <Folder Include="Infrastructure\EntityConfigurations\" />
+      <Folder Include="Infrastructure\Repositories\" />
+      <Folder Include="Migrations\" />
     </ItemGroup>
 
 </Project>

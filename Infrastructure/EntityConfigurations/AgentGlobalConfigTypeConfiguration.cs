@@ -2,6 +2,7 @@ using OpenClawWalletServer.Domain.AggregatesModel.AgentGlobalConfigAggregate;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using NetCorePal.Extensions.Domain;
+using NetCorePal.Extensions.Repository.EntityFrameworkCore;
 
 namespace OpenClawWalletServer.Infrastructure.EntityConfigurations;
 
@@ -14,8 +15,7 @@ public class GlobalConfigTypeConfiguration : IEntityTypeConfiguration<AgentGloba
         builder.HasKey(t => t.Id);
         
         builder.Property(t => t.Id)
-            .IsRequired()
-            .ValueGeneratedOnAdd();
+            .UseGuidVersion7ValueGenerator();
         
         builder.Property(t => t.SingleTransactionMaxLimit)
             .IsRequired()

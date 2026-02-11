@@ -5,7 +5,7 @@ namespace OpenClawWalletServer.Domain.AggregatesModel.WhitelistAggregate;
 /// <summary>
 /// 白名单 Id
 /// </summary>
-public partial record WhitelistItemId : IInt64StronglyTypedId;
+public partial record WhitelistItemId : IGuidStronglyTypedId;
 
 /// <summary>
 /// 白名单项

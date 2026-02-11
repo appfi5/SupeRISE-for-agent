@@ -6,7 +6,7 @@ dotnet ef database update
 
 # 创建迁移 SEE：https://learn.microsoft.com/zh-cn/ef/core/managing-schemas/migrations/?tabs=dotnet-core-cli
 # 应用数据库迁移
-dotnet ef migrations add InitialCreate --context ApplicationDbContext
+dotnet ef migrations add InitialCreate --context ApplicationDbContext -o Migrations/ApplicationDb
 # 密钥数据库迁移
-dotnet ef migrations add InitialCreate --context KeyDbContext
+dotnet ef migrations add InitialCreate --context KeyDbContext -o Migrations/KeyDb
 

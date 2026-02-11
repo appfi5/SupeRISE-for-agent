@@ -2,6 +2,7 @@ using OpenClawWalletServer.Domain.AggregatesModel.SignRecordAggregate;
 using OpenClawWalletServer.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using NetCorePal.Extensions.Repository.EntityFrameworkCore;
 
 namespace OpenClawWalletServer.Infrastructure.EntityConfigurations;
 
@@ -17,17 +18,7 @@ public class SignRecordTypeConfiguration : IEntityTypeConfiguration<SignRecord>
         builder.HasKey(sr => sr.Id);
 
         builder.Property(sr => sr.Id)
-            .IsRequired()
-            .ValueGeneratedOnAdd();
-
-        builder.Property(sr => sr.AgentTaskId)
-            .IsRequired();
-
-        builder.Property(sr => sr.OrderId)
-            .IsRequired();
-
-        builder.Property(sr => sr.OrderType)
-            .IsRequired();
+            .UseGuidVersion7ValueGenerator();
 
         builder.Property(sr => sr.SignType)
             .IsRequired()
