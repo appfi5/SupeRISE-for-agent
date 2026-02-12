@@ -17,13 +17,11 @@ jobs:
       matrix:
         include:
           - runtime: 'linux-x64'
-            artifact_name: 'YourAppName-linux-x64' # TODO: 替换为你的应用名
+            artifact_name: '$OpenClawWalletServer-linux-x64'
           - runtime: 'win-x64'
-            artifact_name: 'YourAppName-win-x64'   # TODO: 替换为你的应用名
+            artifact_name: '$OpenClawWalletServer-win-x64'
           - runtime: 'osx-x64'
-            artifact_name: 'YourAppName-osx-x64'   # TODO: 替换为你的应用名
-          # - runtime: 'linux-arm64'              # 可选：添加 ARM64 平台
-          #   artifact_name: 'YourAppName-linux-arm64'
+            artifact_name: '$OpenClawWalletServer-osx-x64'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -37,13 +35,7 @@ jobs:
         run: dotnet restore ${{ env.PROJECT_NAME }}
 
       - name: Build and Publish (${{ matrix.runtime }})
-        run: |
-          dotnet publish ${{ env.PROJECT_NAME }} \
-            --runtime ${{ matrix.runtime }} \
-            --output ./publish-${{ matrix.runtime }} \
-            --configuration Release \
-            --self-contained true \ # 创建独立部署，包含运行时
-            --no-restore
+        run: dotnet publish ${{ env.PROJECT_NAME }} --runtime ${{ matrix.runtime }} --output ./publish-${{ matrix.runtime }} --configuration Release --self-contained true --no-restore
 
       - name: Create Archive for ${{ matrix.runtime }}
         run: |
