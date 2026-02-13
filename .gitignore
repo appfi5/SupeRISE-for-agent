@@ -6,3 +6,4 @@ riderModule.iml
 .idea
 OpenClawWalletServer.sln.DotSettings.user
 data/
+node_modules/

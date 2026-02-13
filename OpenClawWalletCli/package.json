@@ -1,0 +1,34 @@
+{
+  "private": true,
+  "name": "rise",
+  "version": "0.1.0",
+  "description": "A CLI tool for CKB transactions on testnet",
+  "type": "module",
+  "bin": {
+    "rise": "./bin/rise.js"
+  },
+  "scripts": {
+    "dev": "bun run src/index.ts",
+    "build": "bun build --target node --outfile bin/rise.js src/index.ts",
+    "build:bin": "bun build --compile --outfile bin/rise src/index.ts",
+    "start": "node bin/rise.js",
+    "test": "bun test"
+  },
+  "keywords": ["ckb", "nervos", "cli", "blockchain"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@ckb-ccc/shell": "^1.1.25",
+    "commander": "^14.0.3",
+    "conf": "^15.0.2",
+    "@clack/prompts": "^1.0.0",
+    "picocolors": "^1.1.1",
+    "ora": "^9.1.0",
+    "cli-table3": "^0.6.5"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.3"
+  }
+}

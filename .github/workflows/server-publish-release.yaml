@@ -9,6 +9,7 @@ on:
 env:
   PROJECT_NAME: OpenClawWalletServer/src/OpenClawWalletServer.csproj
   DOTNET_VERSION: '10.0.x' # 使用最新的 .NET 10.0.x 版本
+  CLI_PROJECT_DIR: OpenClawWalletCli
 
 jobs:
   build:
@@ -66,8 +67,70 @@ jobs:
           name: ${{ matrix.artifact_name }}
           path: ${{ matrix.artifact_name }}.*
 
+  build-cli:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          # Linux x64
+          - os: ubuntu-latest
+            target: 'linux-x64'
+            artifact_name: 'rise-linux-x64'
+            archive_ext: '.tar.gz'
+          # macOS x64
+          - os: macos-13
+            target: 'osx-x64'
+            artifact_name: 'rise-osx-x64'
+            archive_ext: '.tar.gz'
+          # macOS arm64
+          - os: macos-latest
+            target: 'osx-arm64'
+            artifact_name: 'rise-osx-arm64'
+            archive_ext: '.tar.gz'
+          # Windows x64
+          - os: windows-latest
+            target: 'win-x64'
+            artifact_name: 'rise-win-x64'
+            archive_ext: '.zip'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        working-directory: ${{ env.CLI_PROJECT_DIR }}
+        run: bun install
+
+      - name: Build CLI for ${{ matrix.target }}
+        working-directory: ${{ env.CLI_PROJECT_DIR }}
+        run: bun build --compile --target ${{ matrix.target }} --outfile bin/rise src/index.ts
+
+      - name: Create Archive for ${{ matrix.target }}
+        working-directory: ${{ env.CLI_PROJECT_DIR }}
+        run: |
+          mkdir release
+          cp bin/rise release/
+          cp README.md release/ 2>/dev/null || true
+          cd release
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            7z a ../${{ matrix.artifact_name }}${{ matrix.archive_ext }} *
+          else
+            tar czf ../${{ matrix.artifact_name }}${{ matrix.archive_ext }} *
+          fi
+        shell: bash
+
+      - name: Upload ${{ matrix.artifact_name }} Archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ env.CLI_PROJECT_DIR }}/${{ matrix.artifact_name }}.*
+
   upload:
-    needs: build
+    needs: [build, build-cli]
     runs-on: ubuntu-latest
     permissions:
       contents: write
