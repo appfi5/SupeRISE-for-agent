@@ -3,7 +3,7 @@
 
 set -e
 
-APP_NAME="OpenClawWallet"
+APP_NAME="OpenClawWalletServer"
 REPO="appfi5/OpenClawWallet"
 INSTALL_DIR="$HOME/openClawWallet"
 LOG_FILE="$INSTALL_DIR/openclaw.log"
