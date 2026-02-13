@@ -1,11 +1,11 @@
 #!/bin/sh
-# install.sh - Cross-platform (Linux/macOS) installer for OpenClawWalletServer
+# install.sh - Cross-platform (Linux/macOS) installer for OpenClawWallet
 
 set -e
 
-APP_NAME="OpenClawWalletServer"
-REPO="appfi5/OpenClawWalletServer"
-INSTALL_DIR="$HOME/openClawWalletServer"
+APP_NAME="OpenClawWallet"
+REPO="appfi5/OpenClawWallet"
+INSTALL_DIR="$HOME/openClawWallet"
 LOG_FILE="$INSTALL_DIR/openclaw.log"
 DOWNLOAD=false
 
@@ -93,14 +93,22 @@ fi
 if [ "$EXECUTABLE_EXISTS" = true ] && [ "$CONFIG_EXISTS" = true ]; then
     echo ""
     echo "📦 Found existing installation in $INSTALL_DIR"
-    printf "Do you want to download the latest version? [y/N]: "
-    read -r response
-    if [ "$response" != "y" ] && [ "$response" != "Y" ]; then
-        echo "🚀 Starting existing version..."
-    else
-        DOWNLOAD=true
-        echo "⬇️ Downloading latest version..."
-    fi
+    # 检查是否是交互式终端（有用户输入）
+        if [ -t 0 ]; then
+            # 交互式模式：提示用户
+            printf "Do you want to download the latest version? [y/N]: "
+            read -r response
+            if [ "$response" != "y" ] && [ "$response" != "Y" ]; then
+                echo "🚀 Starting existing version..."
+            else
+                DOWNLOAD=true
+                echo "⬇️ Downloading latest version..."
+            fi
+        else
+            # 非交互式模式（如 curl | sh）：默认下载最新版本
+            DOWNLOAD=true
+            echo "⬇️ Downloading latest version (default in non-interactive mode)"
+        fi
 else
     DOWNLOAD=true
     echo "📦 Installation not found, downloading latest version..."

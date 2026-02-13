@@ -7,7 +7,7 @@ on:
       - 'v*' # 当推送以 'v' 开头的标签时触发
 
 env:
-  PROJECT_NAME: src/OpenClawWalletServer.csproj
+  PROJECT_NAME: OpenClawWalletServer/src/OpenClawWalletServer.csproj
   DOTNET_VERSION: '10.0.x' # 使用最新的 .NET 10.0.x 版本
 
 jobs:
