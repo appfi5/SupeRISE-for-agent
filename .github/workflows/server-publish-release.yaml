@@ -80,7 +80,8 @@ jobs:
       - name: Move Archives to Upload Directory
         run: |
           mkdir upload_dir
-          find artifacts -name "*.zip" -o -name "*.tar.gz" -exec mv {} upload_dir/ \;
+          find artifacts -name "*.zip" -exec mv {} upload_dir/ \;
+          find artifacts -name "*.tar.gz" -exec mv {} upload_dir/ \;
 
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v2
