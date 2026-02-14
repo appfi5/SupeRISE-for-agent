@@ -1,4 +1,4 @@
-# SupeRISELocalServer
+# SupeRISE for agent
 
 A secure CKB blockchain wallet with local signer server integration for safe private key management.
 
