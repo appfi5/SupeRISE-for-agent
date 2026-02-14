@@ -1,12 +1,12 @@
 ---
-name: openclaw-wallet
-description: Complete OpenClaw Wallet CLI toolkit for CKB blockchain operations including local signer server setup, transfers, and address book management
+name: SupeRISE-for-agent
+description: Complete SupeRISE-for-agent toolkit for CKB blockchain operations including local signer server setup, transfers, and address book management
 user-invocable: true
 disable-model-invocation: false
-metadata: {"openclaw": {"emoji": "⛓️", "requires": {"bins": [], "env": [], "config": []}, "install": "curl -fsSL https://raw.githubusercontent.com/appfi5/OpenClawWallet/main/install.sh | bash"}}
+metadata: {"openclaw": {"emoji": "⛓️", "requires": {"bins": [], "env": [], "config": []}, "install": "curl -fsSL https://raw.githubusercontent.com/appfi5/SupeRISE-for-agent/main/install.sh | bash"}}
 ---
 
-# OpenClaw Wallet CLI
+# SupeRISE-for-agent
 
 Complete toolkit for CKB blockchain operations with local signer server integration. This skill guides you through setting up the signer server and using the RISE CLI for secure CKB transfers on testnet.
 
@@ -17,7 +17,7 @@ Complete toolkit for CKB blockchain operations with local signer server integrat
 **One-line installer for complete setup:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/appfi5/OpenClawWallet/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/appfi5/SupeRISE-for-agent/main/install.sh | bash
 ```
 
 This will install both the signing server and CLI tool.
@@ -29,12 +29,12 @@ This will install both the signing server and CLI tool.
    **For OpenClaw**:
    ```bash
    # Workspace-specific (recommended)
-   mkdir -p <your-openclaw-workspace>/skills/openclaw-wallet
-   cp SKILL.md <your-openclaw-workspace>/skills/openclaw-wallet/
+   mkdir -p <your-openclaw-workspace>/skills/SupeRISE-for-agent
+   cp SKILL.md <your-openclaw-workspace>/skills/SupeRISE-for-agent/
    
    # Or global (available to all agents)
-   mkdir -p ~/.openclaw/skills/openclaw-wallet
-   cp SKILL.md ~/.openclaw/skills/openclaw-wallet/
+   mkdir -p ~/.openclaw/skills/SupeRISE-for-agent
+   cp SKILL.md ~/.openclaw/skills/SupeRISE-for-agent/
    ```
    
    **OpenClaw Integration Tips**:
@@ -49,7 +49,7 @@ This will install both the signing server and CLI tool.
    **For Claude**:
    ```bash
    mkdir -p <your-claude-workspace>/.cascade/skills
-   cp SKILL.md <your-claude-workspace>/.cascade/skills/openclaw-wallet.md
+   cp SKILL.md <your-claude-workspace>/.cascade/skills/SupeRISE-for-agent.md
    ```
    
    After placing the skill file, restart your AI agent. The agent will be able to understand natural language commands like:
@@ -216,7 +216,7 @@ When a contact name is provided instead of an address, the CLI will automaticall
 - **Addresses**: Accepts both raw CKB addresses and contact names from address book
 - **Fee rate**: Can be set globally or per transaction
 - **Network**: CKB testnet only
-- **Installation**: Use the installer script `curl -fsSL https://raw.githubusercontent.com/appfi5/OpenClawWallet/main/cli-install.sh | bash`
+- **Installation**: Use the installer script `curl -fsSL https://raw.githubusercontent.com/appfi5/SupeRISE-for-agent/main/cli-install.sh | bash`
 
 ## Security Notes
 
