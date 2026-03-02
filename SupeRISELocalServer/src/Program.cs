@@ -123,12 +123,12 @@ public class Program
         }
 
         app.UseFastEndpoints().UseSwaggerGen(
-            config: c => { c.Path = $"/openclaw-wallet-server/swagger/{{documentName}}/swagger.{{json|yaml}}"; },
+            config: c => { c.Path = $"/superise-for-agent/swagger/{{documentName}}/swagger.{{json|yaml}}"; },
             uiConfig: u =>
             {
-                u.Path = $"/openclaw-wallet-server/swagger";
+                u.Path = $"/superise-for-agent/swagger";
                 u.DocumentPath =
-                    $"/openclaw-wallet-server/swagger/{{documentName}}/swagger.{{json|yaml}}";
+                    $"/superise-for-agent/swagger/{{documentName}}/swagger.{{json|yaml}}";
             });
 
         using var scope = app.Services.CreateScope();
