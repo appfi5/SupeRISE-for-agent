@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { transferCkbAction } from "./actions/ckb.js";
+import { transferCkbAction } from "./actions/ckb";
 
 function withTransferOptions(command: Command): Command {
   return command
@@ -7,7 +7,7 @@ function withTransferOptions(command: Command): Command {
     .option("--amount <value>", "Amount to transfer")
     .option("--fee-rate <value>", "Transaction fee rate in shannon per 1000 bytes")
     .option("--dry-run", "Simulate transaction without sending")
-    .option("--no-json", "Disable JSON output");
+    .option("--json", "Output result as JSON");
 }
 
 export function registerTransferCommand(program: Command): void {

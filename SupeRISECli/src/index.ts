@@ -1,10 +1,13 @@
 #!/usr/bin/env node
 import { Command } from "commander";
 import pc from "picocolors";
-import { registerConfigCommands } from "./commands/config/index.js";
-import { registerTransferCommand } from "./commands/transfer/index.js";
-import { registerAddressBookCommands } from "./commands/address-book/index.js";
-import { reportError } from "./utils/errors.js";
+import { registerConfigCommands } from "@/commands/config/index";
+import { registerTransferCommand } from "@/commands/transfer/index";
+import { registerAddressBookCommands } from "@/commands/address-book/index";
+import { registerSustainCommands } from "@/commands/sustain/index";
+import { registerWhoamiCommand } from "@/commands/whoami";
+import { registerSignMessageCommand } from "@/commands/sign-message";
+import { reportError } from "@/utils/errors";
 
 const program = new Command();
 
@@ -17,6 +20,9 @@ program
 registerConfigCommands(program);
 registerTransferCommand(program);
 registerAddressBookCommands(program);
+registerSustainCommands(program);
+registerWhoamiCommand(program);
+registerSignMessageCommand(program);
 
 program.parseAsync(process.argv).catch((err) => {
   reportError(err);

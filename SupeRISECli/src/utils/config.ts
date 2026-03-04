@@ -1,7 +1,7 @@
 import Conf from "conf";
 import os from "os";
 import path from "path";
-import type { RiseConfig } from "../types/index.js";
+import type { RiseConfig } from "../types/index";
 
 const CONFIG_DIR = process.env.RISE_CONFIG_DIR
   ? path.resolve(process.env.RISE_CONFIG_DIR)

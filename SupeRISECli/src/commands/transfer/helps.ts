@@ -1,11 +1,11 @@
 import ora from "ora";
 import { ccc } from "@ckb-ccc/shell";
 import { cccA } from "@ckb-ccc/shell/advanced";
-import { getConfig } from "../../utils/config.js";
-import { promptText } from "../../utils/prompts.js";
-import { parseFixedPoint } from "../../utils/validator.js";
-import { CKB_DECIMALS } from "../../utils/constants.js";
-import { lookupAddressByName } from "../address-book/helps.js";
+import { getConfig } from "@/utils/config";
+import { promptText } from "@/utils/prompts";
+import { parseFixedPoint } from "@/utils/validator";
+import { CKB_DECIMALS } from "@/utils/constants";
+import { lookupAddressByName } from "../address-book/helps";
 
 export type TransferBaseOptions = {
   to?: string;

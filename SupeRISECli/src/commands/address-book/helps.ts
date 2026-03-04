@@ -1,4 +1,4 @@
-import { getConfig } from "../../utils/config.js";
+import { getConfig } from "@/utils/config";
 
 export function parseContactName(input: string): string {
   const trimmed = input.trim();

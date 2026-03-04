@@ -1,6 +1,6 @@
 import pc from "picocolors";
-import { formatConfigForDisplay } from "../../../utils/formatter.js";
-import { getConfig, getConfigPath } from "../../../utils/config.js";
+import { formatConfigForDisplay } from "@/utils/formatter";
+import { getConfig, getConfigPath } from "@/utils/config";
 
 export function showConfigAction(): void {
   const current = getConfig();

@@ -1,11 +1,11 @@
 import pc from "picocolors";
-import { getConfig, updateConfig } from "../../../utils/config.js";
-import { promptText } from "../../../utils/prompts.js";
+import { getConfig, updateConfig } from "@/utils/config";
+import { promptText } from "@/utils/prompts";
 import {
   parseContactName,
   validateAndNormalizeAddress,
   checkContactNameExists,
-} from "../helps.js";
+} from "../helps";
 
 export async function addAction(name?: string, address?: string): Promise<void> {
   let contactName = name?.trim();

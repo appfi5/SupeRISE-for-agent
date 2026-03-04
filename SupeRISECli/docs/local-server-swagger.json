@@ -1,0 +1,658 @@
+{
+  "x-generator": "NSwag v14.6.1.0 (NJsonSchema v11.5.1.0 (Newtonsoft.Json v13.0.0.0))",
+  "openapi": "3.0.0",
+  "info": {
+    "title": "SupeRISELocalServer",
+    "version": "v1"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:18799"
+    }
+  ],
+  "paths": {
+    "/api/sign/sign-ckb-transaction": {
+      "post": {
+        "tags": [
+          "UI"
+        ],
+        "operationId": "SupeRISELocalServerEndpointsUISignRecordEndpointsSignEndpoint",
+        "requestBody": {
+          "x-name": "SignReq",
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupeRISELocalServerEndpointsUISignRecordEndpointsSignReq"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetCorePalExtensionsDtoResponseDataOfSignResp"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ui/key-config/create": {
+      "post": {
+        "tags": [
+          "UI"
+        ],
+        "operationId": "SupeRISELocalServerEndpointsUIKeyConfigEndpointsCreateKeyConfigEndpoint",
+        "requestBody": {
+          "x-name": "CreateKeyConfigReq",
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupeRISELocalServerEndpointsUIKeyConfigEndpointsCreateKeyConfigReq"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetCorePalExtensionsDtoResponseDataOfBoolean"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/ui/key-config/delete": {
+      "post": {
+        "tags": [
+          "UI"
+        ],
+        "operationId": "SupeRISELocalServerEndpointsUIKeyConfigEndpointsDeleteKeyConfigEndpoint",
+        "requestBody": {
+          "x-name": "DeleteKeyConfigRequest",
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupeRISELocalServerEndpointsUIKeyConfigEndpointsDeleteKeyConfigRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetCorePalExtensionsDtoResponseDataOfBoolean"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/ui/key-config/list": {
+      "get": {
+        "tags": [
+          "UI"
+        ],
+        "operationId": "SupeRISELocalServerEndpointsUIKeyConfigEndpointsKeyConfigListEndpoint",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetCorePalExtensionsDtoResponseDataOfListOfKeyConfigListItem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/ui/auth/setup-password": {
+      "post": {
+        "tags": [
+          "UI"
+        ],
+        "operationId": "SupeRISELocalServerEndpointsUIAuthEndpointsInitialPasswordEndpoint",
+        "requestBody": {
+          "x-name": "InitialPasswordReq",
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupeRISELocalServerEndpointsUIAuthEndpointsInitialPasswordReq"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetCorePalExtensionsDtoResponseDataOfBoolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ui/auth/login": {
+      "post": {
+        "tags": [
+          "UI"
+        ],
+        "operationId": "SupeRISELocalServerEndpointsUIAuthEndpointsLoginEndpoint",
+        "requestBody": {
+          "x-name": "LoginReq",
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupeRISELocalServerEndpointsUIAuthEndpointsLoginReq"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetCorePalExtensionsDtoResponseDataOfLoginResp"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agent/sign/sign-ckb-transaction": {
+      "post": {
+        "tags": [
+          "Agent"
+        ],
+        "operationId": "SupeRISELocalServerEndpointsAgentSignRecordEndpointsSignEndpoint",
+        "requestBody": {
+          "x-name": "SignReq",
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupeRISELocalServerEndpointsAgentSignRecordEndpointsSignReq"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetCorePalExtensionsDtoResponseDataOfSignResp2"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agent/sign/sign-message": {
+      "post": {
+        "tags": [
+          "Agent"
+        ],
+        "operationId": "SupeRISELocalServerEndpointsAgentSignRecordEndpointsSignMessageEndpoint",
+        "requestBody": {
+          "x-name": "SignMessageReq",
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupeRISELocalServerEndpointsAgentSignRecordEndpointsSignMessageReq"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetCorePalExtensionsDtoResponseDataOfSignMessageResp"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agent/key-config/list": {
+      "get": {
+        "tags": [
+          "Agent"
+        ],
+        "operationId": "SupeRISELocalServerEndpointsAgentKeyConfigEndpointsKeyConfigListEndpoint",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetCorePalExtensionsDtoResponseDataOfListOfKeyConfigListItem2"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "NetCorePalExtensionsDtoResponseDataOfSignResp": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/NetCorePalExtensionsDtoResponseData"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "data": {
+                "nullable": true,
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/SupeRISELocalServerEndpointsUISignRecordEndpointsSignResp"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "SupeRISELocalServerEndpointsUISignRecordEndpointsSignResp": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "txHash": {
+            "type": "string"
+          }
+        }
+      },
+      "NetCorePalExtensionsDtoResponseData": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "errorData": {
+            "type": "array",
+            "items": {}
+          }
+        }
+      },
+      "SupeRISELocalServerEndpointsUISignRecordEndpointsSignReq": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          }
+        }
+      },
+      "NetCorePalExtensionsDtoResponseDataOfBoolean": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/NetCorePalExtensionsDtoResponseData"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "data": {
+                "type": "boolean"
+              }
+            }
+          }
+        ]
+      },
+      "SupeRISELocalServerEndpointsUIKeyConfigEndpointsCreateKeyConfigReq": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "addressType": {
+            "$ref": "#/components/schemas/SupeRISELocalServerDomainEnumsAddressType"
+          },
+          "address": {
+            "type": "string"
+          },
+          "publicKey": {
+            "type": "string"
+          },
+          "privateKey": {
+            "type": "string"
+          }
+        }
+      },
+      "SupeRISELocalServerDomainEnumsAddressType": {
+        "type": "integer",
+        "description": "",
+        "x-enumNames": [
+          "Unknown",
+          "Eth",
+          "Ckb"
+        ],
+        "enum": [
+          0,
+          1,
+          2
+        ]
+      },
+      "SupeRISELocalServerEndpointsUIKeyConfigEndpointsDeleteKeyConfigRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "type": "string"
+          }
+        }
+      },
+      "NetCorePalExtensionsDtoResponseDataOfListOfKeyConfigListItem": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/NetCorePalExtensionsDtoResponseData"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "data": {
+                "type": "array",
+                "nullable": true,
+                "items": {
+                  "$ref": "#/components/schemas/SupeRISELocalServerEndpointsUIKeyConfigEndpointsKeyConfigListItem"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "SupeRISELocalServerEndpointsUIKeyConfigEndpointsKeyConfigListItem": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "addressType": {
+            "$ref": "#/components/schemas/SupeRISELocalServerDomainEnumsAddressType"
+          },
+          "address": {
+            "type": "string"
+          },
+          "publicKey": {
+            "type": "string"
+          }
+        }
+      },
+      "SupeRISELocalServerEndpointsUIAuthEndpointsInitialPasswordReq": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "password": {
+            "type": "string"
+          }
+        }
+      },
+      "NetCorePalExtensionsDtoResponseDataOfLoginResp": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/NetCorePalExtensionsDtoResponseData"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "data": {
+                "nullable": true,
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/SupeRISELocalServerEndpointsUIAuthEndpointsLoginResp"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "SupeRISELocalServerEndpointsUIAuthEndpointsLoginResp": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SupeRISELocalServerEndpointsUIAuthEndpointsLoginReq": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "password": {
+            "type": "string"
+          }
+        }
+      },
+      "NetCorePalExtensionsDtoResponseDataOfSignResp2": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/NetCorePalExtensionsDtoResponseData"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "data": {
+                "nullable": true,
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/SupeRISELocalServerEndpointsAgentSignRecordEndpointsSignResp"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "SupeRISELocalServerEndpointsAgentSignRecordEndpointsSignResp": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "txHash": {
+            "type": "string"
+          }
+        }
+      },
+      "SupeRISELocalServerEndpointsAgentSignRecordEndpointsSignReq": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          }
+        }
+      },
+      "NetCorePalExtensionsDtoResponseDataOfSignMessageResp": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/NetCorePalExtensionsDtoResponseData"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "data": {
+                "nullable": true,
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/SupeRISELocalServerEndpointsAgentSignRecordEndpointsSignMessageResp"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "SupeRISELocalServerEndpointsAgentSignRecordEndpointsSignMessageResp": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "signature": {
+            "type": "string"
+          }
+        }
+      },
+      "SupeRISELocalServerEndpointsAgentSignRecordEndpointsSignMessageReq": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "NetCorePalExtensionsDtoResponseDataOfListOfKeyConfigListItem2": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/NetCorePalExtensionsDtoResponseData"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "data": {
+                "type": "array",
+                "nullable": true,
+                "items": {
+                  "$ref": "#/components/schemas/SupeRISELocalServerEndpointsAgentKeyConfigEndpointsKeyConfigListItem"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "SupeRISELocalServerEndpointsAgentKeyConfigEndpointsKeyConfigListItem": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "addressType": {
+            "$ref": "#/components/schemas/SupeRISELocalServerDomainEnumsAddressType"
+          },
+          "address": {
+            "type": "string"
+          },
+          "publicKey": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "JWTBearerAuth": {
+        "type": "http",
+        "description": "Enter a JWT token to authorize the requests...",
+        "scheme": "Bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}

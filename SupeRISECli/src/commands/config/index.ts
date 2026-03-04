@@ -1,11 +1,11 @@
 import { Command } from "commander";
-import { showConfigAction } from "./actions/show.js";
-import { setFeeRateAction } from "./actions/setFeeRate.js";
-import { clearFeeRateAction } from "./actions/clearFeeRate.js";
-import { setApiKeyAction } from "./actions/setApiKey.js";
-import { clearApiKeyAction } from "./actions/clearApiKey.js";
-import { setSignServerUrlAction } from "./actions/setSignServerUrl.js";
-import { clearSignServerUrlAction } from "./actions/clearSignServerUrl.js";
+import { showConfigAction } from "./actions/show";
+import { setFeeRateAction } from "./actions/setFeeRate";
+import { clearFeeRateAction } from "./actions/clearFeeRate";
+import { setApiKeyAction } from "./actions/setApiKey";
+import { clearApiKeyAction } from "./actions/clearApiKey";
+import { setSignServerUrlAction } from "./actions/setSignServerUrl";
+import { clearSignServerUrlAction } from "./actions/clearSignServerUrl";
 
 export function registerConfigCommands(program: Command): void {
   const config = program.command("config").description("Configuration commands");

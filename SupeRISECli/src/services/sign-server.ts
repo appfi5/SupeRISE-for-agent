@@ -4,8 +4,8 @@
  * Integrates with the OpenClaw Wallet Server for signing CKB transactions.
  */
 
-import { getConfig } from "../utils/config.js";
-import type { SignService } from "../types/index.js";
+import { getConfig } from "@/utils/config";
+import type { SignService } from "../types/index";
 import type { ccc } from "@ckb-ccc/shell";
 import { JsonRpcTransformers } from "@ckb-ccc/shell/advancedBarrel";
 
@@ -91,11 +91,46 @@ export async function signCkbTransaction(
 }
 
 /**
- * List all key configurations
+ * Sign a message
  *
- * GET /api/v1/key-config/list
+ * POST /api/v1/agent/sign/sign-message
+ * Request:  { address: string, message: string }
+ * Response: { address: string, signature: string }
  *
- * @returns Array of key configuration items
+ * The address is the wallet address from key-config/list (same as `rise whoami`).
+ *
+ * @param message - The message to sign
+ * @returns Object containing the signature
+ */
+export async function signMessage(
+  message: string,
+): Promise<{ signature: string }> {
+  const wallet = await getWallet();
+  if (!wallet) {
+    throw new Error("No wallet configured. Cannot sign message without address.");
+  }
+
+  const response = await request<SignService.SignServerResponseData<{ address: string; signature: string }>>(
+    "/api/v1/agent/sign/sign-message",
+    {
+      method: "POST",
+      body: JSON.stringify({ address: wallet.address, message }),
+    },
+  );
+
+  if (!response.data) {
+    throw new Error("Sign server returned null data for sign-message");
+  }
+
+  return response.data;
+}
+
+/**
+ * Get wallet info (address, publicKey) from sign server.
+ *
+ * GET /api/v1/agent/key-config/list → data[0]
+ *
+ * @returns First key config item containing address and publicKey, or null
  */
 export async function getWallet(): Promise<SignService.KeyConfigListItem | null | undefined> {
   const response = await request<SignService.KeyConfigListResponse>(

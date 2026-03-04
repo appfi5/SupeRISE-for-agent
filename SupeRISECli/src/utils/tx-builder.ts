@@ -1,7 +1,7 @@
-// 构造未签名 CKB 交易的工具函数
+// Utility functions for constructing unsigned CKB transactions
 import { ccc } from "@ckb-ccc/shell";
-import { completeInputsCapacityAndFee } from "../commands/transfer/helps.js";
-import { getWallet } from "../services/sign-server.js";
+import { completeInputsCapacityAndFee } from "@/commands/transfer/helps";
+import { getWallet } from "@/services/sign-server";
 
 export async function buildUnsignedCkbTransfer(
   client: ccc.Client,
@@ -15,13 +15,13 @@ export async function buildUnsignedCkbTransfer(
   }
   // const balance = BigInt(walletInfo.balance);
 
-  // 校验余额是否充足
+  // Verify sufficient balance
   // if (balance < amount) {
   //   throw new Error(
   //     `Insufficient balance. Required: ${amount.toString()} shannon, Available: ${balance.toString()} shannon`,
   //   );
   // }
-  // 使用公钥创建 signer，仅用于构建交易
+  // Create signer from public key, used only for transaction construction
   const signer = new ccc.SignerCkbPublicKey(client, walletInfo.publicKey);
   const receiver = await ccc.Address.fromString(toAddress, signer.client);
 
