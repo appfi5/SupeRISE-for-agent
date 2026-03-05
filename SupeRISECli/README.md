@@ -45,20 +45,11 @@ bun run dev --help
    rise --help
    ```
 
-3. **For AI Agent Integration** (OpenClaw, Claude, etc.):
-   
-   Copy the `SKILL.md` file to your agent's skills directory:
-   
-   **For OpenClaw**:
+3. **Install skill for OpenClaw**:
    ```bash
-   # Workspace-specific (recommended)
-   mkdir -p <your-openclaw-workspace>/skills/rise-cli
-   cp SKILL.md <your-openclaw-workspace>/skills/rise-cli/
-   
-   # Or global (available to all agents)
-   mkdir -p ~/.openclaw/skills/rise-cli
-   cp SKILL.md ~/.openclaw/skills/rise-cli/
+   npm run update-skill
    ```
+   This copies skill files from `skills/superise-cli/` to `~/.openclaw/skills/superise-cli/`. After installation, OpenClaw agents can understand natural language commands like "Send 100 CKB to bob" directly in chat.
    
    **OpenClaw Integration Tips**:
    - **Telegram Bot**: Connect OpenClaw to Telegram for mobile CKB transfers via chat
@@ -66,18 +57,6 @@ bun run dev --help
    - **Discord Bot**: Use OpenClaw Discord integration for community token distribution
    - **WhatsApp**: Enable WhatsApp integration for peer-to-peer CKB transfers
    - **Slack**: Connect to Slack for workplace blockchain workflows
-   
-   After integration, you can send messages like "Send 100 CKB to bob" directly in your chat app!
-   
-   **For Claude**:
-   ```bash
-   mkdir -p <your-claude-workspace>/.cascade/skills
-   cp SKILL.md <your-claude-workspace>/.cascade/skills/rise-cli.md
-   ```
-   
-   After placing the skill file, restart your AI agent. The agent will be able to understand natural language commands like:
-   - "Send 100 CKB to ckb1abc..."
-   - "Transfer 50 CKB to this address: ckb1xyz..."
 
 ### For Distribution (Standalone Binary)
 
@@ -165,6 +144,68 @@ rise config clear-fee-rate
 Output:
 - Prints confirmation that feeRate was cleared (will auto-fetch from node)
 
+### whoami
+
+```bash
+rise whoami [options]
+```
+
+Display current wallet address and public key from sign server.
+
+Options:
+- `--json`: Output as JSON (only address and publicKey)
+- `--full`: Show complete API response (includes addressType)
+
+Output:
+- Default: Labeled output with address and publicKey
+- `--json`: JSON object with address and publicKey fields
+- `--full`: Adds addressType field to labeled output
+- `--json --full`: Complete API response in JSON format
+
+**Examples:**
+```bash
+# Simple output (address and public key only)
+rise whoami
+
+# JSON output for scripting
+rise whoami --json
+
+# Full details
+rise whoami --full
+
+# Full JSON output
+rise whoami --json --full
+```
+
+### sign-message
+
+```bash
+rise sign-message <message> [options]
+```
+
+Sign a message using local sign server. Used for authentication with SupeRISE Market platform.
+
+Arguments:
+- `<message>`: Message to sign (required)
+
+Options:
+- `--json`: Output as JSON
+
+Output:
+- Default: Labeled output with message and signature
+- `--json`: JSON object with message and signature fields
+
+**Note**: Current implementation returns mock signature. Real sign server integration pending.
+
+**Examples:**
+```bash
+# Sign a message
+rise sign-message "Sign this message to authenticate"
+
+# JSON output
+rise sign-message "test message" --json
+```
+
 ### transfer
 
 ```bash
@@ -209,6 +250,20 @@ rise transfer ckb --to ckb1qyq...l4d --amount 50.5 --fee-rate 2000
 # Dry run to estimate
 rise transfer ckb --to ckb1qyq...l4d --amount 100 --dry-run
 ```
+
+## Sustain — Self-Sustaining Agent
+
+RISE includes a **sustain** module that lets an AI agent autonomously manage its own operational resources on the SupeRISE Market platform — monitoring balance, switching models, and topping up when needed.
+
+Get started with one command:
+
+```bash
+rise sustain setup
+```
+
+This walks you through database initialization, platform authentication, policy configuration, and cron job registration. Once set up, the agent runs autonomously — observe, decide, act, report.
+
+Run `rise sustain --help` for the full list of sustain subcommands.
 
 ## License
 

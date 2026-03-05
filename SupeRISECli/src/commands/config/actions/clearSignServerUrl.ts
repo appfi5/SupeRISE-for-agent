@@ -1,5 +1,5 @@
 import pc from "picocolors";
-import { updateConfig } from "../../../utils/config.js";
+import { updateConfig } from "@/utils/config";
 
 export function clearSignServerUrlAction(): void {
   updateConfig({ signServerUrl: undefined });

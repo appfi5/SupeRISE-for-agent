@@ -1,8 +1,8 @@
 import { Command } from "commander";
-import { addAction } from "./actions/add.js";
-import { listAction } from "./actions/list.js";
-import { removeAction } from "./actions/remove.js";
-import { updateAction } from "./actions/update.js";
+import { addAction } from "./actions/add";
+import { listAction } from "./actions/list";
+import { removeAction } from "./actions/remove";
+import { updateAction } from "./actions/update";
 
 export function registerAddressBookCommands(program: Command): void {
   const addressBook = program

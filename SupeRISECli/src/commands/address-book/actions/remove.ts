@@ -1,7 +1,7 @@
 import pc from "picocolors";
-import { getConfig, updateConfig } from "../../../utils/config.js";
-import { promptText } from "../../../utils/prompts.js";
-import { parseContactName } from "../helps.js";
+import { getConfig, updateConfig } from "@/utils/config";
+import { promptText } from "@/utils/prompts";
+import { parseContactName } from "../helps";
 
 export async function removeAction(name?: string): Promise<void> {
   let contactName = name?.trim();

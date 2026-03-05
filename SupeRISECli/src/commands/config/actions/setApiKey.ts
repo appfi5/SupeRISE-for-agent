@@ -1,7 +1,7 @@
 import pc from "picocolors";
-import { updateConfig } from "../../../utils/config.js";
-import { promptSecret } from "../../../utils/prompts.js";
-import { parseApiKey } from "../helps.js";
+import { updateConfig } from "@/utils/config";
+import { promptSecret } from "@/utils/prompts";
+import { parseApiKey } from "../helps";
 
 export async function setApiKeyAction(key?: string): Promise<void> {
   let value = key?.trim();

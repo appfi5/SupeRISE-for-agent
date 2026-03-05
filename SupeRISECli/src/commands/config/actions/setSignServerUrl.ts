@@ -1,7 +1,7 @@
 import pc from "picocolors";
-import { updateConfig } from "../../../utils/config.js";
-import { promptText } from "../../../utils/prompts.js";
-import { parseSignServerUrl } from "../helps.js";
+import { updateConfig } from "@/utils/config";
+import { promptText } from "@/utils/prompts";
+import { parseSignServerUrl } from "../helps";
 
 export async function setSignServerUrlAction(url?: string): Promise<void> {
   let value = url?.trim();

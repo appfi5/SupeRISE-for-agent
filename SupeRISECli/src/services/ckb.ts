@@ -1,5 +1,5 @@
 import { ccc } from "@ckb-ccc/shell";
-import { getConfig } from "../utils/config.js";
+import { getConfig } from "@/utils/config";
 
 export function createClient(): ccc.ClientPublicTestnet {
   const { rpc, indexer } = getConfig();

@@ -1,7 +1,7 @@
 import pc from "picocolors";
-import { updateConfig } from "../../../utils/config.js";
-import { promptText } from "../../../utils/prompts.js";
-import { parseFeeRate } from "../helps.js";
+import { updateConfig } from "@/utils/config";
+import { promptText } from "@/utils/prompts";
+import { parseFeeRate } from "../helps";
 
 export async function setFeeRateAction(rate?: string): Promise<void> {
   let value = rate?.trim();

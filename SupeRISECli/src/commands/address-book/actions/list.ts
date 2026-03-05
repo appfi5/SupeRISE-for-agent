@@ -1,5 +1,5 @@
 import pc from "picocolors";
-import { getConfig } from "../../../utils/config.js";
+import { getConfig } from "@/utils/config";
 
 export function listAction(): void {
   const config = getConfig();

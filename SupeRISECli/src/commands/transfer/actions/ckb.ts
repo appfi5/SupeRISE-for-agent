@@ -1,16 +1,16 @@
 import pc from "picocolors";
 import { JsonRpcTransformers } from "@ckb-ccc/shell/advanced";
-import { createClient } from "../../../services/ckb.js";
+import { createClient } from "@/services/ckb";
 import {
   buildSpinner,
   resolveAmount,
   resolveFeeRate,
   resolveRecipient,
   type TransferBaseOptions,
-} from "../helps.js";
-import { validateAddress } from "../../../utils/validator.js";
-import { buildUnsignedCkbTransfer } from "../../../utils/tx-builder.js";
-import { signCkbTransaction } from "../../../services/sign-server.js";
+} from "../helps";
+import { validateAddress } from "@/utils/validator";
+import { buildUnsignedCkbTransfer } from "@/utils/tx-builder";
+import { signCkbTransaction } from "@/services/sign-server";
 
 export async function transferCkbAction(options: TransferBaseOptions, command: any): Promise<void> {
   const parentOpts = command?.parent?.opts?.() || {};
@@ -22,7 +22,7 @@ export async function transferCkbAction(options: TransferBaseOptions, command: a
 
   const amount = await resolveAmount(actualOptions.amount);
   const feeRate = await resolveFeeRate(actualOptions, client);
-  const useJson = actualOptions.json !== false;
+  const useJson = actualOptions.json === true;
   const useSpinner = !useJson;
 
   const { tx: unsignedTx, fromAddress } = await buildUnsignedCkbTransfer(
@@ -58,10 +58,11 @@ export async function transferCkbAction(options: TransferBaseOptions, command: a
           2,
         ),
       );
+    } else {
+      console.log(pc.green("Dry-run accepted."));
+      console.log(pc.dim(`Estimated cycles: ${cycles.toString()}`));
+      console.log(pc.dim(`Fee: ${feePaid.toString()} shannon`));
     }
-    console.log(pc.green("Dry-run accepted."));
-    console.log(pc.dim(`Estimated cycles: ${cycles.toString()}`));
-    console.log(pc.dim(`Fee: ${feePaid.toString()} shannon`));
     return;
   }
 
@@ -89,7 +90,8 @@ export async function transferCkbAction(options: TransferBaseOptions, command: a
         2,
       ),
     );
+  } else {
+    console.log(pc.green(`Transaction hash: ${hex}`));
+    console.log(pc.dim(`Fee: ${feePaid.toString()} shannon`));
   }
-  console.log(pc.green(`Transaction hash: ${hex}`));
-  console.log(pc.dim(`Fee: ${feePaid.toString()} shannon`));
 }

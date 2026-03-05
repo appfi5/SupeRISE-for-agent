@@ -1,4 +1,4 @@
-import type { RiseConfig } from "../types/index.js";
+import type { RiseConfig } from "../types/index";
 
 export function maskHex(value: string, lead = 8, tail = 4): string {
   if (value.length <= lead + tail) {
