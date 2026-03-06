@@ -1,0 +1,13 @@
+{
+  "name": "superise",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "corepack pnpm -r --if-present build",
+    "test": "corepack pnpm -r --if-present test"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

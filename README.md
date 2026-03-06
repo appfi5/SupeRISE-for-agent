@@ -1,62 +1,67 @@
 # SupeRISE for agent
 
-A secure CKB blockchain wallet with local signer server integration for safe private key management.
+Node.js LTS + pnpm workspace wallet stack for CKB-first agent workflows.
 
 ## Architecture
 
-![System Architecture](doc/picture/architecture.jpg)
+This repository follows the architecture defined in:
 
-## Project Overview
+- `docs/refactor/REQUIREMENTS.md`
+- `docs/refactor/ARCHITECTURE.md`
 
-SupeRISELocalServer consists of two main components:
+### Apps
 
-- **SupeRISELocalServer**: Local signer server (.NET) that securely manages private keys and signing operations
-- **SupeRISELocalCli**: Command-line interface (Bun/TypeScript) providing user-friendly interactions
+| Path | Description |
+|------|-------------|
+| `apps/wallet-api` | Wallet business logic + HTTP API (Fastify) |
+| `apps/wallet-mcp` | Thin MCP adapter — calls wallet-api via SDK |
+| `apps/rise-cli` | CLI entry shell |
+| `apps/rise-web` | Web UI entry (placeholder) |
 
-## Features
+### Packages
 
-- **Secure Key Management**: Local signer server ensures private keys remain secure; CLI never touches private keys
-- **CLI Operations**: Simple and intuitive CKB transfer commands
-- **Address Book**: Save and manage contacts with CKB addresses
-- **Configurable**: Custom fee rates and network settings
-- **Dry Run**: Estimate fees without executing actual transactions
-- **Testnet Ready**: Optimized for CKB testnet operations
+| Path | Description |
+|------|-------------|
+| `packages/wallet-core` | Wallet domain model & use cases |
+| `packages/chain-ckb` | CKB chain adapter |
+| `packages/chain-eth` | ETH chain adapter (skeleton) |
+| `packages/storage-sqlite` | SQLite persistence |
+| `packages/contracts` | Shared schemas, DTOs, validation |
+| `packages/sdk` | API client for MCP / CLI / UI |
+| `packages/sustain` | Sustain keep-alive engine (migrated from legacy CLI) |
 
-## Quick Start
+## Wallet API
 
-For detailed setup instructions, see [SKILL.md](SKILL.md).
+### Swagger UI
 
-Quick overview:
+Start the API and open **`/docs`** in a browser for interactive API docs.
 
-1. Install and run the signer server
-2. Build and install the CLI
-3. Configure the CLI to connect to the signer server
+### OpenAPI spec
 
-## Usage
+- Machine-readable endpoint: `GET /docs/json`
+- Generated spec file: `apps/wallet-api/openapi.json`
 
-For detailed command reference and usage examples, see [SKILL.md](SKILL.md).
-
-Quick examples:
+Regenerate:
 
 ```bash
-# Transfer CKB
-rise transfer --to ckb1qy... --amount 100
-
-# Address book operations
-rise address-book add alice ckb1qy...
-rise address-book list
-
-# Configuration
-rise config show
-rise config set-fee-rate 1500
+corepack pnpm -C apps/wallet-api openapi:generate
 ```
 
-## License
+### CKB address validation
 
-MIT
+Transfer target addresses are validated against CKB/testnet bech32 format at the request layer.
+Invalid addresses are rejected with HTTP `400` before reaching wallet-core.
 
-## Related Links
+## Getting started
 
-- [CKB Blockchain](https://www.nervos.org/)
-- [CCC SDK](https://github.com/xxuejie/ccc-cli)
-- [CKB Testnet](https://testnet.ckb.dev/)
+```bash
+corepack pnpm install
+corepack pnpm build
+corepack pnpm test
+```
+
+### Running the API
+
+```bash
+MASTER_KEY=<your-secret> corepack pnpm -C apps/wallet-api start
+```
