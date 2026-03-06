@@ -67,11 +67,22 @@ public class SignMessageCommandHandler(
         // 解密私钥
         var dataProtector = dataProtectionProvider.CreateProtector(ProviderKey);
         var privateKey = dataProtector.Unprotect(keyConfig.PrivateKey);
-        
-        var signature = SignMessageUtils.SignMessage(privateKey, command.Message);
+
+        string signature;
+        AddressType addressType;
+        if (keyConfig.AddressType == AddressType.Eth)
+        {
+            signature = EthSignMessageUtils.SignMessage(privateKey, command.Message);
+            addressType = AddressType.Eth;
+        }
+        else
+        {
+            signature = SignMessageUtils.SignMessage(privateKey, command.Message);
+            addressType = AddressType.Ckb;
+        }
 
         var signRecord = SignRecord.Create(
-            addressType: AddressType.Ckb,
+            addressType: addressType,
             content: signature
         );
 

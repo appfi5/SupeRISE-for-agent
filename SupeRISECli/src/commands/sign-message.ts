@@ -6,22 +6,21 @@
 
 import { Command } from "commander";
 import pc from "picocolors";
+import { signMessage } from "@/services/sign-server";
 
 async function signMessageAction(
   message: string,
   options: { json?: boolean }
 ): Promise<void> {
   try {
-    // TODO: Implement real sign server integration
-    // For now, return mock signature
-    const mockSignature = "0x" + "a".repeat(130); // Mock 65-byte signature in hex
+    const { signature } = await signMessage(message);
 
     if (options.json) {
       console.log(
         JSON.stringify(
           {
             message,
-            signature: mockSignature,
+            signature,
           },
           null,
           2
@@ -29,7 +28,7 @@ async function signMessageAction(
       );
     } else {
       console.log(pc.dim("Message:   ") + message);
-      console.log(pc.dim("Signature: ") + pc.green(mockSignature));
+      console.log(pc.dim("Signature: ") + pc.green(signature));
     }
   } catch (error) {
     if (options.json) {
