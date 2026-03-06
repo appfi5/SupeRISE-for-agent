@@ -1,0 +1,72 @@
+# SupeRISELocalServer – Docker Compose
+#
+# Profiles
+#   development  →  docker compose --profile development up
+#   production   →  docker compose --profile production  up
+#
+# Quick start (production):
+#   cp .env.example .env          # fill in any overrides
+#   docker compose --profile production up -d
+
+services:
+  # ---------------------------------------------------------------------------
+  # Development – ASP.NET Development environment, debug mode on, testnet
+  # ---------------------------------------------------------------------------
+  superise-server-dev:
+    profiles: [development]
+    build:
+      context: SupeRISELocalServer
+      dockerfile: Dockerfile
+    image: superise-local-server:dev
+    container_name: superise-server-dev
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:18799
+      - ConnectionStrings__AppDb=Data Source=/app/data/app.db
+      - Ckb__NetWork=${CKB_NETWORK:-1}
+      - Ckb__NodeUrl=${CKB_NODE_URL:-https://testnet.ckb.dev}
+      - CurrentEnvironment__IsDebug=${IS_DEBUG:-true}
+    ports:
+      - "${HOST_PORT:-18799}:18799"
+    volumes:
+      - superise-dev-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://localhost:18799/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  # Production – ASP.NET Production environment, debug mode off, mainnet
+  # ---------------------------------------------------------------------------
+  superise-server-prod:
+    profiles: [production]
+    build:
+      context: SupeRISELocalServer
+      dockerfile: Dockerfile
+    image: superise-local-server:latest
+    container_name: superise-server-prod
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:18799
+      - ConnectionStrings__AppDb=Data Source=/app/data/app.db
+      - Ckb__NetWork=${CKB_NETWORK:-0}
+      - Ckb__NodeUrl=${CKB_NODE_URL:-https://mainnet.ckb.dev}
+      - CurrentEnvironment__IsDebug=${IS_DEBUG:-false}
+    ports:
+      - "${HOST_PORT:-18799}:18799"
+    volumes:
+      - superise-prod-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://localhost:18799/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  superise-dev-data:
+  superise-prod-data:
