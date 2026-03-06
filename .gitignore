@@ -7,3 +7,4 @@ riderModule.iml
 OpenClawWalletServer.sln.DotSettings.user
 data/
 node_modules/
+.env

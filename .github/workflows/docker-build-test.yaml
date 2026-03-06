@@ -1,0 +1,84 @@
+# .github/workflows/docker-build-test.yaml
+name: Docker Build & Test
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'SupeRISELocalServer/**'
+      - 'docker-compose.yml'
+      - '.github/workflows/docker-build-test.yaml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'SupeRISELocalServer/**'
+      - 'docker-compose.yml'
+      - '.github/workflows/docker-build-test.yaml'
+
+env:
+  IMAGE_NAME: superise-local-server
+
+jobs:
+  build-and-test:
+    name: Build & smoke-test Docker image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: SupeRISELocalServer
+          file: SupeRISELocalServer/Dockerfile
+          push: false
+          load: true
+          tags: ${{ env.IMAGE_NAME }}:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Start container
+        run: |
+          docker run -d \
+            --name superise-ci \
+            -p 18799:18799 \
+            -e ASPNETCORE_ENVIRONMENT=Development \
+            -e ConnectionStrings__AppDb="Data Source=/app/data/app.db" \
+            -e Ckb__NetWork=1 \
+            -e Ckb__NodeUrl=https://testnet.ckb.dev \
+            -e CurrentEnvironment__IsDebug=false \
+            ${{ env.IMAGE_NAME }}:ci
+
+      - name: Wait for container to be healthy
+        run: |
+          echo "Waiting for /healthz..."
+          for i in $(seq 1 20); do
+            if curl -sf http://localhost:18799/healthz; then
+              echo "Service is healthy"
+              exit 0
+            fi
+            echo "Attempt $i/20 – retrying in 3s"
+            sleep 3
+          done
+          echo "Service did not become healthy in time"
+          docker logs superise-ci
+          exit 1
+
+      - name: Verify Swagger UI is reachable
+        run: |
+          curl -sf http://localhost:18799/superise-for-agent/swagger > /dev/null
+          echo "Swagger UI is reachable"
+
+      - name: Print container logs
+        if: always()
+        run: docker logs superise-ci
+
+      - name: Stop and remove container
+        if: always()
+        run: docker rm -f superise-ci || true

@@ -32,6 +32,17 @@ Quick overview:
 2. Build and install the CLI
 3. Configure the CLI to connect to the signer server
 
+### Docker Deployment
+
+A Docker image for the signer server is provided for one-command deployment on Linux, macOS, and WSL2.
+
+```bash
+cp .env.example .env   # adjust settings as needed
+docker compose --profile production up -d
+```
+
+See [DOCKER.md](DOCKER.md) for the full deployment guide, including multi-environment setup, data persistence, security hardening, and CI integration.
+
 ## Usage
 
 For detailed command reference and usage examples, see [SKILL.md](SKILL.md).
