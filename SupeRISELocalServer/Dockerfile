@@ -4,7 +4,8 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-# Copy project file and restore dependencies first (layer caching)
+# Copy NuGet config (needed for custom package sources) and project file, then restore
+COPY NuGet.config .
 COPY src/SupeRISELocalServer.csproj ./src/
 RUN dotnet restore ./src/SupeRISELocalServer.csproj
 
@@ -27,8 +28,8 @@ WORKDIR /app
 RUN apt-get update \
  && apt-get install -y --no-install-recommends curl \
  && rm -rf /var/lib/apt/lists/* \
- && groupadd --system --gid 1001 appgroup \
- && useradd  --system --uid 1001 --gid appgroup --no-create-home appuser
+ && groupadd --gid 1001 appgroup \
+ && useradd  --uid 1001 --gid appgroup --no-create-home --shell /bin/false appuser
 
 # Copy published output from the build stage
 COPY --from=build /app/publish .
