@@ -6,12 +6,14 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "build": "node --check src/*.js",
+    "build": "node --check src/*.js src/**/*.js",
     "test": "node --test",
-    "openapi:generate": "node src/openapi.js"
+    "openapi:generate": "node src/generate-openapi.js"
   },
   "dependencies": {
     "@fastify/rate-limit": "^10.3.0",
+    "@fastify/swagger": "^9.7.0",
+    "@fastify/swagger-ui": "^5.2.5",
     "@superise/chain-ckb": "workspace:*",
     "@superise/contracts": "workspace:*",
     "@superise/storage-sqlite": "workspace:*",

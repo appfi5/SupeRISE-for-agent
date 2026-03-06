@@ -17,7 +17,7 @@ if (!masterKey) {
 const repository = new SqliteWalletRepository(dbPath);
 const ckbAdapter = new CkbAdapter();
 const walletService = new WalletCoreService({ repository, ckbAdapter, masterKey });
-const app = createWalletApiApp({ walletService, adminToken, runtimeToken });
+const app = await createWalletApiApp({ walletService, adminToken, runtimeToken });
 
 app.listen({ host, port }).catch((error) => {
   app.log.error(error);

@@ -1,23 +1,29 @@
-const DEFAULT_SUSTAIN_CONFIG = {
-  enabled: true,
-  cronMode: "production",
-  platformBaseUrl: "https://superise-market.superise.net",
-  minTopUpCkb: 1000,
-  maxTopUpCkb: 20000,
-};
+/**
+ * @superise/sustain
+ *
+ * Standalone sustain package — migrated from SupeRISECli/src/core/sustain.
+ * This package owns sustain types, config, defaults, and the engine.
+ * Per docs/refactor/ARCHITECTURE.md §4.8 this is a structure-only migration;
+ * no business-rule changes were made.
+ */
 
-export function createDefaultSustainConfig() {
-  return { ...DEFAULT_SUSTAIN_CONFIG };
-}
-
-export function mergeSustainConfig(overrides = {}) {
-  const next = { ...DEFAULT_SUSTAIN_CONFIG, ...overrides };
-  if (next.minTopUpCkb > next.maxTopUpCkb) {
-    throw new Error("minTopUpCkb must be less than or equal to maxTopUpCkb");
-  }
-  return next;
-}
-
-export function normalizeSustainConfig(config = {}) {
-  return mergeSustainConfig(config);
-}
+export { DEFAULT_POLICY } from "./defaults.js";
+export {
+  getConfig,
+  getConfigValue,
+  setConfigValue,
+  setConfig,
+  resetConfig,
+  getConfigFilePath,
+  hasConfigFile,
+  getCronSchedule,
+  getTopUpAmountRange,
+  validateTopUpAmount,
+  describeConfig,
+} from "./config.js";
+export {
+  loadLocalPolicy,
+  classifyStatus,
+  calculateBurnRate,
+  buildForecast,
+} from "./engine.js";

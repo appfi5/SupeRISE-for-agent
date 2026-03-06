@@ -3,15 +3,45 @@
   "info": {
     "title": "SupeRISE Wallet API",
     "version": "0.1.0",
-    "description": "Wallet service API with admin/runtime token auth"
+    "description": "Wallet service API — admin + runtime token auth"
+  },
+  "components": {
+    "securitySchemes": {
+      "AdminTokenAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-admin-token"
+      },
+      "RuntimeTokenAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-runtime-token"
+      }
+    },
+    "schemas": {}
   },
   "paths": {
     "/api/v1/healthz": {
       "get": {
         "summary": "Health check",
+        "tags": [
+          "system"
+        ],
         "responses": {
           "200": {
-            "description": "Service healthy"
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -19,10 +49,8 @@
     "/api/v1/admin/wallets/import": {
       "post": {
         "summary": "Import wallet",
-        "security": [
-          {
-            "AdminTokenAuth": []
-          }
+        "tags": [
+          "admin"
         ],
         "requestBody": {
           "required": true,
@@ -49,15 +77,68 @@
             }
           }
         },
+        "security": [
+          {
+            "AdminTokenAuth": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Wallet imported"
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "walletId": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "chain": {
+                      "type": "string"
+                    },
+                    "address": {
+                      "type": "string"
+                    },
+                    "publicKey": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
           },
           "400": {
-            "description": "Validation failed"
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
           },
           "401": {
-            "description": "Unauthorized"
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -65,28 +146,54 @@
     "/api/v1/admin/wallets/{walletId}/export": {
       "post": {
         "summary": "Export wallet private key",
+        "tags": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "walletId",
+            "required": true
+          }
+        ],
         "security": [
           {
             "AdminTokenAuth": []
           }
         ],
-        "parameters": [
-          {
-            "name": "walletId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "minLength": 1
-            }
-          }
-        ],
         "responses": {
           "200": {
-            "description": "Wallet secret exported"
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "privateKey": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
           },
           "401": {
-            "description": "Unauthorized"
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -94,6 +201,9 @@
     "/api/v1/admin/wallets": {
       "get": {
         "summary": "List wallets",
+        "tags": [
+          "admin"
+        ],
         "security": [
           {
             "AdminTokenAuth": []
@@ -101,10 +211,34 @@
         ],
         "responses": {
           "200": {
-            "description": "Wallet list"
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "wallets": {
+                      "type": "array"
+                    }
+                  }
+                }
+              }
+            }
           },
           "401": {
-            "description": "Unauthorized"
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -112,28 +246,66 @@
     "/api/v1/admin/wallets/{walletId}": {
       "get": {
         "summary": "Get wallet identity",
+        "tags": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "walletId",
+            "required": true
+          }
+        ],
         "security": [
           {
             "AdminTokenAuth": []
           }
         ],
-        "parameters": [
-          {
-            "name": "walletId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "minLength": 1
-            }
-          }
-        ],
         "responses": {
           "200": {
-            "description": "Wallet identity"
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "chain": {
+                      "type": "string"
+                    },
+                    "address": {
+                      "type": "string"
+                    },
+                    "publicKey": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
           },
           "401": {
-            "description": "Unauthorized"
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -141,6 +313,9 @@
     "/api/v1/wallets/current": {
       "get": {
         "summary": "Get current wallet identity",
+        "tags": [
+          "runtime"
+        ],
         "security": [
           {
             "RuntimeTokenAuth": []
@@ -148,10 +323,46 @@
         ],
         "responses": {
           "200": {
-            "description": "Current wallet identity"
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "chain": {
+                      "type": "string"
+                    },
+                    "address": {
+                      "type": "string"
+                    },
+                    "publicKey": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
           },
           "401": {
-            "description": "Unauthorized"
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -159,21 +370,8 @@
     "/api/v1/wallets/{walletId}/sign-message": {
       "post": {
         "summary": "Sign message",
-        "security": [
-          {
-            "RuntimeTokenAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "walletId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "minLength": 1
-            }
-          }
+        "tags": [
+          "runtime"
         ],
         "requestBody": {
           "required": true,
@@ -194,15 +392,66 @@
             }
           }
         },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "walletId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "RuntimeTokenAuth": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Signed message"
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "signature": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
           },
           "400": {
-            "description": "Validation failed"
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
           },
           "401": {
-            "description": "Unauthorized"
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -210,21 +459,8 @@
     "/api/v1/wallets/{walletId}/transfers/ckb": {
       "post": {
         "summary": "Transfer CKB",
-        "security": [
-          {
-            "RuntimeTokenAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "walletId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "minLength": 1
-            }
-          }
+        "tags": [
+          "runtime"
         ],
         "requestBody": {
           "required": true,
@@ -243,56 +479,82 @@
                     "description": "CKB mainnet/testnet address"
                   },
                   "amountShannon": {
-                    "oneOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "integer"
-                      }
-                    ],
-                    "description": "Transfer amount in shannon, must be > 0"
+                    "type": "string",
+                    "description": "Transfer amount in shannon (stringified bigint), must be > 0"
                   }
                 }
               }
             }
           }
         },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "walletId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "RuntimeTokenAuth": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Transfer result"
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "txHash": {
+                      "type": "string"
+                    },
+                    "toAddress": {
+                      "type": "string"
+                    },
+                    "amountShannon": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
           },
           "400": {
-            "description": "Validation failed"
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
           },
           "401": {
-            "description": "Unauthorized"
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
-      }
-    },
-    "/api/v1/openapi.json": {
-      "get": {
-        "summary": "OpenAPI schema",
-        "responses": {
-          "200": {
-            "description": "OpenAPI document"
-          }
-        }
-      }
-    }
-  },
-  "components": {
-    "securitySchemes": {
-      "AdminTokenAuth": {
-        "type": "apiKey",
-        "in": "header",
-        "name": "x-admin-token"
-      },
-      "RuntimeTokenAuth": {
-        "type": "apiKey",
-        "in": "header",
-        "name": "x-runtime-token"
       }
     }
   }
