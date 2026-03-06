@@ -86,11 +86,7 @@ bun unlink
 
 ## Configuration
 
-RISE stores config in `~/.rise/config.json`. Override location with `RISE_CONFIG_DIR` environment variable.
-
-```bash
-RISE_CONFIG_DIR=/tmp/rise bun run dev config show
-```
+RISE stores config in `~/.rise/config.json`.
 
 **Configuration Structure:**
 - `rpc`: CKB node RPC URL
@@ -195,8 +191,6 @@ Output:
 - Default: Labeled output with message and signature
 - `--json`: JSON object with message and signature fields
 
-**Note**: Current implementation returns mock signature. Real sign server integration pending.
-
 **Examples:**
 ```bash
 # Sign a message
@@ -253,7 +247,7 @@ rise transfer ckb --to ckb1qyq...l4d --amount 100 --dry-run
 
 ## Sustain — Self-Sustaining Agent
 
-RISE includes a **sustain** module that lets an AI agent autonomously manage its own operational resources on the SupeRISE Market platform — monitoring balance, switching models, and topping up when needed.
+RISE includes a **sustain** module that gives an AI agent the primitive capabilities it needs on the SupeRISE Market platform: observe balance, forecast burn, inspect model pricing, switch models, top up, and retry pending orders.
 
 Get started with one command:
 
@@ -261,7 +255,7 @@ Get started with one command:
 rise sustain setup
 ```
 
-This walks you through database initialization, platform authentication, policy configuration, and cron job registration. Once set up, the agent runs autonomously — observe, decide, act, report.
+This sets up local state, platform authentication, and optional cron registration. The CLI does not make sustain decisions for the agent; it only provides the commands. The agent decides when to run `health-check`, `forecast`, `list-models`, `set-model`, `top-up`, and `retry-orders`.
 
 Run `rise sustain --help` for the full list of sustain subcommands.
 

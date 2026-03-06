@@ -10,15 +10,14 @@
 
 import { getMarketClient } from "@/services/superise-market";
 import { initDatabase } from "@/storage/sqlite-store";
+import { validateTopUpAmount } from "@/core/sustain/config";
 
 export async function topUpAction(
   amount: number,
   options: { dryRun?: boolean; json?: boolean } = {}
 ): Promise<void> {
   try {
-    if (!Number.isFinite(amount) || amount < 1000 || amount > 20000) {
-      throw new Error("amount must be between 1000 and 20000 CKB");
-    }
+    validateTopUpAmount(amount);
 
     await initDatabase();
     

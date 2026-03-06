@@ -5,9 +5,9 @@
  * Priority: CLI config > Environment variables > Defaults
  */
 
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
-import { join, dirname } from "path";
-import { homedir } from "os";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, unlinkSync } from "fs";
+import { dirname } from "path";
+import { MARKET_SESSION_PATH, SUSTAIN_CONFIG_PATH } from "@/utils/constants";
 
 export type CronMode = "dev" | "production";
 
@@ -17,6 +17,10 @@ export type SustainConfig = {
   
   // Platform configuration
   platformBaseUrl: string;
+
+  // Top-up amount guardrails
+  minTopUpCkb: number;
+  maxTopUpCkb: number;
 };
 
 /**
@@ -25,15 +29,47 @@ export type SustainConfig = {
 const DEFAULT_CONFIG: SustainConfig = {
   cronMode: "production",
   platformBaseUrl: "https://superise-market.superise.net",
+  minTopUpCkb: 1000,
+  maxTopUpCkb: 20000,
 };
+
+function parsePositiveInteger(value: unknown, key: string): number {
+  const parsed = typeof value === "number" ? value : Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`${key} must be a positive integer.`);
+  }
+  return parsed;
+}
+
+function normalizeConfig(config: Partial<SustainConfig>): SustainConfig {
+  const cronMode = config.cronMode === "dev" ? "dev" : "production";
+  const platformBaseUrl = config.platformBaseUrl ?? DEFAULT_CONFIG.platformBaseUrl;
+  const minTopUpCkb = parsePositiveInteger(
+    config.minTopUpCkb ?? DEFAULT_CONFIG.minTopUpCkb,
+    "minTopUpCkb",
+  );
+  const maxTopUpCkb = parsePositiveInteger(
+    config.maxTopUpCkb ?? DEFAULT_CONFIG.maxTopUpCkb,
+    "maxTopUpCkb",
+  );
+
+  if (minTopUpCkb > maxTopUpCkb) {
+    throw new Error("minTopUpCkb must be less than or equal to maxTopUpCkb.");
+  }
+
+  return {
+    cronMode,
+    platformBaseUrl,
+    minTopUpCkb,
+    maxTopUpCkb,
+  };
+}
 
 /**
  * Get config file path
  */
 function getConfigPath(): string {
-  const riseHome = process.env.RISE_HOME || join(homedir(), ".rise");
-  const sustainHome = join(riseHome, "sustain");
-  return join(sustainHome, "config.json");
+  return SUSTAIN_CONFIG_PATH;
 }
 
 /**
@@ -109,15 +145,11 @@ function loadConfigFromEnv(): Partial<SustainConfig> {
  * settings (set via `rise sustain config`) take precedence over env vars.
  */
 export function getConfig(): SustainConfig {
-  const defaults = DEFAULT_CONFIG;
-  const envConfig = loadConfigFromEnv();
-  const fileConfig = loadConfigFile();
-  
-  return {
-    ...defaults,
-    ...envConfig,
-    ...fileConfig,
-  };
+  return normalizeConfig({
+    ...DEFAULT_CONFIG,
+    ...loadConfigFromEnv(),
+    ...loadConfigFile(),
+  });
 }
 
 /**
@@ -133,12 +165,9 @@ export function getConfigValue<K extends keyof SustainConfig>(key: K): SustainCo
  * The cached token is bound to a specific server and must be discarded on URL switch.
  */
 function clearAuthSession(): void {
-  const riseHome = process.env.RISE_HOME || join(homedir(), ".rise");
-  const sessionPath = join(riseHome, "market-session.json");
   try {
-    if (existsSync(sessionPath)) {
-      const { unlinkSync } = require("fs");
-      unlinkSync(sessionPath);
+    if (existsSync(MARKET_SESSION_PATH)) {
+      unlinkSync(MARKET_SESSION_PATH);
     }
   } catch {
     // Ignore errors — session will be re-created on next login
@@ -152,10 +181,13 @@ export function setConfigValue<K extends keyof SustainConfig>(
   key: K,
   value: SustainConfig[K]
 ): void {
-  const fileConfig = loadConfigFile();
-  const oldValue = fileConfig[key];
-  fileConfig[key] = value;
-  saveConfigFile(fileConfig);
+  const current = getConfig();
+  const oldValue = current[key];
+  const next = normalizeConfig({
+    ...current,
+    [key]: value,
+  });
+  saveConfigFile(next);
 
   if (key === "platformBaseUrl" && oldValue !== value) {
     clearAuthSession();
@@ -166,12 +198,12 @@ export function setConfigValue<K extends keyof SustainConfig>(
  * Set multiple config values
  */
 export function setConfig(updates: Partial<SustainConfig>): void {
-  const fileConfig = loadConfigFile();
-  const oldUrl = fileConfig.platformBaseUrl;
-  const newConfig = { ...fileConfig, ...updates };
-  saveConfigFile(newConfig);
+  const current = getConfig();
+  const oldUrl = current.platformBaseUrl;
+  const next = normalizeConfig({ ...current, ...updates });
+  saveConfigFile(next);
 
-  if (updates.platformBaseUrl !== undefined && updates.platformBaseUrl !== oldUrl) {
+  if (next.platformBaseUrl !== oldUrl) {
     clearAuthSession();
   }
 }
@@ -182,7 +214,6 @@ export function setConfig(updates: Partial<SustainConfig>): void {
 export function resetConfig(): void {
   const configPath = getConfigPath();
   if (existsSync(configPath)) {
-    const { unlinkSync } = require("fs");
     unlinkSync(configPath);
   }
   clearAuthSession();
@@ -221,6 +252,22 @@ export function getCronSchedule() {
   }
 }
 
+export function getTopUpAmountRange(): { min: number; max: number } {
+  const config = getConfig();
+  return {
+    min: config.minTopUpCkb,
+    max: config.maxTopUpCkb,
+  };
+}
+
+export function validateTopUpAmount(amount: number): number {
+  const { min, max } = getTopUpAmountRange();
+  if (!Number.isFinite(amount) || amount < min || amount > max) {
+    throw new Error(`amount must be between ${min} and ${max} CKB`);
+  }
+  return amount;
+}
+
 /**
  * Get human-readable description of current config
  */
@@ -237,6 +284,10 @@ export function describeConfig(): string {
     "",
     "Platform Settings:",
     `  - Base URL: ${config.platformBaseUrl}`,
+    "",
+    "Top-up Limits:",
+    `  - Min Top-up: ${config.minTopUpCkb} CKB`,
+    `  - Max Top-up: ${config.maxTopUpCkb} CKB`,
     "",
     `Config File: ${getConfigPath()}`,
     `Config Exists: ${hasConfigFile() ? "Yes" : "No (using defaults)"}`,

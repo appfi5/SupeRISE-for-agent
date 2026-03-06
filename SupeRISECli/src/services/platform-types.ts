@@ -86,6 +86,7 @@ export type OpenAIModelsResponse = {
 export type ModelWithPricing = {
   platformId: string;
   shortName: string;
+  modelRef: string;
   displayName: string;
   provider: string;
   version: string;

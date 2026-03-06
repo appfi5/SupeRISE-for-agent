@@ -1,6 +1,4 @@
 import pc from "picocolors";
-import { JsonRpcTransformers } from "@ckb-ccc/shell/advanced";
-import { createClient } from "@/services/ckb";
 import {
   buildSpinner,
   resolveAmount,
@@ -8,9 +6,8 @@ import {
   resolveRecipient,
   type TransferBaseOptions,
 } from "../helps";
-import { validateAddress } from "@/utils/validator";
-import { buildUnsignedCkbTransfer } from "@/utils/tx-builder";
-import { signCkbTransaction } from "@/services/sign-server";
+import { createClient } from "@/services/ckb";
+import { executeCkbTransfer } from "@/services/ckb-transfer";
 
 export async function transferCkbAction(options: TransferBaseOptions, command: any): Promise<void> {
   const parentOpts = command?.parent?.opts?.() || {};
@@ -18,27 +15,20 @@ export async function transferCkbAction(options: TransferBaseOptions, command: a
 
   const client = createClient();
   const { address: toAddress } = await resolveRecipient(actualOptions.to);
-  const toAddressObj = await validateAddress(toAddress, client);
 
   const amount = await resolveAmount(actualOptions.amount);
   const feeRate = await resolveFeeRate(actualOptions, client);
   const useJson = actualOptions.json === true;
   const useSpinner = !useJson;
 
-  const { tx: unsignedTx, fromAddress } = await buildUnsignedCkbTransfer(
-    client,
-    toAddressObj.toString(),
-    amount.raw,
-    feeRate,
-  );
-
-  const inputsCapacity = await unsignedTx.getInputsCapacity(client);
-  const outputsCapacity = unsignedTx.getOutputsCapacity();
-  const feePaid = inputsCapacity - outputsCapacity;
-
   if (actualOptions.dryRun) {
     const spinner = buildSpinner(useSpinner, "Running dry-run...");
-    const cycles = await client.estimateCycles(unsignedTx);
+    const result = await executeCkbTransfer({
+      toAddress,
+      amountShannon: amount.raw,
+      feeRate,
+      dryRun: true,
+    });
     spinner?.succeed("Dry-run succeeded.");
 
     if (useJson) {
@@ -46,13 +36,13 @@ export async function transferCkbAction(options: TransferBaseOptions, command: a
         JSON.stringify(
           {
             network: "testnet",
-            from: fromAddress,
-            to: toAddress,
+            from: result.fromAddress,
+            to: result.toAddress,
             amount: amount.display,
-            amountShannon: amount.raw.toString(),
-            fee: feePaid.toString(),
-            cycles: cycles.toString(),
-            tx: JsonRpcTransformers.transactionFrom(unsignedTx),
+            amountShannon: result.amountShannon,
+            fee: result.feeShannon,
+            cycles: result.cycles,
+            tx: result.tx,
           },
           null,
           2,
@@ -60,17 +50,18 @@ export async function transferCkbAction(options: TransferBaseOptions, command: a
       );
     } else {
       console.log(pc.green("Dry-run accepted."));
-      console.log(pc.dim(`Estimated cycles: ${cycles.toString()}`));
-      console.log(pc.dim(`Fee: ${feePaid.toString()} shannon`));
+      console.log(pc.dim(`Estimated cycles: ${result.cycles ?? "N/A"}`));
+      console.log(pc.dim(`Fee: ${result.feeShannon} shannon`));
     }
     return;
   }
 
   const spinner = buildSpinner(useSpinner, "Sending transaction...");
-  const result = await signCkbTransaction(fromAddress, unsignedTx);
-  const txLike = JSON.parse(result.content).tx_view;
-  const tx = JsonRpcTransformers.transactionTo(txLike);
-  const hex = await client.sendTransaction(tx);
+  const result = await executeCkbTransfer({
+    toAddress,
+    amountShannon: amount.raw,
+    feeRate,
+  });
   spinner?.succeed("Transaction sent.");
 
   if (useJson) {
@@ -78,20 +69,20 @@ export async function transferCkbAction(options: TransferBaseOptions, command: a
       JSON.stringify(
         {
           network: "testnet",
-          from: fromAddress,
-          to: toAddress,
+          from: result.fromAddress,
+          to: result.toAddress,
           amount: amount.display,
-          amountShannon: amount.raw.toString(),
-          fee: feePaid.toString(),
-          txHash: hex,
-          tx: JsonRpcTransformers.transactionFrom(unsignedTx),
+          amountShannon: result.amountShannon,
+          fee: result.feeShannon,
+          txHash: result.txHash,
+          tx: result.tx,
         },
         null,
         2,
       ),
     );
   } else {
-    console.log(pc.green(`Transaction hash: ${hex}`));
-    console.log(pc.dim(`Fee: ${feePaid.toString()} shannon`));
+    console.log(pc.green(`Transaction hash: ${result.txHash}`));
+    console.log(pc.dim(`Fee: ${result.feeShannon} shannon`));
   }
 }

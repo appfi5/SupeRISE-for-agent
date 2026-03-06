@@ -65,6 +65,13 @@ export async function configSetAction(key: string, value: string): Promise<void>
         process.exit(1);
       }
       typedValue = value as CronMode;
+    } else if (key === "minTopUpCkb" || key === "maxTopUpCkb") {
+      typedValue = Number(value);
+      if (!Number.isInteger(typedValue) || typedValue <= 0) {
+        console.error(`Invalid value for ${key}: ${value}`);
+        console.log("Valid values: positive integers");
+        process.exit(1);
+      }
     }
     
     setConfigValue(key as keyof SustainConfig, typedValue);
@@ -117,8 +124,8 @@ export async function configEditAction(): Promise<void> {
     const cronMode = await prompts.select({
       message: "Cron mode:",
       options: [
-        { value: "dev", label: "Development (fast: 2min/10min/30min)" },
-        { value: "production", label: "Production (normal: 30min/6hr/daily)" },
+        { value: "dev", label: "Development (fast: 1min/2min)" },
+        { value: "production", label: "Production (normal: 5min/10min)" },
         { value: "keep", label: `Keep current (${config.cronMode})` },
       ],
       initialValue: "keep",
@@ -147,6 +154,36 @@ export async function configEditAction(): Promise<void> {
     
     if (platformBaseUrl !== config.platformBaseUrl) {
       updates.platformBaseUrl = platformBaseUrl as string;
+    }
+
+    const minTopUpCkb = await prompts.text({
+      message: "Minimum top-up amount (CKB):",
+      initialValue: String(config.minTopUpCkb),
+      placeholder: String(config.minTopUpCkb),
+    });
+
+    if (prompts.isCancel(minTopUpCkb)) {
+      prompts.cancel("Edit cancelled");
+      process.exit(0);
+    }
+
+    if (Number(minTopUpCkb) !== config.minTopUpCkb) {
+      updates.minTopUpCkb = Number(minTopUpCkb);
+    }
+
+    const maxTopUpCkb = await prompts.text({
+      message: "Maximum top-up amount (CKB):",
+      initialValue: String(config.maxTopUpCkb),
+      placeholder: String(config.maxTopUpCkb),
+    });
+
+    if (prompts.isCancel(maxTopUpCkb)) {
+      prompts.cancel("Edit cancelled");
+      process.exit(0);
+    }
+
+    if (Number(maxTopUpCkb) !== config.maxTopUpCkb) {
+      updates.maxTopUpCkb = Number(maxTopUpCkb);
     }
     
     // Save updates
