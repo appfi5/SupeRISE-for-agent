@@ -1,11 +1,6 @@
 import Conf from "conf";
-import os from "os";
-import path from "path";
 import type { RiseConfig } from "../types/index";
-
-const CONFIG_DIR = process.env.RISE_CONFIG_DIR
-  ? path.resolve(process.env.RISE_CONFIG_DIR)
-  : path.join(os.homedir(), ".rise");
+import { RISE_DIR } from "./constants";
 
 const DEFAULT_CONFIG: RiseConfig = {
   rpc: "https://testnet.ckb.dev",
@@ -17,7 +12,7 @@ const DEFAULT_CONFIG: RiseConfig = {
 };
 
 const store = new Conf<RiseConfig>({
-  cwd: CONFIG_DIR,
+  cwd: RISE_DIR,
   configName: "config",
   defaults: DEFAULT_CONFIG,
   accessPropertiesByDotNotation: false,
@@ -62,11 +57,7 @@ function normalizeConfig(config: LegacyRiseConfig): RiseConfig {
 }
 
 export function getConfig(): RiseConfig {
-  const normalized = normalizeConfig(store.store as LegacyRiseConfig);
-  if (normalized !== store.store) {
-    store.store = normalized;
-  }
-  return normalized;
+  return normalizeConfig(store.store as LegacyRiseConfig);
 }
 
 export function setConfig(next: RiseConfig): void {

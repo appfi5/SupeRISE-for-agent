@@ -4,10 +4,11 @@
  * New authentication flow using CKB address as identity.
  */
 
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "fs";
 import { getWallet, signMessage as signServerSignMessage } from "@/services/sign-server";
-import { homedir } from "os";
-import { join } from "path";
+import { dirname } from "path";
 import { getConfigValue } from "@/core/sustain/config";
+import { MARKET_SESSION_PATH } from "@/utils/constants";
 
 export type AuthSession = {
   address: string;
@@ -30,16 +31,14 @@ class CKBAuthService implements PlatformAuthService {
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
-    const riseHome = process.env.RISE_HOME || join(homedir(), ".rise");
-    this.sessionFilePath = join(riseHome, "market-session.json");
+    this.sessionFilePath = MARKET_SESSION_PATH;
     this.loadSession();
   }
 
   private loadSession(): void {
     try {
-      const fs = require("fs");
-      if (fs.existsSync(this.sessionFilePath)) {
-        const data = fs.readFileSync(this.sessionFilePath, "utf-8");
+      if (existsSync(this.sessionFilePath)) {
+        const data = readFileSync(this.sessionFilePath, "utf-8");
         this.session = JSON.parse(data);
       }
     } catch (error) {
@@ -49,13 +48,11 @@ class CKBAuthService implements PlatformAuthService {
 
   private saveSession(): void {
     try {
-      const fs = require("fs");
-      const path = require("path");
-      const dir = path.dirname(this.sessionFilePath);
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
+      const dir = dirname(this.sessionFilePath);
+      if (!existsSync(dir)) {
+        mkdirSync(dir, { recursive: true });
       }
-      fs.writeFileSync(
+      writeFileSync(
         this.sessionFilePath,
         JSON.stringify(this.session, null, 2)
       );
@@ -174,9 +171,8 @@ class CKBAuthService implements PlatformAuthService {
   logout(): void {
     this.session = null;
     try {
-      const fs = require("fs");
-      if (fs.existsSync(this.sessionFilePath)) {
-        fs.unlinkSync(this.sessionFilePath);
+      if (existsSync(this.sessionFilePath)) {
+        unlinkSync(this.sessionFilePath);
       }
     } catch (error) {
       console.error("Failed to delete session file:", error);

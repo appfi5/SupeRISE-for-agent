@@ -20,126 +20,14 @@ import type {
 import { getAuthService } from "@/services/platform-auth";
 import { getConfigValue } from "@/core/sustain/config";
 import { savePendingOrder } from "@/services/pending-orders";
+import { CKB_DECIMALS } from "@/utils/constants";
+import { parseFixedPoint } from "@/utils/validator";
+import { executeCkbTransfer } from "@/services/ckb-transfer";
 
 export interface SupeRISEMarketClient {
   fetchBalance(): Promise<BalanceStatus>;
   fetchModels(): Promise<ModelWithPricing[]>;
   topUp(amountCKB: number, dryRun: boolean): Promise<TopUpResult>;
-}
-
-type TransferExecution = {
-  command: string;
-  args: string[];
-  label: string;
-};
-
-function shortenOutput(text: string, max: number = 240): string {
-  const normalized = text.replace(/\s+/g, " ").trim();
-  if (!normalized) {
-    return "<empty>";
-  }
-  return normalized.length > max ? `${normalized.slice(0, max)}...` : normalized;
-}
-
-function extractJsonObject(text: string): string | null {
-  const start = text.indexOf("{");
-  if (start < 0) {
-    return null;
-  }
-
-  let end = text.lastIndexOf("}");
-  while (end > start) {
-    const candidate = text.slice(start, end + 1);
-    try {
-      JSON.parse(candidate);
-      return candidate;
-    } catch {
-      end = text.lastIndexOf("}", end - 1);
-    }
-  }
-
-  return null;
-}
-
-function extractTxHashFromTransferOutput(stdout: string, stderr: string): string | null {
-  const text = stdout.trim();
-
-  if (text) {
-    try {
-      const parsed = JSON.parse(text) as { txHash?: unknown };
-      if (typeof parsed.txHash === "string" && parsed.txHash.length > 0) {
-        return parsed.txHash;
-      }
-    } catch {
-      const jsonText = extractJsonObject(text);
-      if (jsonText) {
-        try {
-          const parsed = JSON.parse(jsonText) as { txHash?: unknown };
-          if (typeof parsed.txHash === "string" && parsed.txHash.length > 0) {
-            return parsed.txHash;
-          }
-        } catch {
-          // Continue to regex fallback.
-        }
-      }
-    }
-  }
-
-  const combined = `${stdout}\n${stderr}`;
-  const txHashMatch = combined.match(/Transaction hash:\s*(0x[0-9a-fA-F]+)/);
-  return txHashMatch?.[1] ?? null;
-}
-
-function buildTransferExecutions(toAddress: string, amountCKB: number): TransferExecution[] {
-  const args = ["transfer", "--to", toAddress, "--amount", String(amountCKB), "--json"];
-  const executions: TransferExecution[] = [];
-  const riseBin = process.env.RISE_BIN?.trim();
-
-  if (riseBin) {
-    executions.push({
-      command: riseBin,
-      args,
-      label: `RISE_BIN (${riseBin})`,
-    });
-  }
-
-  executions.push({
-    command: "rise",
-    args,
-    label: "global rise command",
-  });
-
-  const runtimeBin = process.execPath;
-  const entryPath = process.argv[1];
-
-  if (runtimeBin && entryPath && entryPath !== runtimeBin) {
-    executions.push({
-      command: runtimeBin,
-      args: [entryPath, ...args],
-      label: "current runtime with entry script",
-    });
-  }
-
-  if (runtimeBin) {
-    executions.push({
-      command: runtimeBin,
-      args,
-      label: "current executable",
-    });
-  }
-
-  const deduplicated: TransferExecution[] = [];
-  const seen = new Set<string>();
-  for (const item of executions) {
-    const key = `${item.command}\0${item.args.join("\0")}`;
-    if (seen.has(key)) {
-      continue;
-    }
-    seen.add(key);
-    deduplicated.push(item);
-  }
-
-  return deduplicated;
 }
 
 class MarketClient implements SupeRISEMarketClient {
@@ -203,6 +91,7 @@ class MarketClient implements SupeRISEMarketClient {
         return {
           platformId: model.id,
           shortName: model.name.toLowerCase(),
+          modelRef: `${model.provider}/${model.name.toLowerCase()}`,
           displayName: model.name,
           provider: model.provider,
           version: model.version,
@@ -277,39 +166,23 @@ class MarketClient implements SupeRISEMarketClient {
 
     const { id: orderId, toAddress, exchangeAmount } = createOrderData.data;
 
-    const { spawnSync } = await import("child_process");
-    let txHash: string | null = null;
-    let transferError = "No transfer command attempts were executed.";
-
-    const executions = buildTransferExecutions(toAddress, amountCKB);
-    for (const execution of executions) {
-      const result = spawnSync(execution.command, execution.args, {
-        encoding: "utf-8",
+    let txHash: string;
+    try {
+      const transferResult = await executeCkbTransfer({
+        toAddress,
+        amountShannon: parseFixedPoint(String(amountCKB), CKB_DECIMALS),
       });
-
-      const stdout = result.stdout ?? "";
-      const stderr = result.stderr ?? "";
-      const parsedTxHash = extractTxHashFromTransferOutput(stdout, stderr);
-      if (parsedTxHash) {
-        txHash = parsedTxHash;
-        break;
+      if (!transferResult.txHash) {
+        throw new Error("Transfer completed without a transaction hash.");
       }
-
-      const errorMessage = result.error
-        ? `${result.error.name}: ${result.error.message}`
-        : `exit code ${result.status ?? "unknown"}`;
-      transferError =
-        `${execution.label} failed (${errorMessage}). ` +
-        `stderr: ${shortenOutput(stderr)}; stdout: ${shortenOutput(stdout)}`;
-    }
-
-    if (!txHash) {
+      txHash = transferResult.txHash;
+    } catch (error) {
       return {
         success: false,
         amountCKB,
         orderId,
         toAddress,
-        error: `CKB transfer failed: ${transferError}`,
+        error: `CKB transfer failed: ${error instanceof Error ? error.message : String(error)}`,
       };
     }
 

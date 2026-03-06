@@ -15,7 +15,7 @@ export async function listModelsAction(options: { json?: boolean }): Promise<voi
     const result = {
       candidates: models.map((m) => ({
         model: m.shortName,
-        modelRef: `openrouter/${m.shortName}`,
+        modelRef: m.modelRef,
         displayName: m.displayName,
         provider: m.provider,
         minPrice: m.minPrice,

@@ -219,13 +219,13 @@ export function formatModelsList(result: {
   currentModelRef: string | null;
 }): string {
   const table = new Table({
-    head: ["Model", "Display Name", "Provider", "Min Price", "Avg Price", "Quotations"],
-    colWidths: [20, 25, 15, 12, 12, 12],
+    head: ["Model Ref", "Display Name", "Provider", "Min Price", "Avg Price", "Quotations"],
+    colWidths: [28, 25, 15, 12, 12, 12],
   });
 
   for (const model of result.candidates) {
-    const isCurrent = model.model === result.currentModel;
-    const modelName = isCurrent ? pc.green(`${model.model} *`) : model.model;
+    const isCurrent = model.modelRef === result.currentModelRef;
+    const modelName = isCurrent ? pc.green(`${model.modelRef} *`) : model.modelRef;
 
     table.push([
       modelName,

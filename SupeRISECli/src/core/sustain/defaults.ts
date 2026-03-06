@@ -9,7 +9,7 @@ import type { SustainPolicy } from "./types";
 export const DEFAULT_POLICY: SustainPolicy = {
   strategy: "balanced",
   autoTopUpEnabled: true,
-  topUpAmountDefault: 100,
+  topUpAmountDefault: 1000,
   thresholds: {
     critical: 10,
     low: 100,
