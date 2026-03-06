@@ -1,7 +1,7 @@
 /**
  * Sign Server API Service
  *
- * Integrates with the OpenClaw Wallet Server for signing CKB transactions.
+ * Integrates with the OpenClaw Wallet Server for signing CKB and ETH/USDC transactions.
  */
 
 import { getConfig } from "@/utils/config";
@@ -120,6 +120,43 @@ export async function signMessage(
 
   if (!response.data) {
     throw new Error("Sign server returned null data for sign-message");
+  }
+
+  return response.data;
+}
+
+/**
+ * Sign an ETH or USDC transaction.
+ *
+ * POST /api/v1/agent/sign/sign-eth-transaction
+ *
+ * The `content` field is a JSON-serialised {@link SignService.EthUnsignedTransaction}.
+ *
+ * For a plain ETH transfer, set `data` to "0x".
+ * For a USDC (ERC-20) transfer, ABI-encode the `transfer(address,uint256)`
+ * call and set it as `data`.
+ *
+ * @param address - The ETH wallet address to sign with
+ * @param tx      - The unsigned transaction
+ * @returns Signed transaction hex and its hash
+ */
+export async function signEthTransaction(
+  address: string,
+  tx: SignService.EthUnsignedTransaction,
+): Promise<SignService.SignEthTransactionResponse> {
+  const response = await request<SignService.SignEthTransactionServerResponse>(
+    "/api/v1/agent/sign/sign-eth-transaction",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        address,
+        content: JSON.stringify({ ...tx, data: tx.data ?? "0x" }),
+      }),
+    },
+  );
+
+  if (!response.data) {
+    throw new Error("Sign server returned null data for sign-eth-transaction");
   }
 
   return response.data;

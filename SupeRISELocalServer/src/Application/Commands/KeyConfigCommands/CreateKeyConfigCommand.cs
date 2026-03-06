@@ -55,7 +55,11 @@ public class CreateKeyConfigCommandHandler(
             throw new KnownException("Address already exists");
         }
 
-        var address = Address.Decode(command.Address).ScriptValue.Args;
+        // CKB 地址验证；ETH 地址无需此解码
+        if (command.AddressType != AddressType.Eth)
+        {
+            Address.Decode(command.Address);
+        }
 
         // 加密私钥
         var dataProtector = dataProtectionProvider.CreateProtector(ProviderKey);
