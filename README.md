@@ -27,7 +27,7 @@ Primary packages:
 - Regenerate command:
 
 ```bash
-corepack pnpm --filter @superise/wallet-api openapi:generate
+corepack pnpm -C apps/wallet-api openapi:generate
 ```
 
 ## Validation highlights

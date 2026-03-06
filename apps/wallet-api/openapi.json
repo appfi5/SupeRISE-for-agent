@@ -239,7 +239,7 @@
                 "properties": {
                   "toAddress": {
                     "type": "string",
-                    "pattern": "^ck[bt]1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]{20,}$",
+                    "pattern": "^ck[bt]1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]{30,120}$",
                     "description": "CKB mainnet/testnet address"
                   },
                   "amountShannon": {

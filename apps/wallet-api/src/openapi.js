@@ -1,6 +1,6 @@
 import { writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 export const walletApiOpenApi = {
   openapi: "3.0.3",
@@ -157,7 +157,7 @@ export const walletApiOpenApi = {
                 properties: {
                   toAddress: {
                     type: "string",
-                    pattern: "^ck[bt]1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]{20,}$",
+                    pattern: "^ck[bt]1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]{30,120}$",
                     description: "CKB mainnet/testnet address",
                   },
                   amountShannon: {
@@ -202,7 +202,20 @@ export const walletApiOpenApi = {
 };
 
 const thisPath = fileURLToPath(import.meta.url);
-if (process.argv[1] === thisPath) {
+export async function generateWalletApiOpenApiFile() {
   const outPath = resolve(dirname(thisPath), "..", "openapi.json");
   await writeFile(outPath, `${JSON.stringify(walletApiOpenApi, null, 2)}\n`, "utf8");
+}
+
+function isDirectRun() {
+  if (!process.argv[1]) return false;
+  try {
+    return import.meta.url === pathToFileURL(process.argv[1]).href;
+  } catch {
+    return false;
+  }
+}
+
+if (isDirectRun()) {
+  await generateWalletApiOpenApiFile();
 }
