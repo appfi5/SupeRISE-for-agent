@@ -8,6 +8,7 @@ import {
   walletIdParamSchema,
   parse,
 } from "@superise/contracts";
+import { walletApiOpenApi } from "./openapi.js";
 
 function isAuthorized(req, tokenHeader, expectedToken) {
   const actual = req.headers[tokenHeader];
@@ -22,6 +23,7 @@ export function createWalletApiApp({ walletService, adminToken, runtimeToken }) 
   });
 
   app.get("/api/v1/healthz", async () => ({ status: "ok" }));
+  app.get("/api/v1/openapi.json", async () => walletApiOpenApi);
 
   app.addHook("onError", async (_req, reply, error) => {
     if (error instanceof ZodError) {

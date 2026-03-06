@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node src/server.js",
     "build": "node --check src/*.js",
-    "test": "node --test"
+    "test": "node --test",
+    "openapi:generate": "node src/openapi.js"
   },
   "dependencies": {
     "@fastify/rate-limit": "^10.3.0",

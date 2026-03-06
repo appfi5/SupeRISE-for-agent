@@ -136,6 +136,28 @@ describe("Contracts", () => {
         parse(transferCkbSchema, invalid);
       });
     });
+
+    it("should reject invalid address prefix", () => {
+      const invalid = {
+        toAddress: "abc1qzda0cr08m85hc8jlnfp3zer7xulejywt49kt2rr0vthywaa50xwsqwyk5m9vn7qzftgq8j2l8s2fqlkdwzg78c8lq8nkp5f",
+        amountShannon: "10000000000",
+      };
+
+      assert.throws(() => {
+        parse(transferCkbSchema, invalid);
+      });
+    });
+
+    it("should reject invalid address characters", () => {
+      const invalid = {
+        toAddress: "ckt1qzda0cr08m85hc8jlnfp3zer7xulejywt49kt2rr0vthywaa50xwsqwyk5m9vn7qzftgq8j2l8s2fqlkdwzg78c8lq8nkp5I",
+        amountShannon: "10000000000",
+      };
+
+      assert.throws(() => {
+        parse(transferCkbSchema, invalid);
+      });
+    });
   });
 
   describe("walletIdParamSchema", () => {

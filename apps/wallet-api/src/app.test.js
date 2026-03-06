@@ -54,6 +54,26 @@ describe("Wallet API", () => {
     });
   });
 
+  describe("GET /api/v1/openapi.json", () => {
+    it("should expose OpenAPI schema", async () => {
+      const app = createWalletApiApp({
+        walletService: createMockWalletService(),
+        adminToken: "admin-token",
+        runtimeToken: "runtime-token",
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/openapi.json",
+      });
+
+      assert.equal(response.statusCode, 200);
+      const json = response.json();
+      assert.equal(json.openapi, "3.0.3");
+      assert.ok(json.paths["/api/v1/wallets/{walletId}/transfers/ckb"]);
+    });
+  });
+
   describe("POST /api/v1/admin/wallets/import", () => {
     it("should import wallet with valid admin token", async () => {
       const app = createWalletApiApp({
