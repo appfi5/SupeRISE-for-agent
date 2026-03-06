@@ -6,9 +6,13 @@ import { createWalletApiApp } from "./app.js";
 const host = process.env.HOST ?? "0.0.0.0";
 const port = Number(process.env.PORT ?? 3000);
 const dbPath = process.env.DB_PATH ?? "./data/wallet.sqlite";
-const masterKey = process.env.MASTER_KEY ?? "replace-me-with-strong-master-key";
+const masterKey = process.env.MASTER_KEY;
 const adminToken = process.env.ADMIN_TOKEN ?? "admin-token";
 const runtimeToken = process.env.RUNTIME_TOKEN ?? "runtime-token";
+
+if (!masterKey) {
+  throw new Error("MASTER_KEY is required for wallet-api startup.");
+}
 
 const repository = new SqliteWalletRepository(dbPath);
 const ckbAdapter = new CkbAdapter();

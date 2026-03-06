@@ -7,5 +7,8 @@
   "scripts": {
     "build": "node --check src/*.js",
     "test": "node --test"
+  },
+  "dependencies": {
+    "@ckb-ccc/shell": "^1.1.25"
   }
 }

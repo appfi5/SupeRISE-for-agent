@@ -29,6 +29,7 @@ export class SqliteWalletRepository {
         encrypted_private_key TEXT NOT NULL,
         iv TEXT NOT NULL,
         auth_tag TEXT NOT NULL,
+        salt TEXT NOT NULL DEFAULT '',
         public_key TEXT NOT NULL,
         fingerprint TEXT NOT NULL,
         encryption_version INTEGER NOT NULL,
@@ -57,6 +58,12 @@ export class SqliteWalletRepository {
         created_at TEXT NOT NULL
       );
     `);
+
+    const columns = this.db.prepare("PRAGMA table_info(key_materials)").all();
+    const hasSalt = columns.some((column) => column.name === "salt");
+    if (!hasSalt) {
+      this.db.exec("ALTER TABLE key_materials ADD COLUMN salt TEXT NOT NULL DEFAULT ''");
+    }
   }
 
   createWallet(wallet, keyMaterial, account) {
@@ -70,13 +77,14 @@ export class SqliteWalletRepository {
       `).run(wallet.id, wallet.name, wallet.sourceType, timestamp, timestamp);
 
       this.db.prepare(`
-        INSERT INTO key_materials (wallet_id, encrypted_private_key, iv, auth_tag, public_key, fingerprint, encryption_version, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, 1, ?)
+        INSERT INTO key_materials (wallet_id, encrypted_private_key, iv, auth_tag, salt, public_key, fingerprint, encryption_version, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
       `).run(
         wallet.id,
         keyMaterial.ciphertext,
         keyMaterial.iv,
         keyMaterial.authTag,
+        keyMaterial.salt,
         account.publicKey,
         keyMaterial.fingerprint,
         timestamp,
@@ -124,7 +132,7 @@ export class SqliteWalletRepository {
 
   getKeyMaterial(walletId) {
     return this.db.prepare(`
-      SELECT encrypted_private_key AS encryptedPrivateKey, iv, auth_tag AS authTag
+      SELECT encrypted_private_key AS ciphertext, iv, auth_tag AS authTag, salt
       FROM key_materials
       WHERE wallet_id = ?
     `).get(walletId);

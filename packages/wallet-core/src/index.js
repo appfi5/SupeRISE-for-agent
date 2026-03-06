@@ -1,19 +1,27 @@
-import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
+import {
+  createCipheriv,
+  createDecipheriv,
+  createHash,
+  randomBytes,
+  randomUUID,
+  scryptSync,
+} from "node:crypto";
 
 function ensureMasterKey(masterKey) {
-  if (!masterKey || masterKey.length < 32) {
-    throw new Error("MASTER_KEY must be at least 32 characters.");
+  if (!masterKey || Buffer.byteLength(masterKey, "utf8") < 32) {
+    throw new Error("MASTER_KEY must be at least 32 bytes.");
   }
 }
 
-function deriveKey(masterKey) {
-  return createHash("sha256").update(masterKey).digest();
+function deriveKey(masterKey, salt) {
+  return scryptSync(masterKey, salt, 32);
 }
 
 function encryptPrivateKey(masterKey, privateKey) {
   ensureMasterKey(masterKey);
+  const salt = randomBytes(16);
   const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", deriveKey(masterKey), iv);
+  const cipher = createCipheriv("aes-256-gcm", deriveKey(masterKey, salt), iv);
   const ciphertext = Buffer.concat([cipher.update(privateKey, "utf8"), cipher.final()]);
   const authTag = cipher.getAuthTag();
   const fingerprint = createHash("sha256").update(privateKey).digest("hex").slice(0, 16);
@@ -22,6 +30,7 @@ function encryptPrivateKey(masterKey, privateKey) {
     ciphertext: ciphertext.toString("base64"),
     iv: iv.toString("base64"),
     authTag: authTag.toString("base64"),
+    salt: salt.toString("base64"),
     fingerprint,
   };
 }
@@ -30,14 +39,14 @@ function decryptPrivateKey(masterKey, encrypted) {
   ensureMasterKey(masterKey);
   const decipher = createDecipheriv(
     "aes-256-gcm",
-    deriveKey(masterKey),
+    deriveKey(masterKey, Buffer.from(encrypted.salt, "base64")),
     Buffer.from(encrypted.iv, "base64"),
   );
   decipher.setAuthTag(Buffer.from(encrypted.authTag, "base64"));
   const plaintext = Buffer.concat([
-    decipher.update(Buffer.from(encrypted.encryptedPrivateKey, "base64")),
-    decipher.final(),
-  ]);
+      decipher.update(Buffer.from(encrypted.ciphertext, "base64")),
+      decipher.final(),
+    ]);
   return plaintext.toString("utf8");
 }
 
@@ -52,9 +61,9 @@ export class WalletCoreService {
     this.masterKey = masterKey;
   }
 
-  importWallet({ name, privateKey }) {
+  async importWallet({ name, privateKey }) {
     const walletId = randomUUID();
-    const identity = this.ckbAdapter.deriveIdentity(privateKey);
+    const identity = await this.ckbAdapter.deriveIdentity(privateKey);
     const encrypted = encryptPrivateKey(this.masterKey, privateKey);
 
     this.repository.createWallet(
@@ -108,14 +117,14 @@ export class WalletCoreService {
     return { privateKey };
   }
 
-  signMessage(walletId, message) {
+  async signMessage(walletId, message) {
     const keyMaterial = this.repository.getKeyMaterial(walletId);
     if (!keyMaterial) {
       throw new Error("Wallet key material not found.");
     }
 
     const privateKey = decryptPrivateKey(this.masterKey, keyMaterial);
-    const signature = this.ckbAdapter.signMessage(privateKey, message);
+    const signature = await this.ckbAdapter.signMessage(privateKey, message);
     this.repository.addSignRecord({
       id: randomUUID(),
       walletId,
@@ -129,14 +138,14 @@ export class WalletCoreService {
     return { signature };
   }
 
-  transferCkb(walletId, toAddress, amountShannon) {
+  async transferCkb(walletId, toAddress, amountShannon) {
     const keyMaterial = this.repository.getKeyMaterial(walletId);
     if (!keyMaterial) {
       throw new Error("Wallet key material not found.");
     }
 
     const privateKey = decryptPrivateKey(this.masterKey, keyMaterial);
-    const txResult = this.ckbAdapter.transfer(privateKey, toAddress, amountShannon);
+    const txResult = await this.ckbAdapter.transfer(privateKey, toAddress, amountShannon);
 
     this.repository.addSignRecord({
       id: randomUUID(),

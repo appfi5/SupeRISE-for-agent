@@ -24,7 +24,17 @@ export class WalletApiClient {
       body: body ? JSON.stringify(body) : undefined,
     });
 
-    const json = await response.json().catch(() => ({}));
+    const rawBody = await response.text();
+    let json = {};
+    if (rawBody) {
+      try {
+        json = JSON.parse(rawBody);
+      } catch {
+        throw new Error(
+          `Invalid JSON response from wallet-api ${path}: ${response.status} ${rawBody.slice(0, 200)}`,
+        );
+      }
+    }
     if (!response.ok) {
       throw new Error(json.message ?? `Request failed with status ${response.status}`);
     }

@@ -7,9 +7,9 @@ services:
       HOST: 0.0.0.0
       PORT: 3000
       DB_PATH: /data/wallet.sqlite
-      MASTER_KEY: change-this-master-key-before-production
-      ADMIN_TOKEN: admin-token
-      RUNTIME_TOKEN: runtime-token
+      MASTER_KEY: ${MASTER_KEY:?MASTER_KEY environment variable is required. Set it in your shell or create a .env file with MASTER_KEY=your-key-here}
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-admin-token}
+      RUNTIME_TOKEN: ${RUNTIME_TOKEN:-runtime-token}
       CKB_RPC_URL: https://testnet.ckb.dev/rpc
       CKB_INDEXER_URL: https://testnet.ckb.dev/indexer
     ports:

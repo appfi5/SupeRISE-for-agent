@@ -10,6 +10,7 @@
     "test": "node --test"
   },
   "dependencies": {
+    "@fastify/rate-limit": "^10.3.0",
     "@superise/chain-ckb": "workspace:*",
     "@superise/contracts": "workspace:*",
     "@superise/storage-sqlite": "workspace:*",

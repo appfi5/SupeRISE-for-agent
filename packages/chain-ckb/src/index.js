@@ -1,37 +1,58 @@
-import { createHash, createHmac } from "node:crypto";
+import { ccc } from "@ckb-ccc/shell";
+import { cccA as cccAdvanced } from "@ckb-ccc/shell/advanced";
 
 function normalizePrivateKey(privateKey) {
-  return privateKey.startsWith("0x") ? privateKey.slice(2) : privateKey;
+  return privateKey.startsWith("0x") ? privateKey : `0x${privateKey}`;
+}
+
+function createClient() {
+  const rpc = process.env.CKB_RPC_URL;
+  const indexer = process.env.CKB_INDEXER_URL;
+  const url = indexer ?? rpc ?? "https://testnet.ckb.dev";
+  return new ccc.ClientPublicTestnet({
+    url,
+    fallbacks: [indexer, rpc].filter(Boolean),
+  });
 }
 
 export class CkbAdapter {
-  deriveIdentity(privateKey) {
-    const normalized = normalizePrivateKey(privateKey);
-    const publicKey = createHash("sha256").update(normalized).digest("hex");
+  async #createSigner(privateKey) {
+    const client = createClient();
+    return new ccc.SignerCkbPrivateKey(client, normalizePrivateKey(privateKey));
+  }
+
+  async deriveIdentity(privateKey) {
+    const signer = await this.#createSigner(privateKey);
     return {
       chain: "ckb",
-      publicKey: `0x${publicKey}`,
-      address: `ckt1${publicKey.slice(0, 39)}`,
+      publicKey: signer.publicKey,
+      address: await signer.getRecommendedAddress(),
     };
   }
 
-  signMessage(privateKey, message) {
-    const normalized = normalizePrivateKey(privateKey);
-    const signature = createHmac("sha256", Buffer.from(normalized, "hex"))
-      .update(message)
-      .digest("hex");
-    return `0x${signature}`;
+  async signMessage(privateKey, message) {
+    const signer = await this.#createSigner(privateKey);
+    const signed = await signer.signMessage(message);
+    return signed.signature;
   }
 
-  transfer(privateKey, toAddress, amountShannon) {
-    const normalized = normalizePrivateKey(privateKey);
-    const txHash = createHash("sha256")
-      .update(`${normalized}:${toAddress}:${amountShannon.toString()}:${Date.now()}`)
-      .digest("hex");
+  async transfer(privateKey, toAddress, amountShannon) {
+    const signer = await this.#createSigner(privateKey);
+    const receiver = await ccc.Address.fromString(toAddress, signer.client);
+    const tx = ccc.Transaction.from({
+      outputs: [{ lock: receiver.script, capacity: BigInt(amountShannon) }],
+    });
+
+    await tx.completeInputsByCapacity(signer);
+    const prepared = await signer.prepareTransaction(tx);
+    await prepared.completeFeeBy(signer, cccAdvanced.DEFAULT_MIN_FEE_RATE);
+    const signedTx = await signer.signTransaction(prepared);
+    const txHash = await signer.sendTransaction(signedTx);
+
     return {
-      txHash: `0x${txHash}`,
-      toAddress,
-      amountShannon: amountShannon.toString(),
+      txHash,
+      toAddress: receiver.toString(),
+      amountShannon: BigInt(amountShannon).toString(),
     };
   }
 }
