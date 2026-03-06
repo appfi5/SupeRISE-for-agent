@@ -23,14 +23,12 @@ RUN dotnet publish ./src/SupeRISELocalServer.csproj \
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
-# Create a non-root user for security hardening
-RUN addgroup --system --gid 1001 appgroup \
- && adduser  --system --uid 1001 --ingroup appgroup --no-create-home appuser
-
-# Install curl for the HEALTHCHECK (not included in the base image)
+# Install curl for the HEALTHCHECK and create a non-root user (Debian-based image)
 RUN apt-get update \
  && apt-get install -y --no-install-recommends curl \
- && rm -rf /var/lib/apt/lists/*
+ && rm -rf /var/lib/apt/lists/* \
+ && groupadd --system --gid 1001 appgroup \
+ && useradd  --system --uid 1001 --gid appgroup --no-create-home appuser
 
 # Copy published output from the build stage
 COPY --from=build /app/publish .
