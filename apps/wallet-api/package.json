@@ -1,0 +1,20 @@
+{
+  "name": "@superise/wallet-api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "build": "node --check src/*.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@superise/chain-ckb": "workspace:*",
+    "@superise/contracts": "workspace:*",
+    "@superise/storage-sqlite": "workspace:*",
+    "@superise/wallet-core": "workspace:*",
+    "fastify": "^5.2.1",
+    "zod": "^3.24.2"
+  }
+}

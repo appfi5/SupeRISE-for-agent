@@ -1,0 +1,14 @@
+{
+  "name": "@superise/sdk",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "build": "node --check src/*.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@superise/contracts": "workspace:*"
+  }
+}
