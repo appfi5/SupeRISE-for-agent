@@ -1,0 +1,13 @@
+.git
+.DS_Store
+.idea
+node_modules
+.pnpm-store
+data
+coverage
+apps/owner-ui/dist
+apps/wallet-server/dist
+apps/wallet-server/.env
+deploy/docker/.env
+deploy/docker/runtime-data
+deploy/docker/secrets
