@@ -4,7 +4,8 @@ riderModule.iml
 /_ReSharper.Caches/
 .idea
 OpenClawWalletServer.sln.DotSettings.user
-data/
+/data/
+apps/wallet-server/data/
 node_modules/
 dist/
 .pnpm-store/
@@ -12,7 +13,10 @@ dist/
 coverage/
 apps/owner-ui/dist/
 apps/wallet-server/dist/
-apps/wallet-server/.env
+.env
+.env.*
+!.env.example
+!**/.env.example
 deploy/docker/.env
 deploy/docker/runtime-data/*
 !deploy/docker/runtime-data/.gitkeep
