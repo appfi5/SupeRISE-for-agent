@@ -21,14 +21,65 @@ export async function request<T>(
     ...options,
   });
 
-  const payload = (await response.json()) as ApiResponse<T>;
+  const payload = await parseApiResponse<T>(response);
+  if (!payload) {
+    if (!response.ok) {
+      if (response.status === 401) {
+        clearOwnerAccessToken();
+      }
+
+      throw new ApiError(response.statusText || "Request failed", response.status);
+    }
+
+    return undefined as T;
+  }
+
   if (!response.ok || !payload.success) {
     if (response.status === 401) {
       clearOwnerAccessToken();
     }
 
-    throw new ApiError(payload.error?.message ?? "Request failed", response.status);
+    throw new ApiError(
+      payload?.error?.message ?? (response.statusText || "Request failed"),
+      response.status,
+    );
   }
 
   return payload.data;
+}
+
+async function parseApiResponse<T>(
+  response: Response,
+): Promise<ApiResponse<T> | undefined> {
+  if (response.status === 204) {
+    return undefined;
+  }
+
+  const contentType = response.headers.get("content-type") ?? "";
+  const rawBody = await response.text();
+
+  if (!rawBody.trim()) {
+    return undefined;
+  }
+
+  if (!contentType.includes("application/json")) {
+    if (!response.ok) {
+      return {
+        success: false,
+        data: null,
+        error: {
+          code: "HTTP_ERROR",
+          message: rawBody.trim(),
+        },
+      };
+    }
+
+    throw new ApiError("Server returned a non-JSON response", response.status);
+  }
+
+  try {
+    return JSON.parse(rawBody) as ApiResponse<T>;
+  } catch {
+    throw new ApiError("Server returned invalid JSON", response.status);
+  }
 }
