@@ -1,62 +1,84 @@
-# SupeRISE for agent
+# SupeRISE Agent Wallet
 
-A secure CKB blockchain wallet with local signer server integration for safe private key management.
+SupeRISE Agent Wallet 是一个面向 Agent 的单钱包信用钱包服务。正式的 Agent 接入面是 `MCP`。
 
-## Architecture
+英文版见 [README.en.md](./README.en.md)。
 
-![System Architecture](doc/picture/architecture.jpg)
+## 运行时
 
-## Project Overview
+- `Node.js 24 LTS`
+- `pnpm workspace`
+- `NestJS 11` wallet server
+- `SQLite + Kysely + better-sqlite3`
+- `MCP` for Agent access
 
-SupeRISELocalServer consists of two main components:
+## 文档入口
 
-- **SupeRISELocalServer**: Local signer server (.NET) that securely manages private keys and signing operations
-- **SupeRISELocalCli**: Command-line interface (Bun/TypeScript) providing user-friendly interactions
+- 使用文档（中文默认）：[`docs/README.md`](./docs/README.md)
+- 使用文档（English）：[`docs/en/README.md`](./docs/en/README.md)
+- MCP 接入说明（中文）：[`docs/mcp.md`](./docs/mcp.md)
+- 部署说明（中文）：[`docs/deployment.md`](./docs/deployment.md)
 
-## Features
-
-- **Secure Key Management**: Local signer server ensures private keys remain secure; CLI never touches private keys
-- **CLI Operations**: Simple and intuitive CKB transfer commands
-- **Address Book**: Save and manage contacts with CKB addresses
-- **Configurable**: Custom fee rates and network settings
-- **Dry Run**: Estimate fees without executing actual transactions
-- **Testnet Ready**: Optimized for CKB testnet operations
-
-## Quick Start
-
-For detailed setup instructions, see [SKILL.md](SKILL.md).
-
-Quick overview:
-
-1. Install and run the signer server
-2. Build and install the CLI
-3. Configure the CLI to connect to the signer server
-
-## Usage
-
-For detailed command reference and usage examples, see [SKILL.md](SKILL.md).
-
-Quick examples:
+## 常用命令
 
 ```bash
-# Transfer CKB
-rise transfer --to ckb1qy... --amount 100
-
-# Address book operations
-rise address-book add alice ckb1qy...
-rise address-book list
-
-# Configuration
-rise config show
-rise config set-fee-rate 1500
+pnpm install
+pnpm build
+cp apps/wallet-server/.env.example apps/wallet-server/.env
+pnpm dev
+pnpm --filter @superise/wallet-server start
 ```
 
-## License
+## Docker
 
-MIT
+支持一键本地部署：
 
-## Related Links
+```bash
+pnpm docker:up
+```
 
-- [CKB Blockchain](https://www.nervos.org/)
-- [CCC SDK](https://github.com/xxuejie/ccc-cli)
-- [CKB Testnet](https://testnet.ckb.dev/)
+启动脚本会在首次运行时：
+
+- 从 `deploy/docker/.env.example` 生成 `deploy/docker/.env`
+- 生成 `deploy/docker/secrets/wallet_kek.txt`
+- 将运行时数据持久化到 `deploy/docker/runtime-data`
+- 构建并启动 `wallet-server` 容器
+
+启动后可访问：
+
+- 服务地址：`http://127.0.0.1:18799/`
+- MCP 端点：`http://127.0.0.1:18799/mcp`
+- 健康检查：`http://127.0.0.1:18799/health`
+
+Docker 部署下也提供一键 `KEK` 轮换：
+
+```bash
+pnpm docker:rotate-kek
+```
+
+该命令会停止服务、用新的 `KEK` 重包当前 `DEK`、备份旧密钥来源，然后重新启动服务。
+
+## 配置
+
+链配置按 `CKB` 与 `EVM` 独立装配，可自由组合 preset 与 custom。
+
+- `CKB_CHAIN_MODE=preset|custom`
+- `CKB_CHAIN_PRESET=testnet|mainnet`
+- `CKB_CHAIN_CONFIG_PATH`
+- `EVM_CHAIN_MODE=preset|custom`
+- `EVM_CHAIN_PRESET=testnet|mainnet`
+- `EVM_CHAIN_CONFIG_PATH`
+
+规则：
+
+- `preset` 使用内置 `testnet/mainnet` 配置
+- `custom` 通过各自的 JSON 文件加载完整链配置
+- `CKB custom` 需要 `rpcUrl`、`indexerUrl`、`genesisHash`、`addressPrefix`、`scripts`
+- `EVM custom` 需要 `rpcUrl`、`chainId`、`networkName?`、`tokens.erc20.usdt`
+
+- 本地开发配置见 `apps/wallet-server/.env.example`
+- 本地 custom 示例见 `apps/wallet-server/config/*.custom.example.json`
+- Docker 部署配置见 `deploy/docker/.env.example`
+- Docker custom 示例见 `deploy/docker/chain-config/*.custom.example.json`
+
+只有当 `ENABLE_API_DOCS=true` 时，`/docs` 和 `/docs-json` 才会启用；默认部署配置会关闭它们。
