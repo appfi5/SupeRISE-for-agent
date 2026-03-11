@@ -1,0 +1,35 @@
+{
+  "name": "superise-agent-wallet",
+  "private": true,
+  "version": "0.2.0",
+  "packageManager": "pnpm@10.31.0",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "build": "corepack pnpm -r --filter \"./packages/**\" build && corepack pnpm --filter @superise/owner-ui build && corepack pnpm --filter @superise/wallet-server build",
+    "clean": "find apps packages -name dist -type d -prune -exec rm -rf {} +",
+    "dev": "corepack pnpm -r --filter \"./packages/**\" build && corepack pnpm -r --parallel --stream --filter \"./packages/**\" --filter @superise/owner-ui --filter @superise/wallet-server dev",
+    "dev:apps": "corepack pnpm -r --parallel --stream --filter @superise/owner-ui --filter @superise/wallet-server dev",
+    "docker:up": "sh scripts/docker-up.sh",
+    "docker:down": "docker compose down",
+    "docker:rotate-kek": "sh scripts/docker-rotate-kek.sh",
+    "test": "corepack pnpm build && find apps packages -type f -name '*.test.cjs' -print0 | xargs -0 node --test",
+    "typecheck": "corepack pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.1",
+    "ts-node": "^10.9.2",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.3"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3"
+    ]
+  }
+}

@@ -1,0 +1,222 @@
+import type {
+  NervosAddressDto,
+  NervosBalanceCkbDto,
+  NervosSignMessageRequest,
+  NervosSignMessageResponse,
+  NervosTransferCkbRequest,
+  NervosTransferCkbResponse,
+} from "@superise/app-contracts";
+import type { ActorRole } from "@superise/domain";
+import {
+  createAuditLog,
+  createSignOperation,
+  createTransferOperation,
+  markTransferFailed,
+  markTransferSubmitted,
+  WalletDomainError,
+} from "@superise/domain";
+import {
+  decodeMessage,
+  sha256Hex,
+  toErrorMessage,
+} from "@superise/shared";
+import type {
+  ChainWriteLocker,
+  CkbWalletAdapter,
+  RepositoryBundle,
+  UnitOfWork,
+  VaultPort,
+  WalletRepository,
+} from "../ports";
+import { mapTransferErrorCode } from "../utils/transfer-errors";
+import { loadDecryptedPrivateKey } from "../utils/wallet-access";
+
+export class NervosAddressQueryService {
+  constructor(
+    private readonly wallets: WalletRepository,
+    private readonly vault: VaultPort,
+    private readonly ckb: CkbWalletAdapter,
+  ) {}
+
+  async execute(): Promise<NervosAddressDto> {
+    const { privateKey } = await loadDecryptedPrivateKey(this.wallets, this.vault);
+    return {
+      chain: "nervos",
+      address: await this.ckb.deriveAddress(privateKey),
+    };
+  }
+}
+
+export class NervosCkbBalanceQueryService {
+  constructor(
+    private readonly wallets: WalletRepository,
+    private readonly vault: VaultPort,
+    private readonly ckb: CkbWalletAdapter,
+  ) {}
+
+  async execute(): Promise<NervosBalanceCkbDto> {
+    const { privateKey } = await loadDecryptedPrivateKey(this.wallets, this.vault);
+    return {
+      chain: "nervos",
+      asset: "CKB",
+      amount: await this.ckb.getBalance(privateKey),
+      decimals: 8,
+    };
+  }
+}
+
+export class NervosMessageSigningService {
+  constructor(
+    private readonly repos: RepositoryBundle,
+    private readonly vault: VaultPort,
+    private readonly ckb: CkbWalletAdapter,
+  ) {}
+
+  async execute(
+    actorRole: Extract<ActorRole, "AGENT" | "OWNER">,
+    request: NervosSignMessageRequest,
+  ): Promise<NervosSignMessageResponse> {
+    const digest = sha256Hex(`${request.encoding}:${request.message}`);
+
+    try {
+      const { privateKey } = await loadDecryptedPrivateKey(this.repos.wallets, this.vault);
+      const [signature, signingAddress] = await Promise.all([
+        this.ckb.signMessage(privateKey, decodeMessage(request.message, request.encoding)),
+        this.ckb.deriveAddress(privateKey),
+      ]);
+
+      await Promise.all([
+        this.repos.signs.save(
+          createSignOperation({
+            role: actorRole,
+            chain: "ckb",
+            messageDigest: digest,
+            result: "SUCCESS",
+          }),
+        ),
+        this.repos.audits.save(
+          createAuditLog({
+            actorRole,
+            action: "nervos.sign_message",
+            result: "SUCCESS",
+            metadata: { signingAddress },
+          }),
+        ),
+      ]);
+
+      return {
+        chain: "nervos",
+        signature,
+        signingAddress,
+      };
+    } catch (error) {
+      await Promise.all([
+        this.repos.signs.save(
+          createSignOperation({
+            role: actorRole,
+            chain: "ckb",
+            messageDigest: digest,
+            result: "FAILED",
+            errorCode: "SIGN_MESSAGE_FAILED",
+          }),
+        ),
+        this.repos.audits.save(
+          createAuditLog({
+            actorRole,
+            action: "nervos.sign_message",
+            result: "FAILED",
+            metadata: { error: toErrorMessage(error) },
+          }),
+        ),
+      ]);
+
+      throw new WalletDomainError(
+        "SIGN_MESSAGE_FAILED",
+        `Nervos message signing failed: ${toErrorMessage(error)}`,
+      );
+    }
+  }
+}
+
+export class NervosCkbTransferService {
+  constructor(
+    private readonly repos: RepositoryBundle,
+    private readonly unitOfWork: UnitOfWork,
+    private readonly locker: ChainWriteLocker,
+    private readonly vault: VaultPort,
+    private readonly ckb: CkbWalletAdapter,
+  ) {}
+
+  async execute(
+    actorRole: Extract<ActorRole, "AGENT" | "OWNER">,
+    request: NervosTransferCkbRequest,
+  ): Promise<NervosTransferCkbResponse> {
+    const operation = createTransferOperation({
+      actorRole,
+      chain: "ckb",
+      asset: "CKB",
+      requestPayload: request,
+    });
+
+    await this.repos.transfers.save(operation);
+
+    try {
+      const { privateKey } = await loadDecryptedPrivateKey(this.repos.wallets, this.vault);
+      const transferResult = await this.locker.execute("ckb", async () =>
+        this.ckb.transfer(privateKey, request),
+      );
+
+      const submitted = markTransferSubmitted(operation, transferResult.txHash);
+
+      await this.unitOfWork.run(async (repos) => {
+        await repos.transfers.save(submitted);
+        await repos.audits.save(
+          createAuditLog({
+            actorRole,
+            action: "nervos.transfer_ckb",
+            result: "SUCCESS",
+            metadata: {
+              operationId: submitted.operationId,
+              txHash: submitted.txHash,
+            },
+          }),
+        );
+      });
+
+      return {
+        chain: "nervos",
+        asset: "CKB",
+        operationId: submitted.operationId,
+        txHash: submitted.txHash ?? "",
+        status: submitted.status,
+      };
+    } catch (error) {
+      const failed = markTransferFailed(
+        operation,
+        mapTransferErrorCode(error, "ckb"),
+        toErrorMessage(error),
+      );
+
+      await this.unitOfWork.run(async (repos) => {
+        await repos.transfers.save(failed);
+        await repos.audits.save(
+          createAuditLog({
+            actorRole,
+            action: "nervos.transfer_ckb",
+            result: "FAILED",
+            metadata: {
+              operationId: failed.operationId,
+              errorCode: failed.errorCode,
+              errorMessage: failed.errorMessage,
+            },
+          }),
+        );
+      });
+
+      throw new WalletDomainError(
+        failed.errorCode ?? "TRANSFER_BUILD_FAILED",
+        failed.errorMessage ?? "Nervos CKB transfer failed",
+      );
+    }
+  }
+}

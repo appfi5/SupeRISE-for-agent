@@ -1,0 +1,37 @@
+services:
+  wallet-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: superise-wallet-server
+    restart: unless-stopped
+    env_file:
+      - ./deploy/docker/.env
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      WALLET_KEK_PATH: /run/secrets/wallet_kek
+      ALLOW_PLAINTEXT_KEK_ENV: "false"
+    ports:
+      - "${PUBLISH_HOST:-127.0.0.1}:${PORT:-18799}:${PORT:-18799}"
+    volumes:
+      - ./deploy/docker/runtime-data:/app/runtime-data
+      - ./deploy/docker/chain-config:/app/chain-config:ro
+    secrets:
+      - wallet_kek
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:' + (process.env.PORT || '18799') + '/health').then((response) => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1));",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+secrets:
+  wallet_kek:
+    file: ./deploy/docker/secrets/wallet_kek.txt

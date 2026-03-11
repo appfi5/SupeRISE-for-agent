@@ -1,0 +1,13 @@
+{
+  "rpcUrl": "https://ethereum-sepolia-rpc.publicnode.com",
+  "chainId": 11155111,
+  "networkName": "custom-sepolia",
+  "tokens": {
+    "erc20": {
+      "usdt": {
+        "standard": "erc20",
+        "contractAddress": "0x0cF531D755F7324B910879b3Cf7beDFAb872513E"
+      }
+    }
+  }
+}

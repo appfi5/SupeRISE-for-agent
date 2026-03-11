@@ -1,0 +1,23 @@
+{
+  "rpcUrl": "https://testnet.ckb.dev",
+  "indexerUrl": "https://testnet.ckb.dev/indexer",
+  "genesisHash": "0x10639e0895502b5688a6be8cf69460d76541bfa4821629d86d62ba0aae3f9606",
+  "addressPrefix": "ckt",
+  "scripts": {
+    "Secp256k1Blake160": {
+      "codeHash": "0x9bd7e06f3ecf4be0f2fcd2188b23f1b9fcc88e5d4b65a8637b17723bbda3cce8",
+      "hashType": "type",
+      "cellDeps": [
+        {
+          "cellDep": {
+            "outPoint": {
+              "txHash": "0x71a7ba8f0f0c92bfbf76d5e3ef0b75ab6b2df95d060c5bc3d2dfb3b9f4f7c452",
+              "index": 0
+            },
+            "depType": "depGroup"
+          }
+        }
+      ]
+    }
+  }
+}
