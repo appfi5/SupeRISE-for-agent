@@ -1,4 +1,0 @@
-<Solution>
-  <Project Path="src\SupeRISELocalServer.csproj" />
-  <Project Path="test/Test.csproj" />
-</Solution>

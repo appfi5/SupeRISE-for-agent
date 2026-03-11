@@ -1,0 +1,37 @@
+{
+  "name": "@superise/wallet-server",
+  "version": "0.2.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "node scripts/dev-runner.cjs",
+    "rewrap-kek": "node --env-file-if-exists=.env scripts/rewrap-kek.cjs",
+    "start": "node --env-file-if-exists=.env dist/main.js",
+    "typecheck": "tsc --noEmit -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.5",
+    "@nestjs/common": "^11.1.6",
+    "@nestjs/core": "^11.1.6",
+    "@nestjs/platform-express": "^11.1.6",
+    "@nestjs/serve-static": "^5.0.4",
+    "@nestjs/swagger": "^11.1.6",
+    "@superise/adapters-ckb": "workspace:*",
+    "@superise/adapters-evm": "workspace:*",
+    "@superise/app-contracts": "workspace:*",
+    "@superise/application": "workspace:*",
+    "@superise/domain": "workspace:*",
+    "@superise/infrastructure": "workspace:*",
+    "@superise/shared": "workspace:*",
+    "pino": "^9.7.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "swagger-ui-express": "^5.0.1",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "chokidar": "^4.0.3",
+    "@types/express": "^5.0.3"
+  }
+}
