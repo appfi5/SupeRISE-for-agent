@@ -32,6 +32,12 @@ For local inspection, prefer `@modelcontextprotocol/inspector`.
 
 External agents should rely on this metadata first instead of relying on other local management surfaces or Swagger.
 
+Security boundary:
+
+- `/mcp` is unauthenticated by default
+- the service should run only on trusted local or private networks
+- `/mcp` must not be exposed directly to the public Internet
+
 ## Current Tool Set
 
 - `wallet.current`

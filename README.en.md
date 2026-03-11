@@ -50,6 +50,8 @@ After startup:
 - MCP endpoint: `http://127.0.0.1:18799/mcp`
 - Health check: `http://127.0.0.1:18799/health`
 
+The default Docker configuration binds only to local `127.0.0.1`. `/mcp` is unauthenticated and must not be exposed to the public Internet or to untrusted networks.
+
 Docker deployment also provides one-command `KEK` rotation:
 
 ```bash
@@ -81,3 +83,4 @@ Rules:
 - Docker custom examples: `deploy/docker/chain-config/*.custom.example.json`
 
 `/docs` and `/docs-json` are enabled only when `ENABLE_API_DOCS=true`; the default deployment configuration keeps them disabled.
+`pnpm docker:up` auto-generates the high-entropy JWT signing secret required by the local management surface when it creates `deploy/docker/.env` for the first time.

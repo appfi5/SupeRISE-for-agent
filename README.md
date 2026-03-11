@@ -50,6 +50,8 @@ pnpm docker:up
 - MCP 端点：`http://127.0.0.1:18799/mcp`
 - 健康检查：`http://127.0.0.1:18799/health`
 
+默认 Docker 配置只绑定到本机 `127.0.0.1`。`/mcp` 无鉴权，禁止直接暴露到公网或不受信任网络。
+
 Docker 部署下也提供一键 `KEK` 轮换：
 
 ```bash
@@ -82,3 +84,4 @@ pnpm docker:rotate-kek
 - Docker custom 示例见 `deploy/docker/chain-config/*.custom.example.json`
 
 只有当 `ENABLE_API_DOCS=true` 时，`/docs` 和 `/docs-json` 才会启用；默认部署配置会关闭它们。
+`pnpm docker:up` 在首次生成 `deploy/docker/.env` 时会自动写入本地管理面所需的高熵 JWT 签名密钥。

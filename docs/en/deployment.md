@@ -41,9 +41,11 @@ After startup, you can check:
 Notes:
 
 - `docker-compose` starts with `NODE_ENV=production`
+- `docker-compose` binds only to the local loopback address by default through `PUBLISH_HOST=127.0.0.1`
 - `ENABLE_API_DOCS` defaults to `false`
 - `/docs` and `/docs-json` are disabled by default in deployment
 - `deploy/docker/chain-config` is mounted read-only at `/app/chain-config`
+- `/mcp` is unauthenticated and must not be exposed to the public Internet or to untrusted networks
 
 ### non-docker
 
@@ -63,6 +65,7 @@ Recommended configuration items:
 
 - `NODE_ENV`
 - `ENABLE_API_DOCS`
+- `PUBLISH_HOST`
 - `HOST`
 - `PORT`
 - `DATA_DIR`
@@ -81,6 +84,8 @@ Additional notes:
 
 - Swagger is enabled if and only if `ENABLE_API_DOCS=true`
 - when the variable is missing, it is treated as `false`
+- `PUBLISH_HOST` controls which host address Docker publishes the port on, with `127.0.0.1` as the default
+- `pnpm docker:up` auto-generates the high-entropy JWT signing secret required by the local management surface when it creates `deploy/docker/.env` for the first time
 - `CKB` and `EVM` choose `preset|custom` independently
 - `preset` uses built-in `testnet|mainnet` profiles
 - `custom` loads a dedicated JSON file per chain

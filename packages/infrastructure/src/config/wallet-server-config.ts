@@ -70,6 +70,8 @@ export function loadWalletServerConfig(
   mkdirSync(dirname(sqlitePath), { recursive: true });
   mkdirSync(dirname(ownerNoticePath), { recursive: true });
 
+  const ownerJwtSecret = resolveOwnerJwtSecret(parsed.NODE_ENV, parsed.OWNER_JWT_SECRET);
+
   return {
     nodeEnv: parsed.NODE_ENV,
     enableApiDocs: parsed.ENABLE_API_DOCS,
@@ -84,7 +86,23 @@ export function loadWalletServerConfig(
     ckbChainConfigPath: chain.ckbChainConfigPath,
     evmChainConfigPath: chain.evmChainConfigPath,
     chainConfig: chain.chainConfig,
-    ownerJwtSecret: parsed.OWNER_JWT_SECRET || randomBytes(32).toString("hex"),
+    ownerJwtSecret,
     ownerJwtTtlSeconds: parsed.OWNER_JWT_TTL ?? 60 * 60,
   };
+}
+
+function resolveOwnerJwtSecret(nodeEnv: string, value: string | undefined): string {
+  if (!value) {
+    if (nodeEnv === "production") {
+      throw new Error("OWNER_JWT_SECRET is required in production");
+    }
+
+    return randomBytes(32).toString("hex");
+  }
+
+  if (nodeEnv === "production" && Buffer.byteLength(value, "utf8") < 32) {
+    throw new Error("OWNER_JWT_SECRET must be at least 32 bytes in production");
+  }
+
+  return value;
 }

@@ -38,6 +38,12 @@ generate_hex_32() {
     "process.stdout.write(require('node:crypto').randomBytes(32).toString('hex'))"
 }
 
+read_env_value() {
+  KEY="$1"
+  FILE="$2"
+  awk -F= -v key="$KEY" '$1 == key { value=$2 } END { print value }' "$FILE"
+}
+
 mkdir -p "$RUNTIME_DIR" "$SECRET_DIR"
 
 require_command docker
@@ -65,7 +71,24 @@ fi
 cd "$ROOT_DIR"
 docker compose up -d --build
 
+PUBLISH_HOST=$(read_env_value "PUBLISH_HOST" "$ENV_FILE")
+PORT_VALUE=$(read_env_value "PORT" "$ENV_FILE")
+
+if [ -z "$PUBLISH_HOST" ]; then
+  PUBLISH_HOST="127.0.0.1"
+fi
+
+if [ -z "$PORT_VALUE" ]; then
+  PORT_VALUE="18799"
+fi
+
+DISPLAY_HOST="$PUBLISH_HOST"
+if [ "$DISPLAY_HOST" = "0.0.0.0" ]; then
+  DISPLAY_HOST="127.0.0.1"
+fi
+
 echo "[docker-up] wallet server is starting"
-echo "[docker-up] owner notice file: $RUNTIME_DIR/owner-credential.txt"
-echo "[docker-up] owner ui: http://127.0.0.1:18799/"
+echo "[docker-up] service url: http://$DISPLAY_HOST:$PORT_VALUE/"
+echo "[docker-up] mcp endpoint: http://$DISPLAY_HOST:$PORT_VALUE/mcp"
+echo "[docker-up] warning: /mcp is unauthenticated and should only be exposed to trusted local or private networks"
 echo "[docker-up] api docs: enable by setting ENABLE_API_DOCS=true in deploy/docker/.env"

@@ -13,7 +13,7 @@ services:
       WALLET_KEK_PATH: /run/secrets/wallet_kek
       ALLOW_PLAINTEXT_KEK_ENV: "false"
     ports:
-      - "${PORT:-18799}:${PORT:-18799}"
+      - "${PUBLISH_HOST:-127.0.0.1}:${PORT:-18799}:${PORT:-18799}"
     volumes:
       - ./deploy/docker/runtime-data:/app/runtime-data
       - ./deploy/docker/chain-config:/app/chain-config:ro

@@ -148,6 +148,50 @@ test("loadWalletServerConfig fails when preset mode also provides a custom EVM J
   );
 });
 
+test("loadWalletServerConfig auto-generates OWNER_JWT_SECRET outside production", () => {
+  const cwd = mkdtempSync(join(tmpdir(), "superise-config-dev-secret-"));
+  const config = loadWalletServerConfig(
+    {
+      NODE_ENV: "development",
+    },
+    cwd,
+  );
+
+  assert.ok(typeof config.ownerJwtSecret === "string");
+  assert.equal(config.ownerJwtSecret.length, 64);
+});
+
+test("loadWalletServerConfig requires explicit OWNER_JWT_SECRET in production", () => {
+  const cwd = mkdtempSync(join(tmpdir(), "superise-config-prod-secret-"));
+
+  assert.throws(
+    () =>
+      loadWalletServerConfig(
+        {
+          NODE_ENV: "production",
+        },
+        cwd,
+      ),
+    /OWNER_JWT_SECRET is required in production/i,
+  );
+});
+
+test("loadWalletServerConfig rejects weak OWNER_JWT_SECRET in production", () => {
+  const cwd = mkdtempSync(join(tmpdir(), "superise-config-prod-secret-weak-"));
+
+  assert.throws(
+    () =>
+      loadWalletServerConfig(
+        {
+          NODE_ENV: "production",
+          OWNER_JWT_SECRET: "too-short",
+        },
+        cwd,
+      ),
+    /OWNER_JWT_SECRET must be at least 32 bytes in production/i,
+  );
+});
+
 test("WalletDatabase.checkHealth succeeds after migration", async () => {
   const cwd = mkdtempSync(join(tmpdir(), "superise-db-health-"));
   const config = loadWalletServerConfig({}, cwd);

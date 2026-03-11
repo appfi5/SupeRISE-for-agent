@@ -43,9 +43,11 @@ pnpm docker:up
 说明：
 
 - `docker-compose` 默认以 `NODE_ENV=production` 启动
+- `docker-compose` 默认通过 `PUBLISH_HOST=127.0.0.1` 只绑定本机回环地址
 - `ENABLE_API_DOCS` 默认为 `false`
 - 因此部署默认不暴露 `/docs` 和 `/docs-json`
 - `deploy/docker/chain-config` 会只读挂载到容器内的 `/app/chain-config`
+- `/mcp` 无鉴权，禁止把该端口直接暴露到公网或不受信任网络
 
 ### 2.2 非 docker
 
@@ -65,6 +67,7 @@ pnpm docker:up
 
 - `NODE_ENV`
 - `ENABLE_API_DOCS`
+- `PUBLISH_HOST`
 - `HOST`
 - `PORT`
 - `DATA_DIR`
@@ -83,6 +86,8 @@ pnpm docker:up
 
 - 当且仅当 `ENABLE_API_DOCS=true` 时启用 Swagger 文档
 - 未设置该变量时按 `false` 处理
+- `PUBLISH_HOST` 控制 Docker 将端口发布到哪个宿主机地址，默认值为 `127.0.0.1`
+- `pnpm docker:up` 首次生成 `deploy/docker/.env` 时会自动写入本地管理面所需的高熵 JWT 签名密钥
 - `CKB` 与 `EVM` 独立选择 `preset|custom`
 - `preset` 模式使用内置 `testnet|mainnet`
 - `custom` 模式分别通过各自 JSON 文件提供链配置
