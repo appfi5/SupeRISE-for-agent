@@ -49,6 +49,7 @@
 - CKB 余额查询
 - 消息签名
 - CKB 转账
+- CKB `tx status` 查询
 
 ### 4.2 EVM
 
@@ -64,6 +65,7 @@
 - ETH 转账
 - USDT 转账
 - USDC 转账
+- EVM `tx status` 查询
 
 ### 4.3 模式化装配要求
 
@@ -151,6 +153,10 @@ interface CkbTransferExecutor {
   transferCkb(privateKey: string, req: CkbTransferReq): Promise<TransferResult>;
 }
 
+interface CkbTransactionStatusReader {
+  getCkbTxStatus(txHash: string): Promise<TxStatusResult>;
+}
+
 interface EvmEthBalanceReader {
   getEthBalance(privateKey: string): Promise<BalanceResult>;
 }
@@ -174,7 +180,18 @@ interface EvmUsdcBalanceReader {
 interface EvmUsdcTransferExecutor {
   transferUsdc(privateKey: string, req: EvmUsdcTransferReq): Promise<TransferResult>;
 }
+
+interface EvmTransactionStatusReader {
+  getEvmTxStatus(txHash: string): Promise<TxStatusResult>;
+}
 ```
+
+`TxStatusResult.status` 的正式取值：
+
+- `NOT_FOUND`
+- `PENDING`
+- `CONFIRMED`
+- `FAILED`
 
 ## 6. CKB 适配器设计
 
@@ -182,6 +199,7 @@ interface EvmUsdcTransferExecutor {
 
 - `getCkbAddress`
 - `getCkbBalance`
+- `getCkbTxStatus`
 
 ### 6.2 写能力
 
@@ -206,6 +224,21 @@ interface EvmUsdcTransferExecutor {
 
 - CKB 写操作串行化
 - 失败原因明确映射
+- `tx status` 查询结果必须稳定映射为 `NOT_FOUND`、`PENDING`、`CONFIRMED`、`FAILED`
+
+### 6.6 CKB `tx status` 映射规则
+
+正式映射建议：
+
+- 链上查无此交易：`NOT_FOUND`
+- `pending` 或 `proposed`：`PENDING`
+- `committed`：`CONFIRMED`
+- `rejected`：`FAILED`
+
+说明：
+
+- 对外 `nervos.tx_status` 与内部结算任务必须共用同一映射逻辑
+- 不允许 MCP 和后台任务分别维护两套 CKB 状态解释
 
 ## 7. EVM 适配器设计
 
@@ -215,6 +248,7 @@ interface EvmUsdcTransferExecutor {
 - `getEthBalance`
 - `getUsdtBalance`
 - `getUsdcBalance`
+- `getEvmTxStatus`
 
 ### 7.2 写能力
 
@@ -257,8 +291,33 @@ interface EvmUsdcTransferExecutor {
 
 - EVM 写操作串行化
 - 广播错误明确映射
+- `tx status` 查询结果必须稳定映射为 `NOT_FOUND`、`PENDING`、`CONFIRMED`、`FAILED`
 
-## 8. 多链统一策略
+### 7.6 EVM `tx status` 映射规则
+
+正式映射建议：
+
+- 查无交易且无 receipt：`NOT_FOUND`
+- 已观察到交易但尚无 receipt：`PENDING`
+- `receipt.status=1` 且确认数未达到阈值：`PENDING`
+- `receipt.status=1` 且确认数达到阈值：`CONFIRMED`
+- `receipt.status=0`：`FAILED`
+
+说明：
+
+- `confirmations` 的阈值由部署配置决定
+- 对外 `ethereum.tx_status` 与内部结算任务必须共用同一映射逻辑
+- 不允许后台结算绕过适配器直接读取 `viem` 原始返回结构
+
+## 8. 链上状态查询与结算复用要求
+
+必须遵守：
+
+- MCP 的 `nervos.tx_status` 与 `ethereum.tx_status` 必须调用应用层统一的链状态查询服务
+- `TransferSettlementScheduler` 必须复用同一服务，不允许单独拼装链查询逻辑
+- 链上状态查询是正式产品能力，不是仅供后台任务使用的内部 helper
+
+## 9. 多链统一策略
 
 统一策略：
 
@@ -284,7 +343,7 @@ interface EvmUsdcTransferExecutor {
 - 不因为 `custom` 模式引入新的外部 tool 命名
 - 不允许通过配置动态生成新的对外 wallet tool
 
-## 9. 错误映射
+## 10. 错误映射
 
 链 SDK 错误必须映射为系统错误码：
 
@@ -296,7 +355,7 @@ interface EvmUsdcTransferExecutor {
 
 禁止把底层异常原样暴露给上层接口。
 
-## 10. 后续扩展方式
+## 11. 后续扩展方式
 
 未来新增链或资产时，规则如下：
 

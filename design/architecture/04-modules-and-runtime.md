@@ -30,6 +30,7 @@
 - `DatabaseModule`
 - `VaultModule`
 - `WalletModule`
+- `TransferTrackingModule`
 - `AssetLimitModule`
 - `OwnerAuthModule`
 - `OwnerApiModule`
@@ -147,11 +148,31 @@ WalletModule 是本期核心业务模块。
 
 额外要求：
 
-- Agent 转账路径必须在进入链适配器前调用限额评估
+- Agent 转账路径必须在进入链适配器前完成限额评估与额度预占
 - Owner 转账路径必须显式绕过限额评估
 - 限额评估失败时必须返回结构化 `ASSET_LIMIT_EXCEEDED`
+- 广播失败时必须显式释放已预占额度
 
-### 4.7 `OwnerAuthModule`
+### 4.7 `TransferTrackingModule`
+
+职责：
+
+- 提供 `wallet.operation_status`
+- 提供 `nervos.tx_status`
+- 提供 `ethereum.tx_status`
+- 运行 `TransferSettlementScheduler`
+- 扫描并结算 `RESERVED` 与 `SUBMITTED` 操作
+- 驱动额度预占的确认与返还
+
+要求：
+
+- `wallet.operation_status` 只返回本地操作状态
+- 链上 `tx_status` 查询必须按链分开提供，不做通用外部入口
+- 定时结算必须复用链适配器提供的 `tx status` 查询能力
+- 调度器不得直接调用链 SDK 原始对象
+- 调度器必须能处理进程重启后的未结算操作恢复
+
+### 4.8 `OwnerAuthModule`
 
 职责：
 
@@ -165,7 +186,7 @@ WalletModule 是本期核心业务模块。
 - 不与钱包私钥加密逻辑耦合
 - 不承担 `KEK` 管理职责
 
-### 4.8 `OwnerApiModule`
+### 4.9 `OwnerApiModule`
 
 职责：
 
@@ -182,12 +203,15 @@ WalletModule 是本期核心业务模块。
 - `OwnerAssetLimitController`
 - `OwnerAuditController`
 
-### 4.9 `AssetLimitModule`
+### 4.10 `AssetLimitModule`
 
 职责：
 
 - 保存按币种的日、周、月限额配置
 - 在 Agent 转账前执行限额评估
+- 为 Agent 转账创建额度预占
+- 在链上确认后确认额度消耗
+- 在广播失败、链上失败或超时后返还额度
 - 计算当前周期的已用额度
 - 返回限额超出时的结构化信息
 
@@ -204,8 +228,9 @@ WalletModule 是本期核心业务模块。
 - `OWNER` 不受限额约束
 - 限额按 server 本地时区重置
 - 限额口径使用币种最小单位整数字符串
+- 已用额度口径为 `ACTIVE reservation + CONSUMED reservation`
 
-### 4.10 `WalletToolsModule`
+### 4.11 `WalletToolsModule`
 
 职责：
 
@@ -219,7 +244,7 @@ WalletModule 是本期核心业务模块。
 - 不新增独立业务语义
 - 不绕过应用层直接访问数据库
 
-### 4.11 `McpModule`
+### 4.12 `McpModule`
 
 职责：
 
@@ -234,23 +259,23 @@ WalletModule 是本期核心业务模块。
 - 不直接依赖链 SDK
 - 不复制业务逻辑
 
-### 4.12 `CkbModule`
+### 4.13 `CkbModule`
 
 职责：
 
 - 注册 `CkbWalletAdapter`
 - 封装 `@ckb-ccc/shell`
-- 提供地址推导、CKB 余额查询、签名、CKB 转账
+- 提供地址推导、CKB 余额查询、签名、CKB 转账、CKB `tx status` 查询
 
-### 4.13 `EvmModule`
+### 4.14 `EvmModule`
 
 职责：
 
 - 注册 `EvmWalletAdapter`
 - 封装 `viem`
-- 提供地址推导、ETH 余额查询、USDT 余额查询、USDC 余额查询、签名、ETH 转账、USDT 转账、USDC 转账
+- 提供地址推导、ETH 余额查询、USDT 余额查询、USDC 余额查询、签名、ETH 转账、USDT 转账、USDC 转账、EVM `tx status` 查询
 
-### 4.14 `AuditModule`
+### 4.15 `AuditModule`
 
 职责：
 
@@ -269,7 +294,7 @@ WalletModule 是本期核心业务模块。
 - 签名
 - 转账
 
-### 4.15 `HealthModule`
+### 4.16 `HealthModule`
 
 职责：
 

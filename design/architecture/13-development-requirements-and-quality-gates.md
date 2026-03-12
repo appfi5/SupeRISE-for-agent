@@ -25,12 +25,12 @@
 
 开发者必须以此为最小实现集合：
 
-| 链 | 地址 | 余额 | 签名 | 转账 |
-| --- | --- | --- | --- | --- |
-| Nervos / CKB | `nervos.address` | `nervos.balance.ckb` | `nervos.sign_message` | `nervos.transfer.ckb` |
-| Ethereum / ETH | `ethereum.address` | `ethereum.balance.eth` | `ethereum.sign_message` | `ethereum.transfer.eth` |
-| Ethereum / USDT | 复用 `ethereum.address` | `ethereum.balance.usdt` | 不单独提供第二个签名工具 | `ethereum.transfer.usdt` |
-| Ethereum / USDC | 复用 `ethereum.address` | `ethereum.balance.usdc` | 不单独提供第二个签名工具 | `ethereum.transfer.usdc` |
+| 链 | 地址 | 余额 | 签名 | 转账 | Tx 状态 |
+| --- | --- | --- | --- | --- | --- |
+| Nervos / CKB | `nervos.address` | `nervos.balance.ckb` | `nervos.sign_message` | `nervos.transfer.ckb` | `nervos.tx_status` |
+| Ethereum / ETH | `ethereum.address` | `ethereum.balance.eth` | `ethereum.sign_message` | `ethereum.transfer.eth` | `ethereum.tx_status` |
+| Ethereum / USDT | 复用 `ethereum.address` | `ethereum.balance.usdt` | 不单独提供第二个签名工具 | `ethereum.transfer.usdt` | 复用 `ethereum.tx_status` |
+| Ethereum / USDC | 复用 `ethereum.address` | `ethereum.balance.usdc` | 不单独提供第二个签名工具 | `ethereum.transfer.usdc` | 复用 `ethereum.tx_status` |
 
 实现要求：
 
@@ -38,6 +38,7 @@
 - 不允许只做 `USDT` 转账而缺失 `ETH` 转账。
 - 不允许只做 `USDC` 转账而缺失 `USDC` 余额查询。
 - 不允许把 `ETH`、`USDT`、`USDC` 合并成外部通用 transfer tool。
+- 不允许缺失 `nervos.tx_status` 或 `ethereum.tx_status`。
 - 必须提供按币种独立的日、周、月限额能力。
 
 ## 4. 单工具单职责要求
@@ -48,6 +49,7 @@
 - 一个 tool 只对应一个明确资产范围。
 - 一个转账 tool 只服务一个链上资产。
 - 不允许提供 `wallet.transfer`、`ethereum.transfer.asset`、`balance.asset` 这类外部万能入口。
+- 不允许把两条链的 `tx status` 合并成 `wallet.tx_status` 这类外部万能入口。
 
 内部可以复用共享实现，但外部契约不得变成抽象占位符。
 
@@ -167,6 +169,20 @@ UI 要求：
 - Agent 触发限额拦截必须审计
 - 限额统计不得依赖解析 UI 状态
 - 限额金额口径必须与转账金额口径一致
+- Agent 转账必须先预占额度，再进入链适配器
+- 限额判断必须基于 `ACTIVE + CONSUMED`
+- 广播失败、链上失败、确认超时都必须释放额度预占
+- 必须存在后台结算任务清理 `RESERVED` 与 `SUBMITTED` 操作
+
+## 8.2 转账状态追踪要求
+
+必须遵守：
+
+- `wallet.operation_status` 表示本地操作状态
+- `nervos.tx_status` 与 `ethereum.tx_status` 表示链上观察状态
+- 后台结算任务必须复用与 MCP 相同的 `tx status` 查询服务
+- 不允许在调度器中直接拼装链 SDK 原始查询逻辑
+- `RESERVED`、`SUBMITTED`、`CONFIRMED`、`FAILED` 的流转必须可审计、可恢复
 
 ## 9. 链配置实现要求
 
@@ -203,7 +219,7 @@ UI 要求：
 
 以下任一项不满足，评审不得通过：
 
-- `PRD` 范围内的工具没有在 contracts、registry、application、UI 中同步。
+- 当前需求基线内的工具没有在 contracts、registry、application、UI 中同步。
 - `ETH`、`USDT`、`USDC` 支持不完整。
 - 新增了后端聚合接口。
 - 仍然把链环境写死为旧 `NETWORK=testnet|mainnet` 双态模型。
@@ -211,6 +227,10 @@ UI 要求：
 - `USDT` 依赖用户手工提供 ABI 或 decimals 才能工作。
 - `USDC` 依赖用户手工提供 ABI 或 decimals 才能工作。
 - 限额判断被放到了 UI、Agent 或 controller 层。
+- 没有额度锁保护，导致并发转账可穿透限额。
+- 没有额度预占，直到链上确认才记额度。
+- 没有后台结算任务，导致失败交易无法返还额度。
+- `wallet.operation_status` 与链上 `tx status` 混成同一个外部接口。
 - Owner 也被错误纳入 Agent 限额约束。
 - controller 中出现链 SDK 直接调用。
 - UI 中出现绕过 Owner API 的后门逻辑。
@@ -233,12 +253,19 @@ UI 要求：
 - 权限限制测试
 - 错误码稳定性测试
 - 操作状态追踪测试
+- 额度预占与返还测试
+- 后台结算恢复测试
 
 最少失败路径：
 
 - 钱包不存在
 - `KEK` 缺失
 - 余额不足
+- 额度预占成功后广播失败
+- 已提交交易链上失败后额度返还
+- 已提交交易长时间未确认后的超时处理
+- `nervos.tx_status` 查不到交易
+- `ethereum.tx_status` receipt 失败
 - 链节点不可用
 - `custom` 链配置 JSON 缺项
 - CKB `genesisHash` 不匹配
@@ -257,7 +284,7 @@ UI 要求：
 
 提交前必须逐项自检：
 
-- 我新增或修改的能力是否在 `PRD` 范围内。
+- 我新增或修改的能力是否在当前需求基线范围内。
 - 我是否把外部接口做成了单工具单职责。
 - 我是否错误地为 UI 新增了聚合接口。
 - 我是否让 contracts、application、registry、UI 同步更新。

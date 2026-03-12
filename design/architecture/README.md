@@ -28,6 +28,7 @@
 12. [12 开发实施路线图](./12-implementation-roadmap.md)
 13. [13 开发约束与质量闸门](./13-development-requirements-and-quality-gates.md)
 14. [ADR 0001 币种限额执行模型](./adr/0001-asset-limit-enforcement.md)
+15. [ADR 0002 转账结算与链上状态跟踪](./adr/0002-transfer-settlement-and-tx-status.md)
 
 ## 本次重构的正式定案
 
@@ -44,6 +45,8 @@
 - 密钥管理：`DEK + KEK` 双层设计，`KEK` 由部署侧提供
 - 当前支持资产：`CKB`、`ETH`、`USDT`、`USDC`
 - server 侧按币种执行 `daily/weekly/monthly` 三档限额
+- Agent 转账采用“额度预占 + 异步结算”模型
+- `CKB` 与 `Ethereum` 都提供链上 `tx status` 查询能力
 
 ## 文档边界
 

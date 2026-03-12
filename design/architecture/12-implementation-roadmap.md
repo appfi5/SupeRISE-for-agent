@@ -29,9 +29,10 @@
 
 ### 3.3 必须交付
 
-- `MCP` 工具名集合与 `PRD` 完全一致。
-- Owner API 列表与 `PRD` 完全一致。
+- `MCP` 工具名集合与当前需求基线完全一致。
+- Owner API 列表与当前需求基线完全一致。
 - `CKB`、`ETH`、`USDT`、`USDC` 的余额查询与转账 DTO 完整定义。
+- `CKB` 与 `Ethereum` 的 `tx status` DTO 完整定义。
 - 币种限额配置 DTO 与限额超限错误结构定义。
 - 通用错误码集合稳定定义。
 - API / MCP 返回 envelope 统一定义。
@@ -44,6 +45,7 @@
 - `nervos.balance.ckb`
 - `nervos.sign_message`
 - `nervos.transfer.ckb`
+- `nervos.tx_status`
 - `ethereum.address`
 - `ethereum.balance.eth`
 - `ethereum.balance.usdt`
@@ -52,6 +54,7 @@
 - `ethereum.transfer.eth`
 - `ethereum.transfer.usdt`
 - `ethereum.transfer.usdc`
+- `ethereum.tx_status`
 
 ### 3.5 验收标准
 
@@ -83,6 +86,7 @@
 - `CkbModule`
 - `EvmModule`
 - `WalletModule`
+- `TransferTrackingModule`
 - `WalletToolsModule`
 - `McpModule`
 - `OwnerAuthModule`
@@ -130,6 +134,8 @@
 - `KEK + DEK` vault 实现
 - `operation_status` 查询能力
 - Agent 转账前的限额评估能力
+- Agent 转账额度预占能力
+- 转账异步结算能力
 
 ### 5.4 开发要求
 
@@ -138,6 +144,9 @@
 - 导出私钥必须走 Owner 权限与审计。
 - 转账状态必须可追踪，不能只返回成功或失败字符串。
 - 限额评估必须在应用层执行，不能下放到 UI 或 Agent。
+- Agent 转账必须先预占额度，再进入链适配器。
+- 广播失败、链上失败或超时都必须返还额度。
+- `wallet.operation_status` 与链上 `tx status` 必须分开建模。
 - Owner 的限额配置修改必须独立建模并审计。
 - 仓储接口定义在应用层端口，具体 SQLite 实现在基础设施层。
 
@@ -148,6 +157,7 @@
 - 导出私钥需要登录 Owner，并生成审计记录。
 - 所有高风险操作都产生审计日志。
 - Agent 命中限额时能返回结构化 `limit` 信息。
+- `RESERVED` 操作在进程重启后仍能被恢复和结算。
 
 ## 6. 阶段 3：Nervos CKB 闭环
 
@@ -168,6 +178,7 @@
 - `CKB` 最小单位余额查询
 - Nervos 消息签名
 - `CKB` 转账广播
+- `CKB` `tx status` 查询
 - 转账失败错误码映射
 - `ckb` 链写操作串行化
 
@@ -180,6 +191,7 @@
 ### 6.5 验收标准
 
 - `nervos.address`、`nervos.balance.ckb`、`nervos.sign_message`、`nervos.transfer.ckb` 全部可用。
+- `nervos.tx_status` 可按 `txHash` 返回链上状态。
 - `wallet.operation_status` 能返回 CKB 转账状态。
 - 构造失败、广播失败、余额不足都能返回可诊断错误。
 
@@ -208,6 +220,7 @@
 - `ETH` 原生转账
 - `USDT` ERC-20 转账
 - `USDC` ERC-20 转账
+- `ethereum.tx_status`
 - `evm` 链写操作串行化
 - `ETH`、`USDT`、`USDC` 的错误码映射
 
@@ -217,6 +230,7 @@
 - `packages/app-contracts/src/schemas/mcp.ts`、`wallet-tool-registry.service.ts`、应用服务层、Owner UI 必须同时覆盖 `ethereum.transfer.eth`。
 - `USDT` 与 `USDC` 合约地址必须通过配置提供，不允许写死在 UI 层。
 - `ETH`、`USDT`、`USDC` 都必须有余额查询和转账闭环，不能只实现其中一半。
+- `ethereum.tx_status` 必须能被 Agent 和后台结算任务共同复用。
 
 ### 7.5 验收标准
 
@@ -227,6 +241,7 @@
 - `ethereum.transfer.eth`
 - `ethereum.transfer.usdt`
 - `ethereum.transfer.usdc`
+- `ethereum.tx_status`
 
 以上能力都能独立调用、独立报错、独立追踪状态。
 
@@ -261,12 +276,13 @@
 - 不允许为 UI 新增聚合看板接口。
 - 不允许把某个链能力只暴露给 Owner 而不暴露给 Agent，除非 `PRD` 明确区分。
 - 限额配置必须走独立 Owner API，不复用 wallet tools gateway 伪装成钱包工具。
+- `nervos.tx_status` 与 `ethereum.tx_status` 必须经由同一 registry 暴露。
 
 ### 8.5 验收标准
 
 - Agent 与 Owner 调用同一工具时，返回模型一致。
 - wallet tool catalog 中的工具集合与契约文档一致。
-- `wallet.current` 与 `wallet.operation_status` 在 `MCP` 与 HTTP gateway 中都可用。
+- `wallet.current`、`wallet.operation_status`、`nervos.tx_status`、`ethereum.tx_status` 在 `MCP` 与 HTTP gateway 中都可用。
 - Owner 可通过独立接口读取和修改币种限额配置。
 
 ## 9. 阶段 6：Owner UI 闭环
@@ -342,6 +358,7 @@
 - `CHAIN_ENV=custom|testnet|mainnet` 模式化配置
 - `CHAIN_CONFIG_PATH` 驱动的 custom 链配置加载
 - `TZ` 驱动的 server 本地时区口径
+- 转账结算轮询与确认阈值配置
 - 非 Docker 路径下的 `WALLET_KEK_PATH` 启动规范
 - Docker secret 路径下的 `KEK` 读取规范
 - 默认 Owner 凭证通知规范
@@ -356,6 +373,7 @@
 - `custom` 必须通过 JSON 文件提供完整链配置，不允许把整套链配置散落在 env。
 - `custom` 模式必须校验 CKB `genesisHash`、EVM `chainId`、USDT 合约 `decimals()` 和 USDC 合约 `decimals()`。
 - 部署文档必须明确 `TZ` 对限额重置的影响。
+- 转账结算任务必须默认启用，不能要求人工触发。
 - 生产默认不允许依赖明文 `WALLET_KEK` 环境变量。
 - Docker 示例不得提交真实 secret。
 - 部署说明必须覆盖 Docker 与非 Docker 两条路径。

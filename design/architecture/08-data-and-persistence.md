@@ -18,13 +18,14 @@
 
 ## 3. 数据分类
 
-本系统持久化分四类：
+本系统持久化分六类：
 
 1. 钱包核心状态
 2. 鉴权状态
 3. 操作流水
 4. 审计记录
 5. 限额配置
+6. 限额预占与结算状态
 
 ## 4. 表设计
 
@@ -85,6 +86,11 @@
 - `tx_hash`
 - `error_code`
 - `error_message`
+- `submitted_at`
+- `confirmed_at`
+- `failed_at`
+- `last_chain_status`
+- `last_chain_checked_at`
 - `limit_window`
 - `limit_snapshot`
 - `created_at`
@@ -92,7 +98,8 @@
 
 说明：
 
-- `requested_amount` 用于限额统计，不依赖解析 `request_payload`
+- `requested_amount` 用于转账与限额结算对账，不依赖解析 `request_payload`
+- `status` 正式取值至少包括 `RESERVED`、`SUBMITTED`、`CONFIRMED`、`FAILED`
 - 当转账被限额拦截时，应记录 `FAILED` 操作并保存 `limit_window` 与 `limit_snapshot`
 
 ### 4.4 `sign_operations`
@@ -167,25 +174,64 @@
 - `null` 表示该周期不限额
 - 仅允许当前支持币种：`CKB`、`ETH`、`USDT`、`USDC`
 
-### 4.8 限额统计口径
+### 4.8 `asset_limit_reservations`
 
-v1 不新增独立的限额计数器表。
+用途：
+
+- 保存 Agent 转账的额度预占、确认消耗与返还状态
+
+字段建议：
+
+- `id`
+- `operation_id`
+- `actor_role`
+- `chain`
+- `asset`
+- `amount`
+- `daily_window_start`
+- `weekly_window_start`
+- `monthly_window_start`
+- `status`
+- `release_reason`
+- `created_at`
+- `updated_at`
+- `settled_at`
+
+约束：
+
+- `operation_id` 唯一
+- `status` 仅允许 `ACTIVE`、`CONSUMED`、`RELEASED`
+- 仅 `actor_role=AGENT` 的转账允许产生 reservation
+
+### 4.9 限额统计口径
+
+v1 不新增独立的限额计数器表，但必须新增额度预占流水表。
 
 当前限额统计来源为：
 
-- `transfer_operations`
+- `asset_limit_reservations`
 
 统计范围：
 
-- `role=AGENT`
-- `status in (SUBMITTED, CONFIRMED)`
+- `actor_role=AGENT`
+- `status in (ACTIVE, CONSUMED)`
 - 同一 `chain + asset`
-- 落在当前日、周、月窗口内
+- 落在当前日、周、月窗口内的 reservation bucket
+
+统计语义：
+
+- `ACTIVE` 表示已预占但尚未最终结算
+- `CONSUMED` 表示链上确认成功后正式消耗
+- `RELEASED` 不参与当前额度统计
 
 为此必须补充索引：
 
-- `(role, chain, asset, status, created_at)`
-- `(chain, asset, created_at)`
+- `transfer_operations(status, created_at)`
+- `transfer_operations(tx_hash)`
+- `asset_limit_reservations(operation_id)`
+- `asset_limit_reservations(actor_role, chain, asset, status, daily_window_start)`
+- `asset_limit_reservations(actor_role, chain, asset, status, weekly_window_start)`
+- `asset_limit_reservations(actor_role, chain, asset, status, monthly_window_start)`
 
 ## 5. Repository 设计
 
@@ -198,6 +244,7 @@ v1 不新增独立的限额计数器表。
 - `AuditLogRepository`
 - `SystemConfigRepository`
 - `AssetLimitPolicyRepository`
+- `AssetLimitReservationRepository`
 
 每个仓储负责：
 
@@ -222,14 +269,24 @@ v1 不新增独立的限额计数器表。
 - 替换旧钱包
 - 审计日志写入
 
-### 6.3 转账状态更新事务
+### 6.3 Agent 转账预占事务
 
 至少保证：
 
-- 创建 `PENDING`
-- 更新为 `SUBMITTED` 或 `FAILED`
+- 在额度锁保护下完成当前窗口额度统计
+- 创建 `transfer_operation(status=RESERVED)`
+- 创建 `asset_limit_reservation(status=ACTIVE)`
 
-### 6.4 限额拦截事务
+### 6.4 转账广播结果事务
+
+至少保证：
+
+- 广播成功时更新 `transfer_operation -> SUBMITTED`
+- 写入 `tx_hash` 与 `submitted_at`
+- 广播失败时更新 `transfer_operation -> FAILED`
+- 广播失败时释放关联 reservation
+
+### 6.5 限额拦截事务
 
 必须保证：
 
@@ -237,7 +294,17 @@ v1 不新增独立的限额计数器表。
 - 被拦截的失败操作可追踪
 - 审计日志同步写入
 
-### 6.5 限额配置事务
+### 6.6 转账异步结算事务
+
+必须保证：
+
+- `SUBMITTED` 操作查询链上状态
+- 链上确认成功时更新 `transfer_operation -> CONFIRMED`
+- 同一事务内把 reservation 更新为 `CONSUMED`
+- 链上失败或超时时更新 `transfer_operation -> FAILED`
+- 同一事务内把 reservation 更新为 `RELEASED`
+
+### 6.7 限额配置事务
 
 必须保证：
 
@@ -245,7 +312,7 @@ v1 不新增独立的限额计数器表。
 - 审计日志写入
 - 同一 `chain + asset` 不产生重复配置记录
 
-### 6.6 导出审计事务
+### 6.8 导出审计事务
 
 必须保证：
 
@@ -269,7 +336,13 @@ v1 不新增独立的限额计数器表。
 - 配置变更通过更新时间覆盖，不保留历史版本表
 - 变更历史通过审计日志追踪
 
-### 7.4 审计日志
+### 7.4 限额预占记录
+
+- reservation 默认保留
+- `ACTIVE` 状态不得被静默删除
+- `CONSUMED` 与 `RELEASED` 用于对账和审计
+
+### 7.5 审计日志
 
 - 不允许静默删除
 - 后续如需归档，应单独设计
@@ -283,6 +356,8 @@ v1 不新增独立的限额计数器表。
 - 审计记录不可缺失
 - 限额统计与转账金额字段口径一致
 - 限额配置与支持币种集合一致
+- reservation 结算与 transfer status 必须一致
+- 任一 `ACTIVE` reservation 都必须能追溯到未完成或待恢复的操作
 
 ## 9. 数据层结论
 

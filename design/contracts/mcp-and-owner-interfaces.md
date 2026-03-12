@@ -34,14 +34,16 @@ MCP 的定位是：
 4. `nervos.balance.ckb`
 5. `nervos.sign_message`
 6. `nervos.transfer.ckb`
-7. `ethereum.address`
-8. `ethereum.balance.eth`
-9. `ethereum.balance.usdt`
-10. `ethereum.balance.usdc`
-11. `ethereum.sign_message`
-12. `ethereum.transfer.eth`
-13. `ethereum.transfer.usdt`
-14. `ethereum.transfer.usdc`
+7. `nervos.tx_status`
+8. `ethereum.address`
+9. `ethereum.balance.eth`
+10. `ethereum.balance.usdt`
+11. `ethereum.balance.usdc`
+12. `ethereum.sign_message`
+13. `ethereum.transfer.eth`
+14. `ethereum.transfer.usdt`
+15. `ethereum.transfer.usdc`
+16. `ethereum.tx_status`
 
 ### 3.2.1 Agent 可见元数据要求
 
@@ -136,6 +138,27 @@ MCP 的定位是：
 - `operationId`
 - `txHash`
 - `status`
+
+#### `nervos.tx_status`
+
+用途：
+
+- 按 `txHash` 查询指定 Nervos 交易当前链上状态
+- 供 Agent 在提交转账后自行确认是否已成功上链
+
+输入：
+
+- `txHash`
+
+输出：
+
+- `chain`
+- `txHash`
+- `status`
+- `blockNumber?`
+- `blockHash?`
+- `confirmations?`
+- `reason?`
 
 #### `ethereum.address`
 
@@ -252,7 +275,34 @@ MCP 的定位是：
 - `txHash`
 - `status`
 
+#### `ethereum.tx_status`
+
+用途：
+
+- 按 `txHash` 查询指定 Ethereum 交易当前链上状态
+- 供 Agent 在提交转账后自行确认是否已成功上链
+
+输入：
+
+- `txHash`
+
+输出：
+
+- `chain`
+- `txHash`
+- `status`
+- `blockNumber?`
+- `blockHash?`
+- `confirmations?`
+- `reason?`
+
 #### `wallet.operation_status`
+
+用途：
+
+- 返回本地操作编排状态
+- 用于查询转账请求在 server 内部的处理进度
+- 如果需要按 `txHash` 查询链上状态，应使用 `nervos.tx_status` 或 `ethereum.tx_status`
 
 输入：
 
@@ -265,6 +315,20 @@ MCP 的定位是：
 - `txHash?`
 - `errorCode?`
 - `errorMessage?`
+
+`wallet.operation_status.status` 的正式取值：
+
+- `RESERVED`
+- `SUBMITTED`
+- `CONFIRMED`
+- `FAILED`
+
+`nervos.tx_status.status` 与 `ethereum.tx_status.status` 的正式取值：
+
+- `NOT_FOUND`
+- `PENDING`
+- `CONFIRMED`
+- `FAILED`
 
 ## 4. MCP 返回规范
 
@@ -360,9 +424,16 @@ Owner HTTP API 需要提供独立的限额配置能力。
 `GET /api/owner/asset-limits` 返回：
 
 - 当前支持币种的限额配置
-- 每个币种当前周期的已用额度
+- 每个币种当前周期的 `consumedAmount`
+- 每个币种当前周期的 `reservedAmount`
+- 每个币种当前周期的 `effectiveUsedAmount`
 - 当前周期剩余额度
 - 当前周期重置时间
+
+说明：
+
+- `effectiveUsedAmount = consumedAmount + reservedAmount`
+- `reservedAmount` 表示已预占但尚未最终结算的 Agent 转账额度
 
 `PUT /api/owner/asset-limits/{chain}/{asset}` 输入：
 
@@ -491,5 +562,5 @@ UI 应在已登录状态下自行组合以下原子能力：
 
 - 一个 tool 只专注一件事
 - 一个 tool 只对应一个明确动作和一个明确资产范围
-- 当前 `PRD` 支持什么，就定义什么 tool
+- 当前需求基线支持什么，就定义什么 tool
 - 后续新增币种或动作时，新增新的明确 tool，而不是把已有 tool 扩成万能入口

@@ -64,6 +64,14 @@
 - `OWNER_JWT_SECRET`
 - `OWNER_NOTICE_PATH`
 
+### 3.6 转账结算配置
+
+- `TRANSFER_SETTLEMENT_INTERVAL_SECONDS`
+- `TRANSFER_RESERVED_TIMEOUT_SECONDS`
+- `TRANSFER_SUBMITTED_TIMEOUT_SECONDS`
+- `EVM_MIN_CONFIRMATIONS`
+- `CKB_MIN_CONFIRMATIONS`
+
 ## 4. 链配置模式
 
 链配置采用 `env + JSON 文件` 的混合模式。
@@ -175,6 +183,23 @@
 - `CHAIN_ENV=custom` 时缺失 `CHAIN_CONFIG_PATH` 必须启动失败
 - `CHAIN_ENV=testnet|mainnet` 时如果同时提供 custom 文件，应直接启动失败，避免歧义
 
+### 4.6 转账结算配置规则
+
+正式要求：
+
+- 必须启用后台转账结算任务
+- 定时任务负责扫描 `RESERVED` 与 `SUBMITTED` 操作
+- `TRANSFER_SETTLEMENT_INTERVAL_SECONDS` 决定轮询频率
+- `TRANSFER_RESERVED_TIMEOUT_SECONDS` 用于清理长时间未广播成功的 `RESERVED` 操作
+- `TRANSFER_SUBMITTED_TIMEOUT_SECONDS` 用于识别长时间未完成结算的 `SUBMITTED` 操作
+- `EVM_MIN_CONFIRMATIONS` 决定 EVM `CONFIRMED` 判定阈值
+- `CKB_MIN_CONFIRMATIONS` 决定 CKB `CONFIRMED` 判定阈值
+
+说明：
+
+- `testnet`、`mainnet`、`custom` 三种模式都必须运行结算任务
+- 结算任务是正式运行时职责，不是开发辅助工具
+
 ## 5. 限额时区口径
 
 按产品要求，限额按 server 本地时区重置。
@@ -205,9 +230,10 @@
 8. 检查链 RPC 可用性
 9. 检查或创建当前钱包
 10. 检查或创建默认 Owner 凭证
-11. 启动 MCP
-12. 启动 Owner HTTP API
-13. 提供静态 UI
+11. 启动转账结算调度器
+12. 启动 MCP
+13. 启动 Owner HTTP API
+14. 提供静态 UI
 
 ## 7. 健康检查
 
@@ -238,6 +264,9 @@
 
 - 进程存活检查
 - 数据库可用性检查
+- 结算调度器存活检查
+- 最近一次结算轮询时间检查
+- 链上状态查询能力检查
 
 ## 8. 备份与恢复
 
