@@ -34,12 +34,16 @@ MCP 的定位是：
 4. `nervos.balance.ckb`
 5. `nervos.sign_message`
 6. `nervos.transfer.ckb`
-7. `ethereum.address`
-8. `ethereum.balance.eth`
-9. `ethereum.balance.usdt`
-10. `ethereum.sign_message`
-11. `ethereum.transfer.eth`
-12. `ethereum.transfer.usdt`
+7. `nervos.tx_status`
+8. `ethereum.address`
+9. `ethereum.balance.eth`
+10. `ethereum.balance.usdt`
+11. `ethereum.balance.usdc`
+12. `ethereum.sign_message`
+13. `ethereum.transfer.eth`
+14. `ethereum.transfer.usdt`
+15. `ethereum.transfer.usdc`
+16. `ethereum.tx_status`
 
 ### 3.2.1 Agent 可见元数据要求
 
@@ -135,6 +139,27 @@ MCP 的定位是：
 - `txHash`
 - `status`
 
+#### `nervos.tx_status`
+
+用途：
+
+- 按 `txHash` 查询指定 Nervos 交易当前链上状态
+- 供 Agent 在提交转账后自行确认是否已成功上链
+
+输入：
+
+- `txHash`
+
+输出：
+
+- `chain`
+- `txHash`
+- `status`
+- `blockNumber?`
+- `blockHash?`
+- `confirmations?`
+- `reason?`
+
 #### `ethereum.address`
 
 用途：
@@ -173,6 +198,20 @@ MCP 的定位是：
 - `amount`，单位为 USDT 最小单位的整数字符串，`1000000` 表示 `1 USDT`
 - `decimals`，固定为 `6`
 - `symbol`，固定为 `USDT`
+
+#### `ethereum.balance.usdc`
+
+用途：
+
+- 返回当前钱包的 Ethereum `USDC` 余额
+
+输出：
+
+- `chain`
+- `asset`，固定为 `USDC`
+- `amount`，单位为 USDC 最小单位的整数字符串，`1000000` 表示 `1 USDC`
+- `decimals`，固定为 `6`
+- `symbol`，固定为 `USDC`
 
 #### `ethereum.sign_message`
 
@@ -221,7 +260,49 @@ MCP 的定位是：
 - `txHash`
 - `status`
 
+#### `ethereum.transfer.usdc`
+
+输入：
+
+- `to`
+- `amount`，单位为 USDC 最小单位的正整数字符串，`1000000` 表示 `1 USDC`
+
+输出：
+
+- `chain`
+- `asset`，固定为 `USDC`
+- `operationId`
+- `txHash`
+- `status`
+
+#### `ethereum.tx_status`
+
+用途：
+
+- 按 `txHash` 查询指定 Ethereum 交易当前链上状态
+- 供 Agent 在提交转账后自行确认是否已成功上链
+
+输入：
+
+- `txHash`
+
+输出：
+
+- `chain`
+- `txHash`
+- `status`
+- `blockNumber?`
+- `blockHash?`
+- `confirmations?`
+- `reason?`
+
 #### `wallet.operation_status`
+
+用途：
+
+- 返回本地操作编排状态
+- 用于查询转账请求在 server 内部的处理进度
+- 如果需要按 `txHash` 查询链上状态，应使用 `nervos.tx_status` 或 `ethereum.tx_status`
 
 输入：
 
@@ -234,6 +315,20 @@ MCP 的定位是：
 - `txHash?`
 - `errorCode?`
 - `errorMessage?`
+
+`wallet.operation_status.status` 的正式取值：
+
+- `RESERVED`
+- `SUBMITTED`
+- `CONFIRMED`
+- `FAILED`
+
+`nervos.tx_status.status` 与 `ethereum.tx_status.status` 的正式取值：
+
+- `NOT_FOUND`
+- `PENDING`
+- `CONFIRMED`
+- `FAILED`
 
 ## 4. MCP 返回规范
 
@@ -281,6 +376,8 @@ GET    /api/owner/credential/status
 GET    /api/owner/wallet/current
 POST   /api/owner/wallet/import
 POST   /api/owner/wallet/export
+GET    /api/owner/asset-limits
+PUT    /api/owner/asset-limits/{chain}/{asset}
 GET    /api/owner/audit-logs
 ```
 
@@ -315,7 +412,44 @@ Owner 登录成功后：
 - 二次确认语义
 - 审计记录
 
-### 5.4 Owner 聚合策略
+### 5.4 Owner Asset Limits
+
+Owner HTTP API 需要提供独立的限额配置能力。
+
+接口：
+
+- `GET /api/owner/asset-limits`
+- `PUT /api/owner/asset-limits/{chain}/{asset}`
+
+`GET /api/owner/asset-limits` 返回：
+
+- 当前支持币种的限额配置
+- 每个币种当前周期的 `consumedAmount`
+- 每个币种当前周期的 `reservedAmount`
+- 每个币种当前周期的 `effectiveUsedAmount`
+- 当前周期剩余额度
+- 当前周期重置时间
+
+说明：
+
+- `effectiveUsedAmount = consumedAmount + reservedAmount`
+- `reservedAmount` 表示已预占但尚未最终结算的 Agent 转账额度
+
+`PUT /api/owner/asset-limits/{chain}/{asset}` 输入：
+
+- `dailyLimit?`
+- `weeklyLimit?`
+- `monthlyLimit?`
+
+要求：
+
+- 金额单位使用该币种最小单位整数字符串
+- `null` 表示该周期不限额
+- 只允许配置当前支持币种：`CKB`、`ETH`、`USDT`、`USDC`
+- 修改限额必须写审计日志
+- Owner 自身转账不受这套限额约束
+
+### 5.5 Owner 聚合策略
 
 Owner HTTP API 不提供跨链聚合 `dashboard`。
 
@@ -328,6 +462,8 @@ UI 应在已登录状态下自行组合以下原子能力：
 - `wallet-tools/call(name=ethereum.address)`
 - `wallet-tools/call(name=ethereum.balance.eth)`
 - `wallet-tools/call(name=ethereum.balance.usdt)`
+- `wallet-tools/call(name=ethereum.balance.usdc)`
+- `asset-limits`
 - `audit-logs`
 
 架构原则：
@@ -351,11 +487,23 @@ UI 应在已登录状态下自行组合以下原子能力：
 - `TRANSFER_BUILD_FAILED`
 - `TRANSFER_BROADCAST_FAILED`
 - `SIGN_MESSAGE_FAILED`
+- `ASSET_LIMIT_EXCEEDED`
 
 要求：
 
 - MCP 与 Owner HTTP 共用同一错误码集合
 - 错误信息对用户可读，对开发者可诊断
+
+当 Agent 转账命中限额时，错误结构中必须包含 `limit` 信息：
+
+- `chain`
+- `asset`
+- `window`
+- `limitAmount`
+- `usedAmount`
+- `requestedAmount`
+- `remainingAmount`
+- `resetsAt`
 
 ## 7. 权限边界
 
@@ -371,9 +519,11 @@ UI 应在已登录状态下自行组合以下原子能力：
 - 查询 Ethereum 地址
 - 查询 Ethereum ETH 余额
 - 查询 Ethereum USDT 余额
+- 查询 Ethereum USDC 余额
 - Ethereum 消息签名
 - Ethereum ETH 转账
 - Ethereum USDT 转账
+- Ethereum USDC 转账
 - 查询操作状态
 
 禁止：
@@ -391,6 +541,7 @@ UI 应在已登录状态下自行组合以下原子能力：
 - 凭证管理
 - 钱包导入恢复
 - 私钥导出
+- 币种限额配置
 - 审计日志查看
 
 ## 8. 接口设计约束
@@ -411,5 +562,5 @@ UI 应在已登录状态下自行组合以下原子能力：
 
 - 一个 tool 只专注一件事
 - 一个 tool 只对应一个明确动作和一个明确资产范围
-- 当前 `PRD` 支持什么，就定义什么 tool
+- 当前需求基线支持什么，就定义什么 tool
 - 后续新增币种或动作时，新增新的明确 tool，而不是把已有 tool 扩成万能入口
