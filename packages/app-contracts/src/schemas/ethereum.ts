@@ -5,6 +5,7 @@ import {
   privateKeyHexSchema,
   positiveIntegerStringSchema,
   transferStatusSchema,
+  txStatusSchema,
 } from "./_common";
 
 export const ethereumAddressSchema = z.object({
@@ -17,6 +18,7 @@ export const ethereumBalanceEthSchema = z.object({
   asset: z.literal("ETH"),
   amount: nonNegativeIntegerStringSchema,
   decimals: z.literal(18),
+  symbol: z.literal("ETH"),
 });
 
 export const ethereumBalanceUsdtSchema = z.object({
@@ -24,6 +26,15 @@ export const ethereumBalanceUsdtSchema = z.object({
   asset: z.literal("USDT"),
   amount: nonNegativeIntegerStringSchema,
   decimals: z.literal(6),
+  symbol: z.literal("USDT"),
+});
+
+export const ethereumBalanceUsdcSchema = z.object({
+  chain: z.literal("ethereum"),
+  asset: z.literal("USDC"),
+  amount: nonNegativeIntegerStringSchema,
+  decimals: z.literal(6),
+  symbol: z.literal("USDC"),
 });
 
 export const ethereumDeriveAddressRequestSchema = z.object({
@@ -42,6 +53,11 @@ export const ethereumSignMessageResponseSchema = z.object({
 });
 
 export const ethereumTransferUsdtRequestSchema = z.object({
+  to: z.string().min(1),
+  amount: positiveIntegerStringSchema,
+});
+
+export const ethereumTransferUsdcRequestSchema = z.object({
   to: z.string().min(1),
   amount: positiveIntegerStringSchema,
 });
@@ -67,9 +83,32 @@ export const ethereumTransferUsdtResponseSchema = z.object({
   status: transferStatusSchema,
 });
 
+export const ethereumTransferUsdcResponseSchema = z.object({
+  chain: z.literal("ethereum"),
+  asset: z.literal("USDC"),
+  operationId: z.string(),
+  txHash: z.string(),
+  status: transferStatusSchema,
+});
+
+export const ethereumTxStatusRequestSchema = z.object({
+  txHash: z.string().min(1),
+});
+
+export const ethereumTxStatusResponseSchema = z.object({
+  chain: z.literal("ethereum"),
+  txHash: z.string(),
+  status: txStatusSchema,
+  blockNumber: nonNegativeIntegerStringSchema.optional(),
+  blockHash: z.string().optional(),
+  confirmations: nonNegativeIntegerStringSchema.optional(),
+  reason: z.string().optional(),
+});
+
 export type EthereumAddressDto = z.infer<typeof ethereumAddressSchema>;
 export type EthereumBalanceEthDto = z.infer<typeof ethereumBalanceEthSchema>;
 export type EthereumBalanceUsdtDto = z.infer<typeof ethereumBalanceUsdtSchema>;
+export type EthereumBalanceUsdcDto = z.infer<typeof ethereumBalanceUsdcSchema>;
 export type EthereumDeriveAddressRequest = z.infer<typeof ethereumDeriveAddressRequestSchema>;
 export type EthereumSignMessageRequest = z.infer<typeof ethereumSignMessageRequestSchema>;
 export type EthereumSignMessageResponse = z.infer<typeof ethereumSignMessageResponseSchema>;
@@ -77,3 +116,7 @@ export type EthereumTransferEthRequest = z.infer<typeof ethereumTransferEthReque
 export type EthereumTransferEthResponse = z.infer<typeof ethereumTransferEthResponseSchema>;
 export type EthereumTransferUsdtRequest = z.infer<typeof ethereumTransferUsdtRequestSchema>;
 export type EthereumTransferUsdtResponse = z.infer<typeof ethereumTransferUsdtResponseSchema>;
+export type EthereumTransferUsdcRequest = z.infer<typeof ethereumTransferUsdcRequestSchema>;
+export type EthereumTransferUsdcResponse = z.infer<typeof ethereumTransferUsdcResponseSchema>;
+export type EthereumTxStatusRequest = z.infer<typeof ethereumTxStatusRequestSchema>;
+export type EthereumTxStatusResponse = z.infer<typeof ethereumTxStatusResponseSchema>;

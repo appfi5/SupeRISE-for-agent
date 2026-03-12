@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { errorCodeSchema } from "../errors";
-import { transferStatusSchema } from "./_common";
+import { supportedAssetSchema, transferStatusSchema } from "./_common";
 
 export const walletCurrentSchema = z.object({
   walletFingerprint: z.string(),
@@ -15,7 +15,7 @@ export const operationStatusRequestSchema = z.object({
 export const operationStatusResponseSchema = z.object({
   operationId: z.string(),
   chain: z.enum(["nervos", "ethereum"]),
-  asset: z.enum(["CKB", "ETH", "USDT"]),
+  asset: supportedAssetSchema,
   status: transferStatusSchema,
   txHash: z.string().nullable().optional(),
   errorCode: errorCodeSchema.nullable().optional(),

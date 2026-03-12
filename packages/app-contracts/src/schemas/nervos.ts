@@ -1,10 +1,11 @@
 import { z } from "zod";
 import {
-  messageEncodingSchema,
   nonNegativeIntegerStringSchema,
+  messageEncodingSchema,
   privateKeyHexSchema,
   positiveIntegerStringSchema,
   transferStatusSchema,
+  txStatusSchema,
 } from "./_common";
 
 export const nervosAddressSchema = z.object({
@@ -17,6 +18,7 @@ export const nervosBalanceCkbSchema = z.object({
   asset: z.literal("CKB"),
   amount: nonNegativeIntegerStringSchema,
   decimals: z.literal(8),
+  symbol: z.literal("CKB"),
 });
 
 export const nervosDeriveAddressRequestSchema = z.object({
@@ -47,6 +49,20 @@ export const nervosTransferCkbResponseSchema = z.object({
   status: transferStatusSchema,
 });
 
+export const nervosTxStatusRequestSchema = z.object({
+  txHash: z.string().min(1),
+});
+
+export const nervosTxStatusResponseSchema = z.object({
+  chain: z.literal("nervos"),
+  txHash: z.string(),
+  status: txStatusSchema,
+  blockNumber: nonNegativeIntegerStringSchema.optional(),
+  blockHash: z.string().optional(),
+  confirmations: nonNegativeIntegerStringSchema.optional(),
+  reason: z.string().optional(),
+});
+
 export type NervosAddressDto = z.infer<typeof nervosAddressSchema>;
 export type NervosBalanceCkbDto = z.infer<typeof nervosBalanceCkbSchema>;
 export type NervosDeriveAddressRequest = z.infer<typeof nervosDeriveAddressRequestSchema>;
@@ -54,3 +70,5 @@ export type NervosSignMessageRequest = z.infer<typeof nervosSignMessageRequestSc
 export type NervosSignMessageResponse = z.infer<typeof nervosSignMessageResponseSchema>;
 export type NervosTransferCkbRequest = z.infer<typeof nervosTransferCkbRequestSchema>;
 export type NervosTransferCkbResponse = z.infer<typeof nervosTransferCkbResponseSchema>;
+export type NervosTxStatusRequest = z.infer<typeof nervosTxStatusRequestSchema>;
+export type NervosTxStatusResponse = z.infer<typeof nervosTxStatusResponseSchema>;
