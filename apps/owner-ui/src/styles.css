@@ -206,6 +206,27 @@ textarea {
   line-height: 1.6;
 }
 
+.window-grid {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0 18px;
+}
+
+.window-card {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(18, 32, 43, 0.08);
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.window-card strong {
+  color: var(--ink);
+}
+
 .tag {
   display: inline-flex;
   margin-top: 12px;

@@ -1,5 +1,7 @@
 import type {
   AuditLog,
+  AssetLimitPolicy,
+  AssetLimitReservation,
   OwnerCredential,
   SignOperation,
   SystemConfigSnapshot,
@@ -10,6 +12,8 @@ import { parseJson, serializeJson } from "@superise/shared";
 import type { Insertable, Selectable } from "kysely";
 import type {
   AuditLogsTable,
+  AssetLimitPoliciesTable,
+  AssetLimitReservationsTable,
   OwnerCredentialsTable,
   SignOperationsTable,
   SystemConfigTable,
@@ -146,6 +150,80 @@ export function auditLogToRow(log: AuditLog): Insertable<AuditLogsTable> {
     result: log.result,
     metadata: serializeJson(log.metadata),
     created_at: log.createdAt,
+  };
+}
+
+export function assetLimitPolicyFromRow(
+  row: Selectable<AssetLimitPoliciesTable>,
+): AssetLimitPolicy {
+  return {
+    policyId: row.id,
+    chain: row.chain as AssetLimitPolicy["chain"],
+    asset: row.asset as AssetLimitPolicy["asset"],
+    dailyLimit: row.daily_limit,
+    weeklyLimit: row.weekly_limit,
+    monthlyLimit: row.monthly_limit,
+    updatedBy: row.updated_by as AssetLimitPolicy["updatedBy"],
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function assetLimitPolicyToRow(
+  policy: AssetLimitPolicy,
+): Insertable<AssetLimitPoliciesTable> {
+  return {
+    id: policy.policyId,
+    chain: policy.chain,
+    asset: policy.asset,
+    daily_limit: policy.dailyLimit,
+    weekly_limit: policy.weeklyLimit,
+    monthly_limit: policy.monthlyLimit,
+    updated_by: policy.updatedBy,
+    created_at: policy.createdAt,
+    updated_at: policy.updatedAt,
+  };
+}
+
+export function assetLimitReservationFromRow(
+  row: Selectable<AssetLimitReservationsTable>,
+): AssetLimitReservation {
+  return {
+    reservationId: row.id,
+    operationId: row.operation_id,
+    actorRole: row.actor_role as AssetLimitReservation["actorRole"],
+    chain: row.chain as AssetLimitReservation["chain"],
+    asset: row.asset as AssetLimitReservation["asset"],
+    amount: row.amount,
+    dailyWindowStart: row.daily_window_start,
+    weeklyWindowStart: row.weekly_window_start,
+    monthlyWindowStart: row.monthly_window_start,
+    status: row.status as AssetLimitReservation["status"],
+    releaseReason: row.release_reason,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    settledAt: row.settled_at,
+  };
+}
+
+export function assetLimitReservationToRow(
+  reservation: AssetLimitReservation,
+): Insertable<AssetLimitReservationsTable> {
+  return {
+    id: reservation.reservationId,
+    operation_id: reservation.operationId,
+    actor_role: reservation.actorRole,
+    chain: reservation.chain,
+    asset: reservation.asset,
+    amount: reservation.amount,
+    daily_window_start: reservation.dailyWindowStart,
+    weekly_window_start: reservation.weeklyWindowStart,
+    monthly_window_start: reservation.monthlyWindowStart,
+    status: reservation.status,
+    release_reason: reservation.releaseReason,
+    created_at: reservation.createdAt,
+    updated_at: reservation.updatedAt,
+    settled_at: reservation.settledAt,
   };
 }
 

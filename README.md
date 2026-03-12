@@ -19,6 +19,13 @@ SupeRISE Agent Wallet 是一个面向 Agent 的单钱包信用钱包服务。正
 - MCP 接入说明（中文）：[`docs/mcp.md`](./docs/mcp.md)
 - 部署说明（中文）：[`docs/deployment.md`](./docs/deployment.md)
 
+## 当前能力
+
+- `Agent` 通过 `MCP` 接入；`Owner` 通过本地管理面和本地 `HTTP API` 管理钱包与限额
+- 当前支持资产为 Nervos `CKB`，以及 Ethereum `ETH`、`USDT`、`USDC`
+- Agent 转账按资产执行独立的日 / 周 / 月限额；Owner 转账不受该限额约束
+- `wallet.operation_status` 表示 server 本地编排状态；链上状态需要分别使用 `nervos.tx_status` 与 `ethereum.tx_status`
+
 ## 常用命令
 
 ```bash
@@ -76,7 +83,10 @@ pnpm docker:rotate-kek
 - `preset` 使用内置 `testnet/mainnet` 配置
 - `custom` 通过各自的 JSON 文件加载完整链配置
 - `CKB custom` 需要 `rpcUrl`、`indexerUrl`、`genesisHash`、`addressPrefix`、`scripts`
-- `EVM custom` 需要 `rpcUrl`、`chainId`、`networkName?`、`tokens.erc20.usdt`
+- `EVM custom` 需要 `rpcUrl`、`chainId`、`networkName?`、`tokens.erc20.usdt`、`tokens.erc20.usdc`
+- `TRANSFER_SETTLEMENT_INTERVAL_MS` 控制后台转账结算轮询间隔
+- `TRANSFER_RESERVED_TIMEOUT_MS` 控制 `RESERVED` 状态等待广播的最长时间
+- `TRANSFER_SUBMITTED_TIMEOUT_MS` 控制 `SUBMITTED` 状态等待链上确认的最长时间
 
 - 本地开发配置见 `apps/wallet-server/.env.example`
 - 本地 custom 示例见 `apps/wallet-server/config/*.custom.example.json`

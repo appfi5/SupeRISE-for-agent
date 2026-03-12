@@ -88,6 +88,46 @@ export class WalletDatabase {
       .execute();
 
     await this.db.schema
+      .createTable("asset_limit_policies")
+      .ifNotExists()
+      .addColumn("id", "text", (column) => column.primaryKey())
+      .addColumn("chain", "text", (column) => column.notNull())
+      .addColumn("asset", "text", (column) => column.notNull())
+      .addColumn("daily_limit", "text")
+      .addColumn("weekly_limit", "text")
+      .addColumn("monthly_limit", "text")
+      .addColumn("updated_by", "text", (column) => column.notNull())
+      .addColumn("created_at", "text", (column) => column.notNull())
+      .addColumn("updated_at", "text", (column) => column.notNull())
+      .addUniqueConstraint("asset_limit_policies_chain_asset_unique", [
+        "chain",
+        "asset",
+      ])
+      .execute();
+
+    await this.db.schema
+      .createTable("asset_limit_reservations")
+      .ifNotExists()
+      .addColumn("id", "text", (column) => column.primaryKey())
+      .addColumn("operation_id", "text", (column) => column.notNull())
+      .addColumn("actor_role", "text", (column) => column.notNull())
+      .addColumn("chain", "text", (column) => column.notNull())
+      .addColumn("asset", "text", (column) => column.notNull())
+      .addColumn("amount", "text", (column) => column.notNull())
+      .addColumn("daily_window_start", "text", (column) => column.notNull())
+      .addColumn("weekly_window_start", "text", (column) => column.notNull())
+      .addColumn("monthly_window_start", "text", (column) => column.notNull())
+      .addColumn("status", "text", (column) => column.notNull())
+      .addColumn("release_reason", "text")
+      .addColumn("created_at", "text", (column) => column.notNull())
+      .addColumn("updated_at", "text", (column) => column.notNull())
+      .addColumn("settled_at", "text")
+      .addUniqueConstraint("asset_limit_reservations_operation_id_unique", [
+        "operation_id",
+      ])
+      .execute();
+
+    await this.db.schema
       .createTable("system_config")
       .ifNotExists()
       .addColumn("id", "text", (column) => column.primaryKey())
@@ -100,7 +140,49 @@ export class WalletDatabase {
       .addColumn("updated_at", "text", (column) => column.notNull())
       .execute();
 
-    await sql`PRAGMA user_version = 1`.execute(this.db);
+    await this.db.schema
+      .createIndex("idx_transfer_operations_status_created_at")
+      .ifNotExists()
+      .on("transfer_operations")
+      .columns(["status", "created_at"])
+      .execute();
+
+    await this.db.schema
+      .createIndex("idx_transfer_operations_tx_hash")
+      .ifNotExists()
+      .on("transfer_operations")
+      .column("tx_hash")
+      .execute();
+
+    await this.db.schema
+      .createIndex("idx_asset_limit_reservations_operation_id")
+      .ifNotExists()
+      .on("asset_limit_reservations")
+      .column("operation_id")
+      .execute();
+
+    await this.db.schema
+      .createIndex("idx_asset_limit_reservations_daily_usage")
+      .ifNotExists()
+      .on("asset_limit_reservations")
+      .columns(["actor_role", "chain", "asset", "status", "daily_window_start"])
+      .execute();
+
+    await this.db.schema
+      .createIndex("idx_asset_limit_reservations_weekly_usage")
+      .ifNotExists()
+      .on("asset_limit_reservations")
+      .columns(["actor_role", "chain", "asset", "status", "weekly_window_start"])
+      .execute();
+
+    await this.db.schema
+      .createIndex("idx_asset_limit_reservations_monthly_usage")
+      .ifNotExists()
+      .on("asset_limit_reservations")
+      .columns(["actor_role", "chain", "asset", "status", "monthly_window_start"])
+      .execute();
+
+    await sql`PRAGMA user_version = 2`.execute(this.db);
   }
 
   async checkHealth(): Promise<void> {

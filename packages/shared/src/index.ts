@@ -21,6 +21,7 @@ export const ERROR_CODES = [
   "TRANSFER_BUILD_FAILED",
   "TRANSFER_BROADCAST_FAILED",
   "SIGN_MESSAGE_FAILED",
+  "ASSET_LIMIT_EXCEEDED",
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];

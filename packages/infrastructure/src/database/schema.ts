@@ -56,6 +56,35 @@ export type AuditLogsTable = {
   created_at: string;
 };
 
+export type AssetLimitPoliciesTable = {
+  id: string;
+  chain: string;
+  asset: string;
+  daily_limit: string | null;
+  weekly_limit: string | null;
+  monthly_limit: string | null;
+  updated_by: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AssetLimitReservationsTable = {
+  id: string;
+  operation_id: string;
+  actor_role: string;
+  chain: string;
+  asset: string;
+  amount: string;
+  daily_window_start: string;
+  weekly_window_start: string;
+  monthly_window_start: string;
+  status: string;
+  release_reason: string | null;
+  created_at: string;
+  updated_at: string;
+  settled_at: string | null;
+};
+
 export type SystemConfigTable = {
   id: string;
   owner_credential_notice_path: string;
@@ -73,6 +102,8 @@ export type DatabaseSchema = {
   transfer_operations: TransferOperationsTable;
   sign_operations: SignOperationsTable;
   audit_logs: AuditLogsTable;
+  asset_limit_policies: AssetLimitPoliciesTable;
+  asset_limit_reservations: AssetLimitReservationsTable;
   system_config: SystemConfigTable;
 };
 

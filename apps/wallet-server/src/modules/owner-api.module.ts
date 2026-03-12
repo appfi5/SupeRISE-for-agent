@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { OwnerCredentialController } from "../controllers/owner-credential.controller";
 import { OwnerAuthController } from "../controllers/owner-auth.controller";
 import { OwnerAuditController } from "../controllers/owner-audit.controller";
+import { OwnerAssetLimitController } from "../controllers/owner-asset-limit.controller";
 import { OwnerWalletController } from "../controllers/owner-wallet.controller";
 import { OwnerAuthModule } from "./owner-auth.module";
 import { WalletModule } from "./wallet.module";
@@ -12,6 +13,7 @@ import { WalletModule } from "./wallet.module";
     OwnerAuthController,
     OwnerCredentialController,
     OwnerWalletController,
+    OwnerAssetLimitController,
     OwnerAuditController,
   ],
 })

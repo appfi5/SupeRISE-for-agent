@@ -65,6 +65,7 @@ export type WalletServerErc20TokenConfig = {
 export type WalletServerEvmTokensConfig = {
   erc20: {
     usdt: WalletServerErc20TokenConfig;
+    usdc: WalletServerErc20TokenConfig;
   };
 };
 
@@ -184,6 +185,10 @@ const evmCustomChainConfigSchema = z.object({
         standard: z.literal("erc20"),
         contractAddress: z.string().trim().regex(EVM_ADDRESS_PATTERN),
       }),
+      usdc: z.object({
+        standard: z.literal("erc20"),
+        contractAddress: z.string().trim().regex(EVM_ADDRESS_PATTERN),
+      }),
     }),
   }),
 });
@@ -235,6 +240,10 @@ const EVM_PRESET_BY_NAME: Record<
           standard: "erc20",
           contractAddress: "0x0cF531D755F7324B910879b3Cf7beDFAb872513E",
         },
+        usdc: {
+          standard: "erc20",
+          contractAddress: "0xa704C2f31628ec73A12704fa726a1806613a30ae",
+        },
       },
     },
   },
@@ -249,6 +258,10 @@ const EVM_PRESET_BY_NAME: Record<
         usdt: {
           standard: "erc20",
           contractAddress: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+        },
+        usdc: {
+          standard: "erc20",
+          contractAddress: "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
         },
       },
     },
@@ -355,6 +368,11 @@ function loadEvmChainConfig(
             usdt: {
               standard: "erc20",
               contractAddress: rawConfig.tokens.erc20.usdt
+                .contractAddress as `0x${string}`,
+            },
+            usdc: {
+              standard: "erc20",
+              contractAddress: rawConfig.tokens.erc20.usdc
                 .contractAddress as `0x${string}`,
             },
           },

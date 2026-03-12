@@ -81,6 +81,59 @@ export class CkbCccWalletAdapter implements CkbWalletAdapter {
     return { txHash };
   }
 
+  async getTxStatus(txHash: string) {
+    try {
+      const client = this.createClient();
+      const transaction = await client.getTransaction(txHash);
+
+      if (!transaction || transaction.status === "unknown") {
+        return {
+          txHash,
+          status: "NOT_FOUND" as const,
+        };
+      }
+
+      if (transaction.status === "rejected") {
+        return {
+          txHash,
+          status: "FAILED" as const,
+          reason: transaction.reason,
+        };
+      }
+
+      if (transaction.status === "committed") {
+        const tip = await client.getTip();
+        const blockNumber = transaction.blockNumber?.toString();
+        const confirmations =
+          blockNumber !== undefined
+            ? (BigInt(tip.toString()) - BigInt(blockNumber) + 1n).toString()
+            : undefined;
+
+        return {
+          txHash,
+          status: "CONFIRMED" as const,
+          blockNumber,
+          blockHash: transaction.blockHash?.toString(),
+          confirmations,
+          reason: transaction.reason,
+        };
+      }
+
+      return {
+        txHash,
+        status: "PENDING" as const,
+        blockNumber: transaction.blockNumber?.toString(),
+        blockHash: transaction.blockHash?.toString(),
+        reason: transaction.reason,
+      };
+    } catch (error) {
+      throw new WalletDomainError(
+        "CHAIN_UNAVAILABLE",
+        `CKB tx status lookup failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
   async checkHealth(): Promise<void> {
     try {
       const client = this.createClient();

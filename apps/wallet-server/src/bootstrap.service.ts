@@ -8,6 +8,7 @@ import type {
   BootstrapOwnerCredentialService,
   BootstrapWalletService,
   HealthCheckService,
+  TransferSettlementService,
 } from "@superise/application";
 import { WalletDatabase, type WalletServerConfig } from "@superise/infrastructure";
 import { TOKENS } from "./tokens";
@@ -16,6 +17,8 @@ import { TOKENS } from "./tokens";
 export class BootstrapService
   implements OnApplicationBootstrap, OnApplicationShutdown
 {
+  private settlementTimer: NodeJS.Timeout | null = null;
+
   constructor(
     @Inject(TOKENS.CONFIG) private readonly config: WalletServerConfig,
     @Inject(TOKENS.DATABASE) private readonly database: WalletDatabase,
@@ -25,6 +28,8 @@ export class BootstrapService
     private readonly bootstrapWalletService: BootstrapWalletService,
     @Inject(TOKENS.BOOTSTRAP_OWNER_CREDENTIAL_SERVICE)
     private readonly bootstrapOwnerCredentialService: BootstrapOwnerCredentialService,
+    @Inject(TOKENS.TRANSFER_SETTLEMENT_SERVICE)
+    private readonly transferSettlementService: TransferSettlementService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -80,9 +85,16 @@ export class BootstrapService
         evm: evmConfig,
       },
     });
+    this.settlementTimer = setInterval(() => {
+      void this.transferSettlementService.execute().catch(() => undefined);
+    }, this.config.transferSettlementIntervalMs);
   }
 
   async onApplicationShutdown(): Promise<void> {
+    if (this.settlementTimer) {
+      clearInterval(this.settlementTimer);
+      this.settlementTimer = null;
+    }
     await this.database.close();
   }
 }

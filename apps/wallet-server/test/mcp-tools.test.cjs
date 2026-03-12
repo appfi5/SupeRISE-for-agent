@@ -12,15 +12,19 @@ function createRegistry() {
   return new WalletToolRegistryService(
     { execute: async () => ({ walletFingerprint: "wlt_test", status: "ACTIVE", source: "IMPORTED" }) },
     { execute: async () => ({ chain: "nervos", address: "ckt1qyq..." }) },
-    { execute: async () => ({ chain: "nervos", asset: "CKB", amount: "100000000", decimals: 8 }) },
+    { execute: async () => ({ chain: "nervos", asset: "CKB", amount: "100000000", decimals: 8, symbol: "CKB" }) },
     { execute: async () => ({ chain: "nervos", signingAddress: "ckt1qyq...", signature: "0xabc" }) },
     { execute: async () => ({ chain: "nervos", asset: "CKB", operationId: "op_ckb", txHash: "0x1", status: "SUBMITTED" }) },
+    { execute: async () => ({ chain: "nervos", txHash: "0x1", status: "CONFIRMED" }) },
     { execute: async () => ({ chain: "ethereum", address: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e" }) },
-    { execute: async () => ({ chain: "ethereum", asset: "ETH", amount: "1", decimals: 18 }) },
-    { execute: async () => ({ chain: "ethereum", asset: "USDT", amount: "1", decimals: 6 }) },
+    { execute: async () => ({ chain: "ethereum", asset: "ETH", amount: "1", decimals: 18, symbol: "ETH" }) },
+    { execute: async () => ({ chain: "ethereum", asset: "USDT", amount: "1", decimals: 6, symbol: "USDT" }) },
+    { execute: async () => ({ chain: "ethereum", asset: "USDC", amount: "1", decimals: 6, symbol: "USDC" }) },
     { execute: async () => ({ chain: "ethereum", signingAddress: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e", signature: "0xdef" }) },
     { execute: async () => ({ chain: "ethereum", asset: "ETH", operationId: "op_eth", txHash: "0x2", status: "SUBMITTED" }) },
     { execute: async () => ({ chain: "ethereum", asset: "USDT", operationId: "op_usdt", txHash: "0x3", status: "SUBMITTED" }) },
+    { execute: async () => ({ chain: "ethereum", asset: "USDC", operationId: "op_usdc", txHash: "0x4", status: "SUBMITTED" }) },
+    { execute: async () => ({ chain: "ethereum", txHash: "0x2", status: "CONFIRMED" }) },
     { execute: async () => ({ operationId: "op_eth", chain: "ethereum", asset: "ETH", status: "SUBMITTED", txHash: "0x2" }) },
   );
 }
@@ -71,4 +75,14 @@ test("McpServerFactory registers tool title, annotations, and output schema for 
   assert.equal(tool.title, "Get Current Wallet");
   assert.equal(tool.annotations.readOnlyHint, true);
   assert.ok(tool.outputSchema);
+});
+
+test("WalletToolRegistryService exposes ethereum.tx_status for agent follow-up checks", async () => {
+  const registry = createRegistry();
+  const definition = registry
+    .listDefinitions()
+    .find((item) => item.name === "ethereum.tx_status");
+
+  assert.ok(definition);
+  assert.equal(definition.annotations.readOnlyHint, true);
 });

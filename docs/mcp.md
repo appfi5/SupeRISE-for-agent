@@ -46,19 +46,28 @@
 - `nervos.balance.ckb`
 - `nervos.sign_message`
 - `nervos.transfer.ckb`
+- `nervos.tx_status`
 - `ethereum.address`
 - `ethereum.balance.eth`
 - `ethereum.balance.usdt`
+- `ethereum.balance.usdc`
 - `ethereum.sign_message`
 - `ethereum.transfer.eth`
 - `ethereum.transfer.usdt`
+- `ethereum.transfer.usdc`
+- `ethereum.tx_status`
 
 ## 工具语义
 
+- 当前支持资产为 Nervos `CKB`，以及 Ethereum `ETH`、`USDT`、`USDC`
 - `amount` 一律是资产最小单位的整数字符串
 - `nervos.balance.ckb` 和 `nervos.transfer.ckb` 使用 `Shannon`
-- `ethereum.balance.eth` 使用 `wei`
-- `ethereum.transfer.eth` 使用 `wei`
+- `ethereum.balance.eth` 和 `ethereum.transfer.eth` 使用 `wei`
 - `ethereum.balance.usdt` 和 `ethereum.transfer.usdt` 使用 USDT 最小单位
-- 余额查询结果会返回 `decimals`
-- transfer 工具返回的是提交结果，不表示最终确认；应继续调用 `wallet.operation_status`
+- `ethereum.balance.usdc` 和 `ethereum.transfer.usdc` 使用 USDC 最小单位
+- 余额查询结果会返回 `amount`、`decimals`、`symbol`
+- transfer 工具返回的是 server 已接受并开始处理的提交结果，不表示最终链上确认
+- `wallet.operation_status` 返回本地操作状态：`RESERVED`、`SUBMITTED`、`CONFIRMED`、`FAILED`
+- `nervos.tx_status` 与 `ethereum.tx_status` 返回链上观察状态：`NOT_FOUND`、`PENDING`、`CONFIRMED`、`FAILED`
+- 一次转账后，通常需要同时使用 `wallet.operation_status` 与对应链的 `tx_status` 跟踪内部进度和链上最终结果
+- 当 Agent 转账命中按资产限额时，transfer 工具会返回 `ASSET_LIMIT_EXCEEDED`；限额按资产独立执行，并按日 / 周 / 月窗口统计

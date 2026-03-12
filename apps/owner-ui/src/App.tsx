@@ -3,14 +3,17 @@ import type {
   AuditLogDto,
   EthereumAddressDto,
   EthereumBalanceEthDto,
+  EthereumBalanceUsdcDto,
   EthereumBalanceUsdtDto,
   EthereumSignMessageResponse,
   EthereumTransferEthResponse,
+  EthereumTransferUsdcResponse,
   EthereumTransferUsdtResponse,
   NervosAddressDto,
   NervosBalanceCkbDto,
   NervosSignMessageResponse,
   NervosTransferCkbResponse,
+  OwnerAssetLimitEntryDto,
   OwnerCredentialStatusDto,
   OwnerLoginResponse,
   OwnerWalletExportResponse,
@@ -28,12 +31,15 @@ import { LoginScreen } from "./components/LoginScreen";
 import {
   emptyAppState,
   type AppState,
+  type AssetLimitFormState,
   type CkbTransferFormState,
   type EthTransferFormState,
   type MessageSigningFormState,
   type RotateCredentialFormState,
+  type UsdcTransferFormState,
   type UsdtTransferFormState,
 } from "./types/app-state";
+import { createLimitKey } from "./components/AssetLimitPanel";
 
 const EMPTY_MESSAGE_SIGNING_FORM: MessageSigningFormState = {
   message: "",
@@ -51,6 +57,11 @@ const EMPTY_ETH_TRANSFER_FORM: EthTransferFormState = {
 };
 
 const EMPTY_USDT_TRANSFER_FORM: UsdtTransferFormState = {
+  to: "",
+  amount: "",
+};
+
+const EMPTY_USDC_TRANSFER_FORM: UsdcTransferFormState = {
   to: "",
   amount: "",
 };
@@ -77,6 +88,11 @@ export function App() {
     useState<EthTransferFormState>(EMPTY_ETH_TRANSFER_FORM);
   const [usdtTransfer, setUsdtTransfer] =
     useState<UsdtTransferFormState>(EMPTY_USDT_TRANSFER_FORM);
+  const [usdcTransfer, setUsdcTransfer] =
+    useState<UsdcTransferFormState>(EMPTY_USDC_TRANSFER_FORM);
+  const [assetLimitDrafts, setAssetLimitDrafts] = useState<
+    Record<string, AssetLimitFormState>
+  >({});
   const [importKey, setImportKey] = useState("");
   const [importConfirmed, setImportConfirmed] = useState(false);
   const [nervosSignResult, setNervosSignResult] = useState("");
@@ -104,9 +120,10 @@ export function App() {
     const refreshToken = ++refreshTokenRef.current;
 
     try {
-      const [credential, current, audits] = await Promise.all([
+      const [credential, current, assetLimits, audits] = await Promise.all([
         request<OwnerCredentialStatusDto>("/api/owner/credential/status"),
         callWalletTool<WalletCurrentDto>("wallet.current"),
+        request<OwnerAssetLimitEntryDto[]>("/api/owner/asset-limits"),
         request<AuditLogDto[]>("/api/owner/audit-logs?limit=20"),
       ]);
 
@@ -119,8 +136,10 @@ export function App() {
         ...currentState,
         credential,
         current,
+        assetLimits,
         audits,
       }));
+      setAssetLimitDrafts(createAssetLimitDraftMap(assetLimits));
 
       void refreshChainState(refreshToken);
     } catch (error) {
@@ -199,6 +218,19 @@ export function App() {
         })),
       "USDT 余额",
     );
+    void loadChainSlice(
+      refreshToken,
+      () => callWalletTool<EthereumBalanceUsdcDto>("ethereum.balance.usdc"),
+      (value) =>
+        setAppState((currentState) => ({
+          ...currentState,
+          ethereum: {
+            ...currentState.ethereum,
+            usdcBalance: value,
+          },
+        })),
+      "USDC 余额",
+    );
   }
 
   async function loadChainSlice<T>(
@@ -249,6 +281,7 @@ export function App() {
     clearOwnerAccessToken();
     setAuthenticated(false);
     setAppState(emptyAppState);
+    setAssetLimitDrafts({});
     setExportedKey("");
     setImportKey("");
     setImportConfirmed(false);
@@ -332,6 +365,16 @@ export function App() {
     await refreshAuthenticatedState();
   }
 
+  async function handleTransferUsdc() {
+    const result = await callWalletTool<EthereumTransferUsdcResponse>(
+      "ethereum.transfer.usdc",
+      usdcTransfer,
+    );
+    setMessage(`USDC 转账已提交：${result.operationId}`);
+    setUsdcTransfer(EMPTY_USDC_TRANSFER_FORM);
+    await refreshAuthenticatedState();
+  }
+
   async function handleTransferEth() {
     const result = await callWalletTool<EthereumTransferEthResponse>(
       "ethereum.transfer.eth",
@@ -339,6 +382,30 @@ export function App() {
     );
     setMessage(`ETH 转账已提交：${result.operationId}`);
     setEthTransfer(EMPTY_ETH_TRANSFER_FORM);
+    await refreshAuthenticatedState();
+  }
+
+  async function handleSaveAssetLimit(key: string) {
+    const limit = appState.assetLimits.find((entry) => createLimitKey(entry) === key);
+    const draft = assetLimitDrafts[key];
+
+    if (!limit || !draft) {
+      setMessage("未找到对应的限额配置。");
+      return;
+    }
+
+    await request<OwnerAssetLimitEntryDto>(
+      `/api/owner/asset-limits/${limit.chain}/${limit.asset}`,
+      {
+        method: "PUT",
+        body: JSON.stringify({
+          dailyLimit: draft.dailyLimit.trim() ? draft.dailyLimit.trim() : null,
+          weeklyLimit: draft.weeklyLimit.trim() ? draft.weeklyLimit.trim() : null,
+          monthlyLimit: draft.monthlyLimit.trim() ? draft.monthlyLimit.trim() : null,
+        }),
+      },
+    );
+    setMessage(`${limit.asset} 限额已保存。`);
     await refreshAuthenticatedState();
   }
 
@@ -398,6 +465,8 @@ export function App() {
       nervosSignForm={nervosSignForm}
       nervosSignResult={nervosSignResult}
       rotateForm={rotateForm}
+      assetLimitDrafts={assetLimitDrafts}
+      usdcTransfer={usdcTransfer}
       usdtTransfer={usdtTransfer}
       onCkbAmountChange={(value) =>
         setCkbTransfer((current) => ({ ...current, amount: value }))
@@ -439,6 +508,23 @@ export function App() {
         setRotateForm((current) => ({ ...current, newPassword: value }))
       }
       onRotateSubmit={() => runAction(handleRotateCredential)}
+      onAssetLimitChange={(key, field, value) =>
+        setAssetLimitDrafts((current) => ({
+          ...current,
+          [key]: {
+            ...(current[key] ?? { dailyLimit: "", weeklyLimit: "", monthlyLimit: "" }),
+            [field]: value,
+          },
+        }))
+      }
+      onAssetLimitSave={(key) => runAction(() => handleSaveAssetLimit(key))}
+      onUsdcAmountChange={(value) =>
+        setUsdcTransfer((current) => ({ ...current, amount: value }))
+      }
+      onUsdcSubmit={() => runAction(handleTransferUsdc)}
+      onUsdcToChange={(value) =>
+        setUsdcTransfer((current) => ({ ...current, to: value }))
+      }
       onUsdtAmountChange={(value) =>
         setUsdtTransfer((current) => ({ ...current, amount: value }))
       }
@@ -452,4 +538,19 @@ export function App() {
 
 function formatSignResult(signingAddress: string, signature: string): string {
   return `${signingAddress}\n${signature}`;
+}
+
+function createAssetLimitDraftMap(
+  limits: OwnerAssetLimitEntryDto[],
+): Record<string, AssetLimitFormState> {
+  return Object.fromEntries(
+    limits.map((limit) => [
+      createLimitKey(limit),
+      {
+        dailyLimit: limit.dailyLimit ?? "",
+        weeklyLimit: limit.weeklyLimit ?? "",
+        monthlyLimit: limit.monthlyLimit ?? "",
+      },
+    ]),
+  );
 }

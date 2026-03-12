@@ -5,6 +5,7 @@ import type {
   NervosSignMessageResponse,
   NervosTransferCkbRequest,
   NervosTransferCkbResponse,
+  NervosTxStatusResponse,
 } from "@superise/app-contracts";
 import type { ActorRole } from "@superise/domain";
 import {
@@ -15,11 +16,7 @@ import {
   markTransferSubmitted,
   WalletDomainError,
 } from "@superise/domain";
-import {
-  decodeMessage,
-  sha256Hex,
-  toErrorMessage,
-} from "@superise/shared";
+import { decodeMessage, sha256Hex, toErrorMessage } from "@superise/shared";
 import type {
   ChainWriteLocker,
   CkbWalletAdapter,
@@ -28,6 +25,7 @@ import type {
   VaultPort,
   WalletRepository,
 } from "../ports";
+import { AssetLimitService } from "./asset-limit.service";
 import { mapTransferErrorCode } from "../utils/transfer-errors";
 import { loadDecryptedPrivateKey } from "../utils/wallet-access";
 
@@ -61,6 +59,19 @@ export class NervosCkbBalanceQueryService {
       asset: "CKB",
       amount: await this.ckb.getBalance(privateKey),
       decimals: 8,
+      symbol: "CKB",
+    };
+  }
+}
+
+export class NervosTxStatusQueryService {
+  constructor(private readonly ckb: CkbWalletAdapter) {}
+
+  async execute(txHash: string): Promise<NervosTxStatusResponse> {
+    const status = await this.ckb.getTxStatus(txHash);
+    return {
+      chain: "nervos",
+      ...status,
     };
   }
 }
@@ -143,6 +154,7 @@ export class NervosCkbTransferService {
     private readonly repos: RepositoryBundle,
     private readonly unitOfWork: UnitOfWork,
     private readonly locker: ChainWriteLocker,
+    private readonly assetLimits: AssetLimitService,
     private readonly vault: VaultPort,
     private readonly ckb: CkbWalletAdapter,
   ) {}
@@ -160,7 +172,19 @@ export class NervosCkbTransferService {
 
     await this.repos.transfers.save(operation);
 
+    let hasReservation = false;
+
     try {
+      if (actorRole === "AGENT") {
+        await this.assetLimits.reserveForAgentTransfer({
+          operationId: operation.operationId,
+          chain: "ckb",
+          asset: "CKB",
+          amount: request.amount,
+        });
+        hasReservation = true;
+      }
+
       const { privateKey } = await loadDecryptedPrivateKey(this.repos.wallets, this.vault);
       const transferResult = await this.locker.execute("ckb", async () =>
         this.ckb.transfer(privateKey, request),
@@ -191,6 +215,13 @@ export class NervosCkbTransferService {
         status: submitted.status,
       };
     } catch (error) {
+      if (hasReservation) {
+        await this.assetLimits.releaseReservation(
+          operation.operationId,
+          "transfer_failed:nervos.transfer_ckb",
+        );
+      }
+
       const failed = markTransferFailed(
         operation,
         mapTransferErrorCode(error, "ckb"),
@@ -216,6 +247,7 @@ export class NervosCkbTransferService {
       throw new WalletDomainError(
         failed.errorCode ?? "TRANSFER_BUILD_FAILED",
         failed.errorMessage ?? "Nervos CKB transfer failed",
+        error instanceof WalletDomainError ? error.details : undefined,
       );
     }
   }

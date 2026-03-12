@@ -45,6 +45,10 @@ const EVM_CUSTOM_CONFIG = {
         standard: "erc20",
         contractAddress: "0x0cF531D755F7324B910879b3Cf7beDFAb872513E",
       },
+      usdc: {
+        standard: "erc20",
+        contractAddress: "0xa704C2f31628ec73A12704fa726a1806613a30ae",
+      },
     },
   },
 };
@@ -57,6 +61,10 @@ test("loadWalletServerConfig defaults both chains to the built-in testnet preset
   assert.equal(config.chainConfig.ckb.preset, "testnet");
   assert.equal(config.chainConfig.evm.mode, "preset");
   assert.equal(config.chainConfig.evm.chainId, 11155111);
+  assert.equal(
+    config.chainConfig.evm.tokens.erc20.usdc.contractAddress,
+    "0xa704C2f31628ec73A12704fa726a1806613a30ae",
+  );
 });
 
 test("loadWalletServerConfig loads mixed per-chain preset/custom configuration", () => {
@@ -114,6 +122,10 @@ test("loadWalletServerConfig loads full custom configuration from two JSON files
   assert.equal(
     config.chainConfig.evm.tokens.erc20.usdt.contractAddress,
     EVM_CUSTOM_CONFIG.tokens.erc20.usdt.contractAddress,
+  );
+  assert.equal(
+    config.chainConfig.evm.tokens.erc20.usdc.contractAddress,
+    EVM_CUSTOM_CONFIG.tokens.erc20.usdc.contractAddress,
   );
 });
 

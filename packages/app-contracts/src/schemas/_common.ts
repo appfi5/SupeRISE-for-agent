@@ -9,8 +9,15 @@ export const privateKeyHexSchema = z
 export const messageEncodingSchema = z.enum(["utf8", "hex"]).default("utf8");
 
 export const transferStatusSchema = z.enum([
-  "PENDING",
+  "RESERVED",
   "SUBMITTED",
+  "CONFIRMED",
+  "FAILED",
+]);
+
+export const txStatusSchema = z.enum([
+  "NOT_FOUND",
+  "PENDING",
   "CONFIRMED",
   "FAILED",
 ]);
@@ -18,6 +25,21 @@ export const transferStatusSchema = z.enum([
 export const credentialStatusSchema = z.enum([
   "DEFAULT_PENDING_ROTATION",
   "ACTIVE",
+]);
+
+export const publicChainSchema = z.enum(["nervos", "ethereum"]);
+
+export const supportedAssetSchema = z.enum([
+  "CKB",
+  "ETH",
+  "USDT",
+  "USDC",
+]);
+
+export const assetLimitWindowSchema = z.enum([
+  "DAILY",
+  "WEEKLY",
+  "MONTHLY",
 ]);
 
 export const nonNegativeIntegerStringSchema = z

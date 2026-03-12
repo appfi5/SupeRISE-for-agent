@@ -1,7 +1,10 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
+  assetLimitExceededDetailSchema,
+  ethereumBalanceUsdcSchema,
   ethereumTransferEthRequestSchema,
+  ownerUpdateAssetLimitRequestSchema,
   ownerWalletImportRequestSchema,
   MCP_TOOL_NAMES,
 } = require("../dist/index.cjs");
@@ -48,4 +51,51 @@ test("ethereum ETH transfer schema only accepts smallest-unit integer amounts", 
 
 test("MCP tool names include ethereum.transfer.eth", () => {
   assert.ok(MCP_TOOL_NAMES.includes("ethereum.transfer.eth"));
+  assert.ok(MCP_TOOL_NAMES.includes("ethereum.balance.usdc"));
+  assert.ok(MCP_TOOL_NAMES.includes("ethereum.transfer.usdc"));
+  assert.ok(MCP_TOOL_NAMES.includes("ethereum.tx_status"));
+  assert.ok(MCP_TOOL_NAMES.includes("nervos.tx_status"));
+});
+
+test("ethereum USDC balance schema exposes the fixed symbol and decimals", () => {
+  const parsed = ethereumBalanceUsdcSchema.parse({
+    chain: "ethereum",
+    asset: "USDC",
+    amount: "1000000",
+    decimals: 6,
+    symbol: "USDC",
+  });
+
+  assert.equal(parsed.symbol, "USDC");
+  assert.equal(parsed.decimals, 6);
+});
+
+test("owner asset limit update schema requires at least one field", () => {
+  const parsed = ownerUpdateAssetLimitRequestSchema.parse({
+    dailyLimit: "1000",
+  });
+
+  assert.equal(parsed.dailyLimit, "1000");
+  assert.throws(
+    () => ownerUpdateAssetLimitRequestSchema.parse({}),
+    /At least one limit field/i,
+  );
+});
+
+test("asset limit exceeded details carry the structured limit payload", () => {
+  const parsed = assetLimitExceededDetailSchema.parse({
+    limit: {
+      chain: "ethereum",
+      asset: "USDC",
+      window: "DAILY",
+      limitAmount: "1000000",
+      usedAmount: "600000",
+      requestedAmount: "500000",
+      remainingAmount: "400000",
+      resetsAt: "2026-03-13T00:00:00.000Z",
+    },
+  });
+
+  assert.equal(parsed.limit.asset, "USDC");
+  assert.equal(parsed.limit.window, "DAILY");
 });

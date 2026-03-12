@@ -1,15 +1,20 @@
 import type {
   EthereumTransferEthRequest,
+  EthereumTransferUsdcRequest,
   EthereumTransferUsdtRequest,
   NervosTransferCkbRequest,
 } from "@superise/app-contracts";
 import type {
   AuditLog,
+  AssetLimitPolicy,
+  AssetLimitReservation,
+  ChainTransactionStatus,
   ChainKind,
   OwnerCredential,
   SignOperation,
   SystemConfigSnapshot,
   TransferOperation,
+  TransferStatus,
   WalletAggregate,
 } from "@superise/domain";
 import type { JsonValue } from "@superise/shared";
@@ -45,6 +50,7 @@ export interface OwnerCredentialRepository {
 
 export interface TransferOperationRepository {
   getById(operationId: string): Promise<TransferOperation | null>;
+  listByStatuses(statuses: TransferStatus[], limit: number): Promise<TransferOperation[]>;
   save(operation: TransferOperation): Promise<void>;
 }
 
@@ -62,6 +68,24 @@ export interface SystemConfigRepository {
   saveCurrent(config: SystemConfigSnapshot): Promise<void>;
 }
 
+export interface AssetLimitPolicyRepository {
+  getByChainAsset(
+    chain: ChainKind,
+    asset: AssetLimitPolicy["asset"],
+  ): Promise<AssetLimitPolicy | null>;
+  listAll(): Promise<AssetLimitPolicy[]>;
+  save(policy: AssetLimitPolicy): Promise<void>;
+}
+
+export interface AssetLimitReservationRepository {
+  getByOperationId(operationId: string): Promise<AssetLimitReservation | null>;
+  listByChainAsset(
+    chain: ChainKind,
+    asset: AssetLimitReservation["asset"],
+  ): Promise<AssetLimitReservation[]>;
+  save(reservation: AssetLimitReservation): Promise<void>;
+}
+
 export type RepositoryBundle = {
   wallets: WalletRepository;
   ownerCredentials: OwnerCredentialRepository;
@@ -69,6 +93,8 @@ export type RepositoryBundle = {
   signs: SignOperationRepository;
   audits: AuditLogRepository;
   systemConfig: SystemConfigRepository;
+  assetLimitPolicies: AssetLimitPolicyRepository;
+  assetLimitReservations: AssetLimitReservationRepository;
 };
 
 export interface UnitOfWork {
@@ -130,6 +156,19 @@ export interface ChainWriteLocker {
   execute<T>(chain: ChainKind, task: () => Promise<T>): Promise<T>;
 }
 
+export interface AssetLimitLocker {
+  execute<T>(key: string, task: () => Promise<T>): Promise<T>;
+}
+
+export type ChainTxStatusResult = {
+  txHash: string;
+  status: ChainTransactionStatus;
+  blockNumber?: string;
+  blockHash?: string;
+  confirmations?: string;
+  reason?: string;
+};
+
 export interface CkbWalletAdapter {
   deriveAddress(privateKey: string): Promise<string>;
   getBalance(privateKey: string): Promise<string>;
@@ -141,6 +180,7 @@ export interface CkbWalletAdapter {
     privateKey: string,
     request: NervosTransferCkbRequest,
   ): Promise<{ txHash: string }>;
+  getTxStatus(txHash: string): Promise<ChainTxStatusResult>;
   checkHealth(): Promise<void>;
 }
 
@@ -148,6 +188,7 @@ export interface EvmWalletAdapter {
   deriveAddress(privateKey: string): Promise<string>;
   getEthBalance(privateKey: string): Promise<string>;
   getUsdtBalance(privateKey: string): Promise<string>;
+  getUsdcBalance(privateKey: string): Promise<string>;
   signMessage(
     privateKey: string,
     message: string | Uint8Array,
@@ -160,6 +201,11 @@ export interface EvmWalletAdapter {
     privateKey: string,
     request: EthereumTransferUsdtRequest,
   ): Promise<{ txHash: string }>;
+  transferUsdc(
+    privateKey: string,
+    request: EthereumTransferUsdcRequest,
+  ): Promise<{ txHash: string }>;
+  getTxStatus(txHash: string): Promise<ChainTxStatusResult>;
   checkHealth(): Promise<void>;
 }
 

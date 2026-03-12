@@ -1,15 +1,19 @@
 import type {
   EthereumAddressDto,
   EthereumBalanceEthDto,
+  EthereumBalanceUsdcDto,
   EthereumBalanceUsdtDto,
   EthereumSignMessageRequest,
   EthereumSignMessageResponse,
   EthereumTransferEthRequest,
   EthereumTransferEthResponse,
+  EthereumTransferUsdcRequest,
+  EthereumTransferUsdcResponse,
   EthereumTransferUsdtRequest,
   EthereumTransferUsdtResponse,
+  EthereumTxStatusResponse,
 } from "@superise/app-contracts";
-import type { ActorRole } from "@superise/domain";
+import type { ActorRole, AssetKind } from "@superise/domain";
 import {
   createAuditLog,
   createSignOperation,
@@ -18,11 +22,7 @@ import {
   markTransferSubmitted,
   WalletDomainError,
 } from "@superise/domain";
-import {
-  decodeMessage,
-  sha256Hex,
-  toErrorMessage,
-} from "@superise/shared";
+import { decodeMessage, sha256Hex, toErrorMessage } from "@superise/shared";
 import type {
   ChainWriteLocker,
   EvmWalletAdapter,
@@ -31,6 +31,7 @@ import type {
   VaultPort,
   WalletRepository,
 } from "../ports";
+import { AssetLimitService } from "./asset-limit.service";
 import { mapTransferErrorCode } from "../utils/transfer-errors";
 import { loadDecryptedPrivateKey } from "../utils/wallet-access";
 
@@ -64,6 +65,26 @@ export class EthereumUsdtBalanceQueryService {
       asset: "USDT",
       amount: await this.evm.getUsdtBalance(privateKey),
       decimals: 6,
+      symbol: "USDT",
+    };
+  }
+}
+
+export class EthereumUsdcBalanceQueryService {
+  constructor(
+    private readonly wallets: WalletRepository,
+    private readonly vault: VaultPort,
+    private readonly evm: EvmWalletAdapter,
+  ) {}
+
+  async execute(): Promise<EthereumBalanceUsdcDto> {
+    const { privateKey } = await loadDecryptedPrivateKey(this.wallets, this.vault);
+    return {
+      chain: "ethereum",
+      asset: "USDC",
+      amount: await this.evm.getUsdcBalance(privateKey),
+      decimals: 6,
+      symbol: "USDC",
     };
   }
 }
@@ -82,6 +103,19 @@ export class EthereumEthBalanceQueryService {
       asset: "ETH",
       amount: await this.evm.getEthBalance(privateKey),
       decimals: 18,
+      symbol: "ETH",
+    };
+  }
+}
+
+export class EthereumTxStatusQueryService {
+  constructor(private readonly evm: EvmWalletAdapter) {}
+
+  async execute(txHash: string): Promise<EthereumTxStatusResponse> {
+    const status = await this.evm.getTxStatus(txHash);
+    return {
+      chain: "ethereum",
+      ...status,
     };
   }
 }
@@ -164,6 +198,7 @@ export class EthereumUsdtTransferService {
     private readonly repos: RepositoryBundle,
     private readonly unitOfWork: UnitOfWork,
     private readonly locker: ChainWriteLocker,
+    private readonly assetLimits: AssetLimitService,
     private readonly vault: VaultPort,
     private readonly evm: EvmWalletAdapter,
   ) {}
@@ -172,73 +207,49 @@ export class EthereumUsdtTransferService {
     actorRole: Extract<ActorRole, "AGENT" | "OWNER">,
     request: EthereumTransferUsdtRequest,
   ): Promise<EthereumTransferUsdtResponse> {
-    const operation = createTransferOperation({
+    return executeEthereumTransfer({
+      repos: this.repos,
+      unitOfWork: this.unitOfWork,
+      locker: this.locker,
+      assetLimits: this.assetLimits,
+      vault: this.vault,
+      evm: this.evm,
       actorRole,
-      chain: "evm",
       asset: "USDT",
-      requestPayload: request,
+      action: "ethereum.transfer_usdt",
+      request,
+      transfer: (privateKey) => this.evm.transferUsdt(privateKey, request),
     });
+  }
+}
 
-    await this.repos.transfers.save(operation);
+export class EthereumUsdcTransferService {
+  constructor(
+    private readonly repos: RepositoryBundle,
+    private readonly unitOfWork: UnitOfWork,
+    private readonly locker: ChainWriteLocker,
+    private readonly assetLimits: AssetLimitService,
+    private readonly vault: VaultPort,
+    private readonly evm: EvmWalletAdapter,
+  ) {}
 
-    try {
-      const { privateKey } = await loadDecryptedPrivateKey(this.repos.wallets, this.vault);
-      const transferResult = await this.locker.execute("evm", async () =>
-        this.evm.transferUsdt(privateKey, request),
-      );
-
-      const submitted = markTransferSubmitted(operation, transferResult.txHash);
-
-      await this.unitOfWork.run(async (repos) => {
-        await repos.transfers.save(submitted);
-        await repos.audits.save(
-          createAuditLog({
-            actorRole,
-            action: "ethereum.transfer_usdt",
-            result: "SUCCESS",
-            metadata: {
-              operationId: submitted.operationId,
-              txHash: submitted.txHash,
-            },
-          }),
-        );
-      });
-
-      return {
-        chain: "ethereum",
-        asset: "USDT",
-        operationId: submitted.operationId,
-        txHash: submitted.txHash ?? "",
-        status: submitted.status,
-      };
-    } catch (error) {
-      const failed = markTransferFailed(
-        operation,
-        mapTransferErrorCode(error, "evm"),
-        toErrorMessage(error),
-      );
-
-      await this.unitOfWork.run(async (repos) => {
-        await repos.transfers.save(failed);
-        await repos.audits.save(
-          createAuditLog({
-            actorRole,
-            action: "ethereum.transfer_usdt",
-            result: "FAILED",
-            metadata: {
-              operationId: failed.operationId,
-              errorCode: failed.errorCode,
-              errorMessage: failed.errorMessage,
-            },
-          }),
-        );
-      });
-
-      throw new WalletDomainError(
-        failed.errorCode ?? "TRANSFER_BUILD_FAILED",
-        failed.errorMessage ?? "Ethereum USDT transfer failed",
-      );
-    }
+  async execute(
+    actorRole: Extract<ActorRole, "AGENT" | "OWNER">,
+    request: EthereumTransferUsdcRequest,
+  ): Promise<EthereumTransferUsdcResponse> {
+    return executeEthereumTransfer({
+      repos: this.repos,
+      unitOfWork: this.unitOfWork,
+      locker: this.locker,
+      assetLimits: this.assetLimits,
+      vault: this.vault,
+      evm: this.evm,
+      actorRole,
+      asset: "USDC",
+      action: "ethereum.transfer_usdc",
+      request,
+      transfer: (privateKey) => this.evm.transferUsdc(privateKey, request),
+    });
   }
 }
 
@@ -247,6 +258,7 @@ export class EthereumEthTransferService {
     private readonly repos: RepositoryBundle,
     private readonly unitOfWork: UnitOfWork,
     private readonly locker: ChainWriteLocker,
+    private readonly assetLimits: AssetLimitService,
     private readonly vault: VaultPort,
     private readonly evm: EvmWalletAdapter,
   ) {}
@@ -255,72 +267,128 @@ export class EthereumEthTransferService {
     actorRole: Extract<ActorRole, "AGENT" | "OWNER">,
     request: EthereumTransferEthRequest,
   ): Promise<EthereumTransferEthResponse> {
-    const operation = createTransferOperation({
+    return executeEthereumTransfer({
+      repos: this.repos,
+      unitOfWork: this.unitOfWork,
+      locker: this.locker,
+      assetLimits: this.assetLimits,
+      vault: this.vault,
+      evm: this.evm,
       actorRole,
-      chain: "evm",
       asset: "ETH",
-      requestPayload: request,
+      action: "ethereum.transfer_eth",
+      request,
+      transfer: (privateKey) => this.evm.transferEth(privateKey, request),
+    });
+  }
+}
+
+async function executeEthereumTransfer<
+  TAsset extends Extract<AssetKind, "ETH" | "USDT" | "USDC">,
+  TRequest extends Record<string, unknown>,
+>(input: {
+  repos: RepositoryBundle;
+  unitOfWork: UnitOfWork;
+  locker: ChainWriteLocker;
+  assetLimits: AssetLimitService;
+  vault: VaultPort;
+  evm: EvmWalletAdapter;
+  actorRole: Extract<ActorRole, "AGENT" | "OWNER">;
+  asset: TAsset;
+  action: "ethereum.transfer_eth" | "ethereum.transfer_usdt" | "ethereum.transfer_usdc";
+  request: TRequest;
+  transfer: (privateKey: string) => Promise<{ txHash: string }>;
+}): Promise<{
+  chain: "ethereum";
+  asset: TAsset;
+  operationId: string;
+  txHash: string;
+  status: "RESERVED" | "SUBMITTED" | "CONFIRMED" | "FAILED";
+}> {
+  const operation = createTransferOperation({
+    actorRole: input.actorRole,
+    chain: "evm",
+    asset: input.asset,
+    requestPayload: input.request,
+  });
+
+  await input.repos.transfers.save(operation);
+
+  let hasReservation = false;
+
+  try {
+    if (input.actorRole === "AGENT") {
+      await input.assetLimits.reserveForAgentTransfer({
+        operationId: operation.operationId,
+        chain: "evm",
+        asset: input.asset,
+        amount: String(input.request.amount),
+      });
+      hasReservation = true;
+    }
+
+    const { privateKey } = await loadDecryptedPrivateKey(input.repos.wallets, input.vault);
+    const transferResult = await input.locker.execute("evm", async () =>
+      input.transfer(privateKey),
+    );
+    const submitted = markTransferSubmitted(operation, transferResult.txHash);
+
+    await input.unitOfWork.run(async (repos) => {
+      await repos.transfers.save(submitted);
+      await repos.audits.save(
+        createAuditLog({
+          actorRole: input.actorRole,
+          action: input.action,
+          result: "SUCCESS",
+          metadata: {
+            operationId: submitted.operationId,
+            txHash: submitted.txHash,
+          },
+        }),
+      );
     });
 
-    await this.repos.transfers.save(operation);
-
-    try {
-      const { privateKey } = await loadDecryptedPrivateKey(this.repos.wallets, this.vault);
-      const transferResult = await this.locker.execute("evm", async () =>
-        this.evm.transferEth(privateKey, request),
-      );
-
-      const submitted = markTransferSubmitted(operation, transferResult.txHash);
-
-      await this.unitOfWork.run(async (repos) => {
-        await repos.transfers.save(submitted);
-        await repos.audits.save(
-          createAuditLog({
-            actorRole,
-            action: "ethereum.transfer_eth",
-            result: "SUCCESS",
-            metadata: {
-              operationId: submitted.operationId,
-              txHash: submitted.txHash,
-            },
-          }),
-        );
-      });
-
-      return {
-        chain: "ethereum",
-        asset: "ETH",
-        operationId: submitted.operationId,
-        txHash: submitted.txHash ?? "",
-        status: submitted.status,
-      };
-    } catch (error) {
-      const failed = markTransferFailed(
-        operation,
-        mapTransferErrorCode(error, "evm"),
-        toErrorMessage(error),
-      );
-
-      await this.unitOfWork.run(async (repos) => {
-        await repos.transfers.save(failed);
-        await repos.audits.save(
-          createAuditLog({
-            actorRole,
-            action: "ethereum.transfer_eth",
-            result: "FAILED",
-            metadata: {
-              operationId: failed.operationId,
-              errorCode: failed.errorCode,
-              errorMessage: failed.errorMessage,
-            },
-          }),
-        );
-      });
-
-      throw new WalletDomainError(
-        failed.errorCode ?? "TRANSFER_BUILD_FAILED",
-        failed.errorMessage ?? "Ethereum ETH transfer failed",
+    return {
+      chain: "ethereum" as const,
+      asset: input.asset,
+      operationId: submitted.operationId,
+      txHash: submitted.txHash ?? "",
+      status: submitted.status,
+    };
+  } catch (error) {
+    if (hasReservation) {
+      await input.assetLimits.releaseReservation(
+        operation.operationId,
+        `transfer_failed:${input.action}`,
       );
     }
+
+    const failed = markTransferFailed(
+      operation,
+      mapTransferErrorCode(error, "evm"),
+      toErrorMessage(error),
+    );
+
+    await input.unitOfWork.run(async (repos) => {
+      await repos.transfers.save(failed);
+      await repos.audits.save(
+        createAuditLog({
+          actorRole: input.actorRole,
+          action: input.action,
+          result: "FAILED",
+          metadata: {
+            operationId: failed.operationId,
+            errorCode: failed.errorCode,
+            errorMessage: failed.errorMessage,
+          },
+        }),
+      );
+    });
+
+    throw new WalletDomainError(
+      failed.errorCode ?? "TRANSFER_BUILD_FAILED",
+      failed.errorMessage ?? `Ethereum ${input.asset} transfer failed`,
+      error instanceof WalletDomainError ? error.details : undefined,
+    );
   }
 }
