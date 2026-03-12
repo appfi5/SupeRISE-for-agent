@@ -19,7 +19,7 @@ export function createTransferOperation(input: {
     chain: input.chain,
     asset: input.asset,
     requestPayload: input.requestPayload,
-    status: "PENDING",
+    status: "RESERVED",
     txHash: null,
     errorCode: null,
     errorMessage: null,
@@ -36,6 +36,20 @@ export function markTransferSubmitted(
     ...operation,
     txHash,
     status: "SUBMITTED",
+    errorCode: null,
+    errorMessage: null,
+    updatedAt: nowIso(),
+  };
+}
+
+export function markTransferConfirmed(
+  operation: TransferOperation,
+): TransferOperation {
+  return {
+    ...operation,
+    status: "CONFIRMED",
+    errorCode: null,
+    errorMessage: null,
     updatedAt: nowIso(),
   };
 }

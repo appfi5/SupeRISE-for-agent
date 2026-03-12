@@ -6,6 +6,9 @@ const {
 const {
   WalletToolsController,
 } = require("../dist/controllers/wallet-tools.controller.js");
+const {
+  OwnerAssetLimitController: OwnerAssetLimitControllerDirect,
+} = require("../dist/controllers/owner-asset-limit.controller.js");
 const { WalletDomainError } = require("@superise/domain");
 
 const OWNER_REQUEST = {
@@ -92,5 +95,72 @@ test("WalletToolsController.call forwards ethereum.transfer.eth through the HTTP
     context: {
       actorRole: "OWNER",
     },
+  });
+});
+
+test("OwnerAssetLimitController.update maps public chain params to the asset-limit service", async () => {
+  const calls = [];
+  const controller = new OwnerAssetLimitControllerDirect({
+    async listForOwner() {
+      return [];
+    },
+    async updatePolicy(input) {
+      calls.push(input);
+      return {
+        chain: "ethereum",
+        asset: "USDC",
+        decimals: 6,
+        dailyLimit: "100",
+        weeklyLimit: null,
+        monthlyLimit: null,
+        usage: {
+          daily: {
+            window: "DAILY",
+            limitAmount: "100",
+            consumedAmount: "0",
+            reservedAmount: "0",
+            effectiveUsedAmount: "0",
+            remainingAmount: "100",
+            resetsAt: "2026-03-13T00:00:00.000Z",
+          },
+          weekly: {
+            window: "WEEKLY",
+            limitAmount: null,
+            consumedAmount: "0",
+            reservedAmount: "0",
+            effectiveUsedAmount: "0",
+            remainingAmount: null,
+            resetsAt: "2026-03-16T00:00:00.000Z",
+          },
+          monthly: {
+            window: "MONTHLY",
+            limitAmount: null,
+            consumedAmount: "0",
+            reservedAmount: "0",
+            effectiveUsedAmount: "0",
+            remainingAmount: null,
+            resetsAt: "2026-04-01T00:00:00.000Z",
+          },
+        },
+        updatedAt: "2026-03-12T09:00:00.000Z",
+        updatedBy: "OWNER",
+      };
+    },
+  });
+
+  const response = await controller.update(
+    OWNER_REQUEST,
+    { chain: "ethereum", asset: "USDC" },
+    { dailyLimit: "100" },
+  );
+
+  assert.equal(response.success, true);
+  assert.deepEqual(calls[0], {
+    chain: "evm",
+    asset: "USDC",
+    dailyLimit: "100",
+    weeklyLimit: undefined,
+    monthlyLimit: undefined,
+    updatedBy: "OWNER",
   });
 });

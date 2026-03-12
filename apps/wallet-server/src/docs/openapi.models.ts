@@ -162,6 +162,80 @@ export class OwnerWalletExportResponseDoc {
   privateKey!: string;
 }
 
+export class OwnerAssetLimitWindowUsageDoc {
+  @ApiProperty({ enum: ["DAILY", "WEEKLY", "MONTHLY"] })
+  window!: "DAILY" | "WEEKLY" | "MONTHLY";
+
+  @ApiProperty({ nullable: true, required: false })
+  limitAmount!: string | null;
+
+  @ApiProperty()
+  consumedAmount!: string;
+
+  @ApiProperty()
+  reservedAmount!: string;
+
+  @ApiProperty()
+  effectiveUsedAmount!: string;
+
+  @ApiProperty({ nullable: true, required: false })
+  remainingAmount!: string | null;
+
+  @ApiProperty()
+  resetsAt!: string;
+}
+
+export class OwnerAssetLimitUsageDoc {
+  @ApiProperty({ type: () => OwnerAssetLimitWindowUsageDoc })
+  daily!: OwnerAssetLimitWindowUsageDoc;
+
+  @ApiProperty({ type: () => OwnerAssetLimitWindowUsageDoc })
+  weekly!: OwnerAssetLimitWindowUsageDoc;
+
+  @ApiProperty({ type: () => OwnerAssetLimitWindowUsageDoc })
+  monthly!: OwnerAssetLimitWindowUsageDoc;
+}
+
+export class OwnerAssetLimitEntryDoc {
+  @ApiProperty({ enum: ["nervos", "ethereum"] })
+  chain!: "nervos" | "ethereum";
+
+  @ApiProperty({ enum: ["CKB", "ETH", "USDT", "USDC"] })
+  asset!: "CKB" | "ETH" | "USDT" | "USDC";
+
+  @ApiProperty()
+  decimals!: number;
+
+  @ApiProperty({ nullable: true, required: false })
+  dailyLimit!: string | null;
+
+  @ApiProperty({ nullable: true, required: false })
+  weeklyLimit!: string | null;
+
+  @ApiProperty({ nullable: true, required: false })
+  monthlyLimit!: string | null;
+
+  @ApiProperty({ type: () => OwnerAssetLimitUsageDoc })
+  usage!: OwnerAssetLimitUsageDoc;
+
+  @ApiProperty({ nullable: true, required: false })
+  updatedAt!: string | null;
+
+  @ApiProperty({ enum: ["OWNER", "SYSTEM"], nullable: true, required: false })
+  updatedBy!: "OWNER" | "SYSTEM" | null;
+}
+
+export class OwnerUpdateAssetLimitRequestDoc {
+  @ApiProperty({ required: false, nullable: true })
+  dailyLimit?: string | null;
+
+  @ApiProperty({ required: false, nullable: true })
+  weeklyLimit?: string | null;
+
+  @ApiProperty({ required: false, nullable: true })
+  monthlyLimit?: string | null;
+}
+
 export class AuditLogDoc {
   @ApiProperty()
   auditId!: string;

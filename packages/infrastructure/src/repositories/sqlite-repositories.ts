@@ -1,4 +1,6 @@
 import type {
+  AssetLimitPolicyRepository,
+  AssetLimitReservationRepository,
   AuditLogRepository,
   OwnerCredentialRepository,
   RepositoryBundle,
@@ -10,10 +12,13 @@ import type {
 } from "@superise/application";
 import type {
   AuditLog,
+  AssetLimitPolicy,
+  AssetLimitReservation,
   OwnerCredential,
   SignOperation,
   SystemConfigSnapshot,
   TransferOperation,
+  TransferStatus,
   WalletAggregate,
 } from "@superise/domain";
 import type { Kysely } from "kysely";
@@ -21,6 +26,10 @@ import type { DatabaseSchema, Executor } from "../database/schema";
 import {
   auditLogFromRow,
   auditLogToRow,
+  assetLimitPolicyFromRow,
+  assetLimitPolicyToRow,
+  assetLimitReservationFromRow,
+  assetLimitReservationToRow,
   ownerCredentialFromRow,
   ownerCredentialToRow,
   signOperationToRow,
@@ -91,6 +100,25 @@ class SqliteTransferOperationRepository implements TransferOperationRepository {
     return row ? transferOperationFromRow(row) : null;
   }
 
+  async listByStatuses(
+    statuses: TransferStatus[],
+    limit: number,
+  ): Promise<TransferOperation[]> {
+    if (statuses.length === 0) {
+      return [];
+    }
+
+    const rows = await this.executor
+      .selectFrom("transfer_operations")
+      .selectAll()
+      .where("status", "in", statuses)
+      .orderBy("updated_at", "asc")
+      .limit(limit)
+      .execute();
+
+    return rows.map(transferOperationFromRow);
+  }
+
   async save(operation: TransferOperation): Promise<void> {
     await this.executor
       .insertInto("transfer_operations")
@@ -135,6 +163,86 @@ class SqliteAuditLogRepository implements AuditLogRepository {
   }
 }
 
+class SqliteAssetLimitPolicyRepository implements AssetLimitPolicyRepository {
+  constructor(private readonly executor: Executor) {}
+
+  async getByChainAsset(
+    chain: AssetLimitPolicy["chain"],
+    asset: AssetLimitPolicy["asset"],
+  ): Promise<AssetLimitPolicy | null> {
+    const row = await this.executor
+      .selectFrom("asset_limit_policies")
+      .selectAll()
+      .where("chain", "=", chain)
+      .where("asset", "=", asset)
+      .executeTakeFirst();
+
+    return row ? assetLimitPolicyFromRow(row) : null;
+  }
+
+  async listAll(): Promise<AssetLimitPolicy[]> {
+    const rows = await this.executor
+      .selectFrom("asset_limit_policies")
+      .selectAll()
+      .orderBy("chain", "asc")
+      .orderBy("asset", "asc")
+      .execute();
+
+    return rows.map(assetLimitPolicyFromRow);
+  }
+
+  async save(policy: AssetLimitPolicy): Promise<void> {
+    await this.executor
+      .insertInto("asset_limit_policies")
+      .values(assetLimitPolicyToRow(policy))
+      .onConflict((oc) =>
+        oc.columns(["chain", "asset"]).doUpdateSet(assetLimitPolicyToRow(policy)),
+      )
+      .execute();
+  }
+}
+
+class SqliteAssetLimitReservationRepository
+  implements AssetLimitReservationRepository
+{
+  constructor(private readonly executor: Executor) {}
+
+  async getByOperationId(operationId: string): Promise<AssetLimitReservation | null> {
+    const row = await this.executor
+      .selectFrom("asset_limit_reservations")
+      .selectAll()
+      .where("operation_id", "=", operationId)
+      .executeTakeFirst();
+
+    return row ? assetLimitReservationFromRow(row) : null;
+  }
+
+  async listByChainAsset(
+    chain: AssetLimitReservation["chain"],
+    asset: AssetLimitReservation["asset"],
+  ): Promise<AssetLimitReservation[]> {
+    const rows = await this.executor
+      .selectFrom("asset_limit_reservations")
+      .selectAll()
+      .where("chain", "=", chain)
+      .where("asset", "=", asset)
+      .orderBy("created_at", "asc")
+      .execute();
+
+    return rows.map(assetLimitReservationFromRow);
+  }
+
+  async save(reservation: AssetLimitReservation): Promise<void> {
+    await this.executor
+      .insertInto("asset_limit_reservations")
+      .values(assetLimitReservationToRow(reservation))
+      .onConflict((oc) =>
+        oc.column("operation_id").doUpdateSet(assetLimitReservationToRow(reservation)),
+      )
+      .execute();
+  }
+}
+
 class SqliteSystemConfigRepository implements SystemConfigRepository {
   constructor(private readonly executor: Executor) {}
 
@@ -166,6 +274,8 @@ export function createRepositoryBundle(executor: Executor): RepositoryBundle {
     transfers: new SqliteTransferOperationRepository(executor),
     signs: new SqliteSignOperationRepository(executor),
     audits: new SqliteAuditLogRepository(executor),
+    assetLimitPolicies: new SqliteAssetLimitPolicyRepository(executor),
+    assetLimitReservations: new SqliteAssetLimitReservationRepository(executor),
     systemConfig: new SqliteSystemConfigRepository(executor),
   };
 }

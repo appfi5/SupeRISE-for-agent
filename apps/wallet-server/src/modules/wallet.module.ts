@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import {
+  AssetLimitService,
   AuditLogQueryService,
   BootstrapWalletService,
   CurrentWalletQueryService,
@@ -7,6 +8,9 @@ import {
   EthereumEthBalanceQueryService,
   EthereumEthTransferService,
   EthereumMessageSigningService,
+  EthereumTxStatusQueryService,
+  EthereumUsdcBalanceQueryService,
+  EthereumUsdcTransferService,
   EthereumUsdtBalanceQueryService,
   EthereumUsdtTransferService,
   HealthCheckService,
@@ -14,11 +18,14 @@ import {
   NervosCkbBalanceQueryService,
   NervosCkbTransferService,
   NervosMessageSigningService,
+  NervosTxStatusQueryService,
   OperationStatusQueryService,
   OwnerCredentialStatusQueryService,
   RuntimeHealthCheckService,
+  TransferSettlementService,
   WalletExportService,
   WalletImportService,
+  type AssetLimitLocker,
   type ChainWriteLocker,
   type CkbWalletAdapter,
   type EvmWalletAdapter,
@@ -27,7 +34,11 @@ import {
   type VaultPort,
   type WalletPrivateKeyFactory,
 } from "@superise/application";
-import { InMemoryChainWriteLocker } from "@superise/infrastructure";
+import {
+  InMemoryAssetLimitLocker,
+  InMemoryChainWriteLocker,
+  type WalletServerConfig,
+} from "@superise/infrastructure";
 import { TOKENS } from "../tokens";
 
 @Module({
@@ -35,6 +46,10 @@ import { TOKENS } from "../tokens";
     {
       provide: TOKENS.CHAIN_LOCKER,
       useFactory: () => new InMemoryChainWriteLocker(),
+    },
+    {
+      provide: TOKENS.ASSET_LIMIT_LOCKER,
+      useFactory: () => new InMemoryAssetLimitLocker(),
     },
     {
       provide: TOKENS.BOOTSTRAP_WALLET_SERVICE,
@@ -97,6 +112,7 @@ import { TOKENS } from "../tokens";
         TOKENS.REPOSITORIES,
         TOKENS.UNIT_OF_WORK,
         TOKENS.CHAIN_LOCKER,
+        TOKENS.ASSET_LIMIT_SERVICE,
         TOKENS.VAULT,
         TOKENS.CKB_ADAPTER,
       ],
@@ -104,9 +120,23 @@ import { TOKENS } from "../tokens";
         repos: RepositoryBundle,
         unitOfWork: UnitOfWork,
         locker: ChainWriteLocker,
+        assetLimits: AssetLimitService,
         vault: VaultPort,
         ckb: CkbWalletAdapter,
-      ) => new NervosCkbTransferService(repos, unitOfWork, locker, vault, ckb),
+      ) =>
+        new NervosCkbTransferService(
+          repos,
+          unitOfWork,
+          locker,
+          assetLimits,
+          vault,
+          ckb,
+        ),
+    },
+    {
+      provide: TOKENS.NERVOS_TX_STATUS_QUERY_SERVICE,
+      inject: [TOKENS.CKB_ADAPTER],
+      useFactory: (ckb: CkbWalletAdapter) => new NervosTxStatusQueryService(ckb),
     },
     {
       provide: TOKENS.ETHEREUM_ADDRESS_QUERY_SERVICE,
@@ -125,6 +155,15 @@ import { TOKENS } from "../tokens";
         vault: VaultPort,
         evm: EvmWalletAdapter,
       ) => new EthereumUsdtBalanceQueryService(repos.wallets, vault, evm),
+    },
+    {
+      provide: TOKENS.ETHEREUM_USDC_BALANCE_QUERY_SERVICE,
+      inject: [TOKENS.REPOSITORIES, TOKENS.VAULT, TOKENS.EVM_ADAPTER],
+      useFactory: (
+        repos: RepositoryBundle,
+        vault: VaultPort,
+        evm: EvmWalletAdapter,
+      ) => new EthereumUsdcBalanceQueryService(repos.wallets, vault, evm),
     },
     {
       provide: TOKENS.ETHEREUM_ETH_BALANCE_QUERY_SERVICE,
@@ -150,6 +189,7 @@ import { TOKENS } from "../tokens";
         TOKENS.REPOSITORIES,
         TOKENS.UNIT_OF_WORK,
         TOKENS.CHAIN_LOCKER,
+        TOKENS.ASSET_LIMIT_SERVICE,
         TOKENS.VAULT,
         TOKENS.EVM_ADAPTER,
       ],
@@ -157,9 +197,18 @@ import { TOKENS } from "../tokens";
         repos: RepositoryBundle,
         unitOfWork: UnitOfWork,
         locker: ChainWriteLocker,
+        assetLimits: AssetLimitService,
         vault: VaultPort,
         evm: EvmWalletAdapter,
-      ) => new EthereumEthTransferService(repos, unitOfWork, locker, vault, evm),
+      ) =>
+        new EthereumEthTransferService(
+          repos,
+          unitOfWork,
+          locker,
+          assetLimits,
+          vault,
+          evm,
+        ),
     },
     {
       provide: TOKENS.ETHEREUM_USDT_TRANSFER_SERVICE,
@@ -167,6 +216,7 @@ import { TOKENS } from "../tokens";
         TOKENS.REPOSITORIES,
         TOKENS.UNIT_OF_WORK,
         TOKENS.CHAIN_LOCKER,
+        TOKENS.ASSET_LIMIT_SERVICE,
         TOKENS.VAULT,
         TOKENS.EVM_ADAPTER,
       ],
@@ -174,9 +224,87 @@ import { TOKENS } from "../tokens";
         repos: RepositoryBundle,
         unitOfWork: UnitOfWork,
         locker: ChainWriteLocker,
+        assetLimits: AssetLimitService,
         vault: VaultPort,
         evm: EvmWalletAdapter,
-      ) => new EthereumUsdtTransferService(repos, unitOfWork, locker, vault, evm),
+      ) =>
+        new EthereumUsdtTransferService(
+          repos,
+          unitOfWork,
+          locker,
+          assetLimits,
+          vault,
+          evm,
+        ),
+    },
+    {
+      provide: TOKENS.ETHEREUM_USDC_TRANSFER_SERVICE,
+      inject: [
+        TOKENS.REPOSITORIES,
+        TOKENS.UNIT_OF_WORK,
+        TOKENS.CHAIN_LOCKER,
+        TOKENS.ASSET_LIMIT_SERVICE,
+        TOKENS.VAULT,
+        TOKENS.EVM_ADAPTER,
+      ],
+      useFactory: (
+        repos: RepositoryBundle,
+        unitOfWork: UnitOfWork,
+        locker: ChainWriteLocker,
+        assetLimits: AssetLimitService,
+        vault: VaultPort,
+        evm: EvmWalletAdapter,
+      ) =>
+        new EthereumUsdcTransferService(
+          repos,
+          unitOfWork,
+          locker,
+          assetLimits,
+          vault,
+          evm,
+        ),
+    },
+    {
+      provide: TOKENS.ETHEREUM_TX_STATUS_QUERY_SERVICE,
+      inject: [TOKENS.EVM_ADAPTER],
+      useFactory: (evm: EvmWalletAdapter) => new EthereumTxStatusQueryService(evm),
+    },
+    {
+      provide: TOKENS.ASSET_LIMIT_SERVICE,
+      inject: [TOKENS.REPOSITORIES, TOKENS.UNIT_OF_WORK, TOKENS.ASSET_LIMIT_LOCKER],
+      useFactory: (
+        repos: RepositoryBundle,
+        unitOfWork: UnitOfWork,
+        locker: AssetLimitLocker,
+      ) => new AssetLimitService(repos, unitOfWork, locker),
+    },
+    {
+      provide: TOKENS.TRANSFER_SETTLEMENT_SERVICE,
+      inject: [
+        TOKENS.CONFIG,
+        TOKENS.REPOSITORIES,
+        TOKENS.UNIT_OF_WORK,
+        TOKENS.ASSET_LIMIT_SERVICE,
+        TOKENS.NERVOS_TX_STATUS_QUERY_SERVICE,
+        TOKENS.ETHEREUM_TX_STATUS_QUERY_SERVICE,
+      ],
+      useFactory: (
+        config: WalletServerConfig,
+        repos: RepositoryBundle,
+        unitOfWork: UnitOfWork,
+        assetLimits: AssetLimitService,
+        nervosTxStatus: NervosTxStatusQueryService,
+        ethereumTxStatus: EthereumTxStatusQueryService,
+      ) =>
+        new TransferSettlementService(
+          repos,
+          unitOfWork,
+          assetLimits,
+          nervosTxStatus,
+          ethereumTxStatus,
+          config.transferReservedTimeoutMs,
+          config.transferSubmittedTimeoutMs,
+        ),
     },
     {
       provide: TOKENS.WALLET_IMPORT_SERVICE,
@@ -239,12 +367,18 @@ import { TOKENS } from "../tokens";
     TOKENS.NERVOS_CKB_BALANCE_QUERY_SERVICE,
     TOKENS.NERVOS_MESSAGE_SIGNING_SERVICE,
     TOKENS.NERVOS_CKB_TRANSFER_SERVICE,
+    TOKENS.NERVOS_TX_STATUS_QUERY_SERVICE,
     TOKENS.ETHEREUM_ADDRESS_QUERY_SERVICE,
     TOKENS.ETHEREUM_ETH_BALANCE_QUERY_SERVICE,
     TOKENS.ETHEREUM_USDT_BALANCE_QUERY_SERVICE,
+    TOKENS.ETHEREUM_USDC_BALANCE_QUERY_SERVICE,
     TOKENS.ETHEREUM_MESSAGE_SIGNING_SERVICE,
     TOKENS.ETHEREUM_ETH_TRANSFER_SERVICE,
     TOKENS.ETHEREUM_USDT_TRANSFER_SERVICE,
+    TOKENS.ETHEREUM_USDC_TRANSFER_SERVICE,
+    TOKENS.ETHEREUM_TX_STATUS_QUERY_SERVICE,
+    TOKENS.ASSET_LIMIT_SERVICE,
+    TOKENS.TRANSFER_SETTLEMENT_SERVICE,
     TOKENS.WALLET_IMPORT_SERVICE,
     TOKENS.WALLET_EXPORT_SERVICE,
     TOKENS.OPERATION_STATUS_QUERY_SERVICE,

@@ -4,19 +4,26 @@ import {
   apiEnvelopeSchema,
   ethereumAddressSchema,
   ethereumBalanceEthSchema,
+  ethereumBalanceUsdcSchema,
   ethereumBalanceUsdtSchema,
   ethereumSignMessageRequestSchema,
   ethereumSignMessageResponseSchema,
-  ethereumTransferEthResponseSchema,
   ethereumTransferEthRequestSchema,
-  ethereumTransferUsdtResponseSchema,
+  ethereumTransferEthResponseSchema,
+  ethereumTransferUsdcRequestSchema,
+  ethereumTransferUsdcResponseSchema,
   ethereumTransferUsdtRequestSchema,
+  ethereumTransferUsdtResponseSchema,
+  ethereumTxStatusRequestSchema,
+  ethereumTxStatusResponseSchema,
   nervosAddressSchema,
   nervosBalanceCkbSchema,
   nervosSignMessageRequestSchema,
   nervosSignMessageResponseSchema,
-  nervosTransferCkbResponseSchema,
   nervosTransferCkbRequestSchema,
+  nervosTransferCkbResponseSchema,
+  nervosTxStatusRequestSchema,
+  nervosTxStatusResponseSchema,
   operationStatusRequestSchema,
   operationStatusResponseSchema,
   type McpToolName,
@@ -30,12 +37,16 @@ import type {
   EthereumEthBalanceQueryService,
   EthereumEthTransferService,
   EthereumMessageSigningService,
+  EthereumTxStatusQueryService,
+  EthereumUsdcBalanceQueryService,
+  EthereumUsdcTransferService,
   EthereumUsdtBalanceQueryService,
   EthereumUsdtTransferService,
   NervosAddressQueryService,
   NervosCkbBalanceQueryService,
   NervosCkbTransferService,
   NervosMessageSigningService,
+  NervosTxStatusQueryService,
   OperationStatusQueryService,
 } from "@superise/application";
 import { WalletDomainError } from "@superise/domain";
@@ -83,18 +94,26 @@ export class WalletToolRegistryService {
     private readonly nervosMessageSigningService: NervosMessageSigningService,
     @Inject(TOKENS.NERVOS_CKB_TRANSFER_SERVICE)
     private readonly nervosTransferService: NervosCkbTransferService,
+    @Inject(TOKENS.NERVOS_TX_STATUS_QUERY_SERVICE)
+    private readonly nervosTxStatusQueryService: NervosTxStatusQueryService,
     @Inject(TOKENS.ETHEREUM_ADDRESS_QUERY_SERVICE)
     private readonly ethereumAddressQueryService: EthereumAddressQueryService,
     @Inject(TOKENS.ETHEREUM_ETH_BALANCE_QUERY_SERVICE)
     private readonly ethereumEthBalanceQueryService: EthereumEthBalanceQueryService,
     @Inject(TOKENS.ETHEREUM_USDT_BALANCE_QUERY_SERVICE)
     private readonly ethereumUsdtBalanceQueryService: EthereumUsdtBalanceQueryService,
+    @Inject(TOKENS.ETHEREUM_USDC_BALANCE_QUERY_SERVICE)
+    private readonly ethereumUsdcBalanceQueryService: EthereumUsdcBalanceQueryService,
     @Inject(TOKENS.ETHEREUM_MESSAGE_SIGNING_SERVICE)
     private readonly ethereumMessageSigningService: EthereumMessageSigningService,
     @Inject(TOKENS.ETHEREUM_ETH_TRANSFER_SERVICE)
     private readonly ethereumEthTransferService: EthereumEthTransferService,
     @Inject(TOKENS.ETHEREUM_USDT_TRANSFER_SERVICE)
     private readonly ethereumUsdtTransferService: EthereumUsdtTransferService,
+    @Inject(TOKENS.ETHEREUM_USDC_TRANSFER_SERVICE)
+    private readonly ethereumUsdcTransferService: EthereumUsdcTransferService,
+    @Inject(TOKENS.ETHEREUM_TX_STATUS_QUERY_SERVICE)
+    private readonly ethereumTxStatusQueryService: EthereumTxStatusQueryService,
     @Inject(TOKENS.OPERATION_STATUS_QUERY_SERVICE)
     private readonly operationStatusQueryService: OperationStatusQueryService,
   ) {
@@ -149,7 +168,7 @@ export class WalletToolRegistryService {
         name: "wallet.operation_status",
         title: "Get Operation Status",
         description:
-          "Look up the latest recorded status for a previously submitted transfer by operationId. Use this after any transfer tool call to track submission, confirmation, or failure details.",
+          "Look up the latest recorded status for a previously submitted transfer by operationId. Use this after any transfer tool call to track reserved, submission, confirmation, or failure details.",
         arguments: [
           createStringArgument("operationId", true, "Transfer operation identifier."),
         ],
@@ -180,7 +199,7 @@ export class WalletToolRegistryService {
         name: "nervos.balance.ckb",
         title: "Get CKB Balance",
         description:
-          "Return the current Nervos CKB balance for the active wallet. The result contains { chain, asset, amount, decimals }; amount is a non-negative integer string in Shannon, where 100000000 means 1 CKB.",
+          "Return the current Nervos CKB balance for the active wallet. The result contains { chain, asset, amount, decimals, symbol }; amount is a non-negative integer string in Shannon, where 100000000 means 1 CKB.",
         arguments: [],
         inputShape: {},
         outputSchema: apiEnvelopeSchema(nervosBalanceCkbSchema),
@@ -220,7 +239,7 @@ export class WalletToolRegistryService {
         name: "nervos.transfer.ckb",
         title: "Transfer CKB",
         description:
-          "Submit a Nervos CKB transfer from the current wallet. amount must be a positive integer string in Shannon, where 100000000 means 1 CKB. The result contains submission data { chain, asset, operationId, txHash, status }; use wallet.operation_status to track later progress.",
+          "Submit a Nervos CKB transfer from the current wallet. amount must be a positive integer string in Shannon, where 100000000 means 1 CKB. The result contains submission data { chain, asset, operationId, txHash, status }; use wallet.operation_status and nervos.tx_status to track later progress.",
         arguments: [
           createStringArgument("to", true, "Recipient CKB address."),
           createStringArgument(
@@ -249,6 +268,22 @@ export class WalletToolRegistryService {
           }),
       },
       {
+        name: "nervos.tx_status",
+        title: "Get Nervos Tx Status",
+        description:
+          "Return the current on-chain status for a Nervos transaction hash. Use this after a transfer to distinguish chain state from wallet.operation_status.",
+        arguments: [createStringArgument("txHash", true, "Submitted Nervos transaction hash.")],
+        inputShape: {
+          txHash: z.string().min(1),
+        },
+        outputSchema: apiEnvelopeSchema(nervosTxStatusResponseSchema),
+        annotations: createReadOnlyAnnotations(),
+        parseArguments: (argumentsValue) =>
+          this.parseArguments(nervosTxStatusRequestSchema, argumentsValue),
+        execute: async (argumentsValue) =>
+          this.nervosTxStatusQueryService.execute(argumentsValue.txHash as string),
+      },
+      {
         name: "ethereum.address",
         title: "Get Ethereum Address",
         description:
@@ -265,7 +300,7 @@ export class WalletToolRegistryService {
         name: "ethereum.balance.eth",
         title: "Get ETH Balance",
         description:
-          "Return the current Ethereum native ETH balance for the active wallet. The result contains { chain, asset, amount, decimals }; amount is a non-negative integer string in wei, where 1000000000000000000 means 1 ETH.",
+          "Return the current Ethereum native ETH balance for the active wallet. The result contains { chain, asset, amount, decimals, symbol }; amount is a non-negative integer string in wei, where 1000000000000000000 means 1 ETH.",
         arguments: [],
         inputShape: {},
         outputSchema: apiEnvelopeSchema(ethereumBalanceEthSchema),
@@ -278,7 +313,7 @@ export class WalletToolRegistryService {
         name: "ethereum.balance.usdt",
         title: "Get USDT Balance",
         description:
-          "Return the current Ethereum ERC-20 USDT balance for the active wallet. The result contains { chain, asset, amount, decimals }; amount is a non-negative integer string in the smallest USDT unit, where 1000000 means 1 USDT.",
+          "Return the current Ethereum ERC-20 USDT balance for the active wallet. The result contains { chain, asset, amount, decimals, symbol }; amount is a non-negative integer string in the smallest USDT unit, where 1000000 means 1 USDT.",
         arguments: [],
         inputShape: {},
         outputSchema: apiEnvelopeSchema(ethereumBalanceUsdtSchema),
@@ -286,6 +321,19 @@ export class WalletToolRegistryService {
         parseArguments: (argumentsValue) =>
           this.parseArguments(EMPTY_TOOL_ARGUMENTS_SCHEMA, argumentsValue),
         execute: async () => this.ethereumUsdtBalanceQueryService.execute(),
+      },
+      {
+        name: "ethereum.balance.usdc",
+        title: "Get USDC Balance",
+        description:
+          "Return the current Ethereum ERC-20 USDC balance for the active wallet. The result contains { chain, asset, amount, decimals, symbol }; amount is a non-negative integer string in the smallest USDC unit, where 1000000 means 1 USDC.",
+        arguments: [],
+        inputShape: {},
+        outputSchema: apiEnvelopeSchema(ethereumBalanceUsdcSchema),
+        annotations: createReadOnlyAnnotations(),
+        parseArguments: (argumentsValue) =>
+          this.parseArguments(EMPTY_TOOL_ARGUMENTS_SCHEMA, argumentsValue),
+        execute: async () => this.ethereumUsdcBalanceQueryService.execute(),
       },
       {
         name: "ethereum.sign_message",
@@ -318,7 +366,7 @@ export class WalletToolRegistryService {
         name: "ethereum.transfer.eth",
         title: "Transfer ETH",
         description:
-          "Submit an Ethereum native ETH transfer from the current wallet. amount must be a positive integer string in wei, where 1000000000000000000 means 1 ETH. The result contains submission data { chain, asset, operationId, txHash, status }; use wallet.operation_status to track later progress.",
+          "Submit an Ethereum native ETH transfer from the current wallet. amount must be a positive integer string in wei, where 1000000000000000000 means 1 ETH. The result contains submission data { chain, asset, operationId, txHash, status }; use wallet.operation_status and ethereum.tx_status to track later progress.",
         arguments: [
           createStringArgument("to", true, "Recipient Ethereum address."),
           createStringArgument(
@@ -350,7 +398,7 @@ export class WalletToolRegistryService {
         name: "ethereum.transfer.usdt",
         title: "Transfer USDT",
         description:
-          "Submit an Ethereum ERC-20 USDT transfer from the current wallet. amount must be a positive integer string in the smallest USDT unit, where 1000000 means 1 USDT. The result contains submission data { chain, asset, operationId, txHash, status }; use wallet.operation_status to track later progress.",
+          "Submit an Ethereum ERC-20 USDT transfer from the current wallet. amount must be a positive integer string in the smallest USDT unit, where 1000000 means 1 USDT. The result contains submission data { chain, asset, operationId, txHash, status }; use wallet.operation_status and ethereum.tx_status to track later progress.",
         arguments: [
           createStringArgument("to", true, "Recipient Ethereum address."),
           createStringArgument(
@@ -377,6 +425,54 @@ export class WalletToolRegistryService {
             to: argumentsValue.to as string,
             amount: argumentsValue.amount as string,
           }),
+      },
+      {
+        name: "ethereum.transfer.usdc",
+        title: "Transfer USDC",
+        description:
+          "Submit an Ethereum ERC-20 USDC transfer from the current wallet. amount must be a positive integer string in the smallest USDC unit, where 1000000 means 1 USDC. The result contains submission data { chain, asset, operationId, txHash, status }; use wallet.operation_status and ethereum.tx_status to track later progress.",
+        arguments: [
+          createStringArgument("to", true, "Recipient Ethereum address."),
+          createStringArgument(
+            "amount",
+            true,
+            "Positive integer string in the smallest USDC unit. 1000000 means 1 USDC.",
+          ),
+        ],
+        inputShape: {
+          to: z.string().min(1),
+          amount: z
+            .string()
+            .regex(
+              /^[1-9]\d*$/,
+              "amount must be a positive integer string in base units (1000000 = 1 USDC)",
+            ),
+        },
+        outputSchema: apiEnvelopeSchema(ethereumTransferUsdcResponseSchema),
+        annotations: createTransferAnnotations(),
+        parseArguments: (argumentsValue) =>
+          this.parseArguments(ethereumTransferUsdcRequestSchema, argumentsValue),
+        execute: async (argumentsValue, context) =>
+          this.ethereumUsdcTransferService.execute(context.actorRole, {
+            to: argumentsValue.to as string,
+            amount: argumentsValue.amount as string,
+          }),
+      },
+      {
+        name: "ethereum.tx_status",
+        title: "Get Ethereum Tx Status",
+        description:
+          "Return the current on-chain status for an Ethereum transaction hash. Use this after a transfer to distinguish chain state from wallet.operation_status.",
+        arguments: [createStringArgument("txHash", true, "Submitted Ethereum transaction hash.")],
+        inputShape: {
+          txHash: z.string().min(1),
+        },
+        outputSchema: apiEnvelopeSchema(ethereumTxStatusResponseSchema),
+        annotations: createReadOnlyAnnotations(),
+        parseArguments: (argumentsValue) =>
+          this.parseArguments(ethereumTxStatusRequestSchema, argumentsValue),
+        execute: async (argumentsValue) =>
+          this.ethereumTxStatusQueryService.execute(argumentsValue.txHash as string),
       },
     ];
   }

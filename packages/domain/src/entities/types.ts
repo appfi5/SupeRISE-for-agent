@@ -5,10 +5,13 @@ export type WalletSource = "AUTO_GENERATED" | "IMPORTED" | "UNKNOWN";
 export type ActorRole = "AGENT" | "OWNER" | "SYSTEM";
 export type ChainKind = "ckb" | "evm";
 
-export type AssetKind = "CKB" | "ETH" | "USDT";
-export type TransferStatus = "PENDING" | "SUBMITTED" | "CONFIRMED" | "FAILED";
+export type AssetKind = "CKB" | "ETH" | "USDT" | "USDC";
+export type TransferStatus = "RESERVED" | "SUBMITTED" | "CONFIRMED" | "FAILED";
 export type AuditResult = "SUCCESS" | "FAILED";
 export type CredentialStatus = "DEFAULT_PENDING_ROTATION" | "ACTIVE";
+export type AssetLimitWindow = "DAILY" | "WEEKLY" | "MONTHLY";
+export type AssetLimitReservationStatus = "ACTIVE" | "CONSUMED" | "RELEASED";
+export type ChainTransactionStatus = "NOT_FOUND" | "PENDING" | "CONFIRMED" | "FAILED";
 
 export type WalletAggregate = {
   walletId: string;
@@ -64,6 +67,49 @@ export type AuditLog = {
   result: AuditResult;
   metadata: Record<string, unknown>;
   createdAt: string;
+};
+
+export type AssetLimitPolicy = {
+  policyId: string;
+  chain: ChainKind;
+  asset: AssetKind;
+  dailyLimit: string | null;
+  weeklyLimit: string | null;
+  monthlyLimit: string | null;
+  updatedBy: Extract<ActorRole, "OWNER" | "SYSTEM">;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AssetLimitReservation = {
+  reservationId: string;
+  operationId: string;
+  actorRole: "AGENT";
+  chain: ChainKind;
+  asset: AssetKind;
+  amount: string;
+  dailyWindowStart: string;
+  weeklyWindowStart: string;
+  monthlyWindowStart: string;
+  status: AssetLimitReservationStatus;
+  releaseReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+  settledAt: string | null;
+};
+
+export type AssetLimitUsageSnapshot = {
+  chain: ChainKind;
+  asset: AssetKind;
+  dailyConsumed: string;
+  weeklyConsumed: string;
+  monthlyConsumed: string;
+  dailyReserved: string;
+  weeklyReserved: string;
+  monthlyReserved: string;
+  dailyResetsAt: string;
+  weeklyResetsAt: string;
+  monthlyResetsAt: string;
 };
 
 export type SystemConfigSnapshot = {

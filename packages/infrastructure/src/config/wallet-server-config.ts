@@ -23,6 +23,9 @@ export type WalletServerConfig = {
   chainConfig: WalletServerChainConfig;
   ownerJwtSecret: string;
   ownerJwtTtlSeconds: number;
+  transferSettlementIntervalMs: number;
+  transferReservedTimeoutMs: number;
+  transferSubmittedTimeoutMs: number;
 };
 
 const configSchema = z.object({
@@ -54,6 +57,9 @@ const configSchema = z.object({
   OWNER_NOTICE_PATH: z.string().default("./data/owner-credential.txt"),
   OWNER_JWT_SECRET: z.string().optional(),
   OWNER_JWT_TTL: z.coerce.number().int().positive().optional(),
+  TRANSFER_SETTLEMENT_INTERVAL_MS: z.coerce.number().int().positive().default(15000),
+  TRANSFER_RESERVED_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
+  TRANSFER_SUBMITTED_TIMEOUT_MS: z.coerce.number().int().positive().default(1800000),
 });
 
 export function loadWalletServerConfig(
@@ -88,6 +94,9 @@ export function loadWalletServerConfig(
     chainConfig: chain.chainConfig,
     ownerJwtSecret,
     ownerJwtTtlSeconds: parsed.OWNER_JWT_TTL ?? 60 * 60,
+    transferSettlementIntervalMs: parsed.TRANSFER_SETTLEMENT_INTERVAL_MS,
+    transferReservedTimeoutMs: parsed.TRANSFER_RESERVED_TIMEOUT_MS,
+    transferSubmittedTimeoutMs: parsed.TRANSFER_SUBMITTED_TIMEOUT_MS,
   };
 }
 

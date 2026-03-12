@@ -7,6 +7,10 @@
       "usdt": {
         "standard": "erc20",
         "contractAddress": "0x0cF531D755F7324B910879b3Cf7beDFAb872513E"
+      },
+      "usdc": {
+        "standard": "erc20",
+        "contractAddress": "0xa704C2f31628ec73A12704fa726a1806613a30ae"
       }
     }
   }

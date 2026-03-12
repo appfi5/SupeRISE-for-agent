@@ -12,6 +12,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { mainnet, sepolia } from "viem/chains";
 import type {
   EthereumTransferEthRequest,
+  EthereumTransferUsdcRequest,
   EthereumTransferUsdtRequest,
 } from "@superise/app-contracts";
 import type { EvmWalletAdapter } from "@superise/application";
@@ -19,6 +20,8 @@ import { WalletDomainError } from "@superise/domain";
 import { normalizePrivateKeyHex } from "@superise/shared";
 
 const USDT_DECIMALS = 6;
+const USDC_DECIMALS = 6;
+const TX_HASH_PATTERN = /^0x[a-fA-F0-9]{64}$/;
 
 export type EvmAdapterConfig = {
   mode: "preset" | "custom";
@@ -29,6 +32,10 @@ export type EvmAdapterConfig = {
   tokens: {
     erc20: {
       usdt: {
+        standard: "erc20";
+        contractAddress: `0x${string}`;
+      };
+      usdc: {
         standard: "erc20";
         contractAddress: `0x${string}`;
       };
@@ -56,6 +63,18 @@ export class ViemEvmWalletAdapter implements EvmWalletAdapter {
     const address = await this.deriveAddress(privateKey);
     const balance = await this.createPublicClient().readContract({
       address: this.getUsdtContractAddress(),
+      abi: erc20Abi,
+      functionName: "balanceOf",
+      args: [address as `0x${string}`],
+    });
+
+    return balance.toString();
+  }
+
+  async getUsdcBalance(privateKey: string): Promise<string> {
+    const address = await this.deriveAddress(privateKey);
+    const balance = await this.createPublicClient().readContract({
+      address: this.getUsdcContractAddress(),
       abi: erc20Abi,
       functionName: "balanceOf",
       args: [address as `0x${string}`],
@@ -99,6 +118,31 @@ export class ViemEvmWalletAdapter implements EvmWalletAdapter {
     return { txHash };
   }
 
+  async transferUsdc(
+    privateKey: string,
+    request: EthereumTransferUsdcRequest,
+  ): Promise<{ txHash: string }> {
+    const account = privateKeyToAccount(normalizePrivateKeyHex(privateKey));
+    const chain = this.getChain();
+    const publicClient = this.createPublicClient();
+    const walletClient = createWalletClient({
+      account,
+      chain,
+      transport: http(this.getRpcUrl()),
+    });
+
+    const amount = BigInt(request.amount);
+    const { request: txRequest } = await publicClient.simulateContract({
+      account,
+      address: this.getUsdcContractAddress(),
+      abi: erc20Abi,
+      functionName: "transfer",
+      args: [this.normalizeAddress(request.to, "Recipient"), amount],
+    });
+    const txHash = await walletClient.writeContract(txRequest);
+    return { txHash };
+  }
+
   async transferEth(
     privateKey: string,
     request: EthereumTransferEthRequest,
@@ -117,6 +161,52 @@ export class ViemEvmWalletAdapter implements EvmWalletAdapter {
     });
 
     return { txHash };
+  }
+
+  async getTxStatus(txHash: string) {
+    const normalizedHash = this.normalizeTxHash(txHash);
+    const publicClient = this.createPublicClient();
+
+    try {
+      const [receipt, currentBlock] = await Promise.all([
+        publicClient.getTransactionReceipt({ hash: normalizedHash }),
+        publicClient.getBlockNumber(),
+      ]);
+
+      return {
+        txHash: normalizedHash,
+        status: receipt.status === "success" ? ("CONFIRMED" as const) : ("FAILED" as const),
+        blockNumber: receipt.blockNumber.toString(),
+        blockHash: receipt.blockHash,
+        confirmations: (currentBlock - receipt.blockNumber + 1n).toString(),
+        reason:
+          receipt.status === "success" ? undefined : "Transaction reverted on chain",
+      };
+    } catch (receiptError) {
+      try {
+        await publicClient.getTransaction({ hash: normalizedHash });
+        return {
+          txHash: normalizedHash,
+          status: "PENDING" as const,
+        };
+      } catch (transactionError) {
+        if (isLikelyNotFoundError(receiptError) || isLikelyNotFoundError(transactionError)) {
+          return {
+            txHash: normalizedHash,
+            status: "NOT_FOUND" as const,
+          };
+        }
+
+        throw new WalletDomainError(
+          "CHAIN_UNAVAILABLE",
+          `ETH tx status lookup failed: ${
+            transactionError instanceof Error
+              ? transactionError.message
+              : String(transactionError)
+          }`,
+        );
+      }
+    }
   }
 
   async checkHealth(): Promise<void> {
@@ -138,30 +228,25 @@ export class ViemEvmWalletAdapter implements EvmWalletAdapter {
         );
       }
 
-      const usdtContractAddress = this.getUsdtContractAddress();
-      const bytecode = await publicClient.getBytecode({
-        address: usdtContractAddress,
-      });
-
-      if (!bytecode || bytecode === "0x") {
+      if (this.config.tokens.erc20.usdc.standard !== "erc20") {
         throw new WalletDomainError(
           "VALIDATION_ERROR",
-          `USDT contract is missing bytecode at ${usdtContractAddress}`,
+          `USDC token standard mismatch: expected erc20, received ${this.config.tokens.erc20.usdc.standard}`,
         );
       }
 
-      const decimals = await publicClient.readContract({
-        address: usdtContractAddress,
-        abi: erc20Abi,
-        functionName: "decimals",
-      });
-
-      if (Number(decimals) !== USDT_DECIMALS) {
-        throw new WalletDomainError(
-          "VALIDATION_ERROR",
-          `USDT contract decimals mismatch: expected ${USDT_DECIMALS}, received ${Number(decimals)}`,
-        );
-      }
+      await Promise.all([
+        this.validateErc20Token(publicClient, {
+          label: "USDT",
+          address: this.getUsdtContractAddress(),
+          decimals: USDT_DECIMALS,
+        }),
+        this.validateErc20Token(publicClient, {
+          label: "USDC",
+          address: this.getUsdcContractAddress(),
+          decimals: USDC_DECIMALS,
+        }),
+      ]);
     } catch (error) {
       if (error instanceof WalletDomainError) {
         throw error;
@@ -210,6 +295,13 @@ export class ViemEvmWalletAdapter implements EvmWalletAdapter {
     );
   }
 
+  private getUsdcContractAddress(): `0x${string}` {
+    return this.normalizeAddress(
+      this.config.tokens.erc20.usdc.contractAddress,
+      "USDC contract",
+    );
+  }
+
   private createPublicClient() {
     return createPublicClient({
       chain: this.getChain(),
@@ -228,4 +320,54 @@ export class ViemEvmWalletAdapter implements EvmWalletAdapter {
 
     return getAddress(candidate);
   }
+
+  private normalizeTxHash(txHash: string): `0x${string}` {
+    const candidate = txHash.trim();
+    if (!TX_HASH_PATTERN.test(candidate)) {
+      throw new WalletDomainError(
+        "VALIDATION_ERROR",
+        `Transaction hash is invalid: ${txHash}`,
+      );
+    }
+
+    return candidate.toLowerCase() as `0x${string}`;
+  }
+
+  private async validateErc20Token(
+    publicClient: ReturnType<ViemEvmWalletAdapter["createPublicClient"]>,
+    input: {
+      label: "USDT" | "USDC";
+      address: `0x${string}`;
+      decimals: number;
+    },
+  ): Promise<void> {
+    const bytecode = await publicClient.getBytecode({
+      address: input.address,
+    });
+
+    if (!bytecode || bytecode === "0x") {
+      throw new WalletDomainError(
+        "VALIDATION_ERROR",
+        `${input.label} contract is missing bytecode at ${input.address}`,
+      );
+    }
+
+    const decimals = await publicClient.readContract({
+      address: input.address,
+      abi: erc20Abi,
+      functionName: "decimals",
+    });
+
+    if (Number(decimals) !== input.decimals) {
+      throw new WalletDomainError(
+        "VALIDATION_ERROR",
+        `${input.label} contract decimals mismatch: expected ${input.decimals}, received ${Number(decimals)}`,
+      );
+    }
+  }
+}
+
+function isLikelyNotFoundError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  return message.includes("not found") || message.includes("does not exist");
 }

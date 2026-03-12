@@ -65,6 +65,24 @@ function createRepos() {
       },
       async saveCurrent() {},
     },
+    assetLimitPolicies: {
+      async getByChainAsset() {
+        return null;
+      },
+      async listAll() {
+        return [];
+      },
+      async save() {},
+    },
+    assetLimitReservations: {
+      async getByOperationId() {
+        return null;
+      },
+      async listByChainAsset() {
+        return [];
+      },
+      async save() {},
+    },
   };
 
   return {
@@ -101,6 +119,12 @@ const locker = {
   },
 };
 
+const assetLimits = {
+  async reserveForAgentTransfer() {},
+  async consumeReservation() {},
+  async releaseReservation() {},
+};
+
 function createUnitOfWork(repos) {
   return {
     async run(work) {
@@ -121,6 +145,9 @@ test("EthereumEthTransferService records a submitted ETH transfer", async () => 
     async getUsdtBalance() {
       return "0";
     },
+    async getUsdcBalance() {
+      return "0";
+    },
     async signMessage() {
       return "0xsigned";
     },
@@ -130,6 +157,12 @@ test("EthereumEthTransferService records a submitted ETH transfer", async () => 
     async transferUsdt() {
       return { txHash: "0xusdthash" };
     },
+    async transferUsdc() {
+      return { txHash: "0xusdchash" };
+    },
+    async getTxStatus(txHash) {
+      return { txHash, status: "PENDING" };
+    },
     async checkHealth() {},
   };
 
@@ -137,6 +170,7 @@ test("EthereumEthTransferService records a submitted ETH transfer", async () => 
     repos,
     createUnitOfWork(repos),
     locker,
+    assetLimits,
     createVault(VALID_PRIVATE_KEY),
     evm,
   );
@@ -166,6 +200,9 @@ test("EthereumEthTransferService maps failure paths to failed operations", async
     async getUsdtBalance() {
       return "0";
     },
+    async getUsdcBalance() {
+      return "0";
+    },
     async signMessage() {
       return "0xsigned";
     },
@@ -175,6 +212,12 @@ test("EthereumEthTransferService maps failure paths to failed operations", async
     async transferUsdt() {
       return { txHash: "0xusdthash" };
     },
+    async transferUsdc() {
+      return { txHash: "0xusdchash" };
+    },
+    async getTxStatus(txHash) {
+      return { txHash, status: "PENDING" };
+    },
     async checkHealth() {},
   };
 
@@ -182,6 +225,7 @@ test("EthereumEthTransferService maps failure paths to failed operations", async
     repos,
     createUnitOfWork(repos),
     locker,
+    assetLimits,
     createVault(VALID_PRIVATE_KEY),
     evm,
   );

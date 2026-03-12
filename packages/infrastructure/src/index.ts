@@ -3,6 +3,7 @@ export * from "./config/wallet-server-config";
 export * from "./database/schema";
 export * from "./database/wallet-database";
 export * from "./database/mappers";
+export * from "./locks/in-memory-asset-limit-locker";
 export * from "./keys/secp256k1-private-key-factory";
 export * from "./locks/in-memory-chain-write-locker";
 export * from "./repositories/sqlite-repositories";
