@@ -1,0 +1,85 @@
+# USDC And Asset Limits
+
+状态：Accepted
+更新时间：2026-03-12
+已合入：[`prd.md`](/Users/render/RivTower/projects/app5/SupeRISE-for-agent/design/product/prd.md)
+
+## 为什么有这份文档
+
+这份文档用于保留 `USDC + 币种限额` 这一组需求的背景和收敛结果，避免把讨论过程直接堆进正式 PRD。
+
+`prd.md` 只保留最终确认后的正式需求，这里补充这次 feature 变更的意图和关键决策。
+
+## 目标
+
+- 扩展 Ethereum 侧已支持资产
+- 为不同币种提供独立风险控制能力
+- 保持 Agent 的使用心智简单，不把限额配置暴露给 Agent
+
+## 最终决策
+
+### 1. 增加 USDC 支持
+
+- 在 Ethereum 上增加 `USDC`
+- 当前 testnet 合约地址为 `0xa704C2f31628ec73A12704fa726a1806613a30ae`
+
+### 2. 已支持币种必须能力对齐
+
+凡是 PRD 中声明“支持”的币种，必须同时具备：
+
+- 余额查询
+- 转账
+
+本次确认后的已支持币种为：
+
+- Nervos 上的 `CKB`
+- Ethereum 上的 `ETH`
+- Ethereum 上的 `USDT`
+- Ethereum 上的 `USDC`
+
+### 3. 限额是 server 能力
+
+- 限额由 server 执行
+- Agent 不负责计算、缓存或判断限额
+- Agent 只在被限额拦截时收到 `limit` 信息
+
+### 4. 限额按币种独立配置
+
+- 每个币种都可单独配置限额
+- 当前适用币种为 `CKB`、`ETH`、`USDT`、`USDC`
+
+### 5. 限额周期固定为三档
+
+- 日限额
+- 周限额
+- 月限额
+
+### 6. 限额由 Owner 配置
+
+- 限额设置入口在 `Owner Mode UI`
+- Agent 不可查看或修改限额配置
+
+### 7. Owner 不受限额约束
+
+原因：
+
+- 限额用于控制 Agent 风险敞口
+- Owner 是人工接管和兜底角色，不应被同一套额度约束阻塞
+
+### 8. 限额重置时间口径
+
+按 server 本地时区计算：
+
+- 日限额：每天 `00:00`
+- 周限额：每周一 `00:00`
+- 月限额：每月 `1 日 00:00`
+
+## 设计影响
+
+- Owner Mode 需要新增限额配置能力
+- 资产看板需要能显示限额状态或提供限额配置入口
+- Agent 的错误反馈需要覆盖限额触发场景
+
+## 与正式 PRD 的关系
+
+如果后续这组需求继续演进，应先更新本文件或新增 feature 文档，确认后再把最终结论回写到 [`prd.md`](/Users/render/RivTower/projects/app5/SupeRISE-for-agent/design/product/prd.md)。
