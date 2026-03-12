@@ -19,6 +19,13 @@ The default Chinese version is [README.md](./README.md).
 - MCP integration (Chinese): [`docs/mcp.md`](./docs/mcp.md)
 - Deployment guide (Chinese): [`docs/deployment.md`](./docs/deployment.md)
 
+## Current Capabilities
+
+- `Agents` integrate through `MCP`; `Owners` manage the wallet and limits through the local management surface and local `HTTP API`
+- Supported assets are Nervos `CKB`, plus Ethereum `ETH`, `USDT`, and `USDC`
+- Agent transfers are enforced with independent daily / weekly / monthly limits per asset; Owner transfers are exempt
+- `wallet.operation_status` reports server-side orchestration status, while on-chain progress must be checked through `nervos.tx_status` and `ethereum.tx_status`
+
 ## Common Commands
 
 ```bash
@@ -76,7 +83,10 @@ Rules:
 - `preset` uses the built-in `testnet/mainnet` profiles
 - `custom` loads a dedicated JSON file per chain
 - `CKB custom` requires `rpcUrl`, `indexerUrl`, `genesisHash`, `addressPrefix`, and `scripts`
-- `EVM custom` requires `rpcUrl`, `chainId`, optional `networkName`, and `tokens.erc20.usdt`
+- `EVM custom` requires `rpcUrl`, `chainId`, optional `networkName`, plus both `tokens.erc20.usdt` and `tokens.erc20.usdc`
+- `TRANSFER_SETTLEMENT_INTERVAL_MS` controls the background transfer-settlement polling interval
+- `TRANSFER_RESERVED_TIMEOUT_MS` controls how long a `RESERVED` operation may wait before broadcast
+- `TRANSFER_SUBMITTED_TIMEOUT_MS` controls how long a `SUBMITTED` operation may wait for on-chain confirmation
 - local development config: `apps/wallet-server/.env.example`
 - local custom examples: `apps/wallet-server/config/*.custom.example.json`
 - Docker deployment config: `deploy/docker/.env.example`

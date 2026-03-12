@@ -73,6 +73,9 @@ Recommended configuration items:
 - `WALLET_KEK_PATH`
 - `WALLET_KEK`
 - `ALLOW_PLAINTEXT_KEK_ENV`
+- `TRANSFER_SETTLEMENT_INTERVAL_MS`
+- `TRANSFER_RESERVED_TIMEOUT_MS`
+- `TRANSFER_SUBMITTED_TIMEOUT_MS`
 - `CKB_CHAIN_MODE`
 - `CKB_CHAIN_PRESET`
 - `CKB_CHAIN_CONFIG_PATH`
@@ -86,10 +89,11 @@ Additional notes:
 - when the variable is missing, it is treated as `false`
 - `PUBLISH_HOST` controls which host address Docker publishes the port on, with `127.0.0.1` as the default
 - `pnpm docker:up` auto-generates the high-entropy JWT signing secret required by the local management surface when it creates `deploy/docker/.env` for the first time
+- `TRANSFER_SETTLEMENT_INTERVAL_MS`, `TRANSFER_RESERVED_TIMEOUT_MS`, and `TRANSFER_SUBMITTED_TIMEOUT_MS` together control background transfer-settlement polling and timeout decisions
 - `CKB` and `EVM` choose `preset|custom` independently
 - `preset` uses built-in `testnet|mainnet` profiles
 - `custom` loads a dedicated JSON file per chain
-- in `EVM custom`, the `USDT` config path is always `tokens.erc20.usdt`
+- `EVM custom` must provide both `tokens.erc20.usdt` and `tokens.erc20.usdc`
 
 `CKB custom` example:
 
@@ -131,6 +135,10 @@ Additional notes:
       "usdt": {
         "standard": "erc20",
         "contractAddress": "0x0cF531D755F7324B910879b3Cf7beDFAb872513E"
+      },
+      "usdc": {
+        "standard": "erc20",
+        "contractAddress": "0xa704C2f31628ec73A12704fa726a1806613a30ae"
       }
     }
   }
@@ -144,9 +152,11 @@ Additional notes:
 3. for every chain in `custom` mode, load and validate its JSON file
 4. load `KEK`
 5. initialize SQLite and run migrations
-6. run startup self-checks for database, CKB, EVM, and the configured USDT contract
+6. run startup self-checks for database, CKB, EVM, and the configured `USDT` / `USDC` contracts
 7. ensure wallet
-8. start MCP and HTTP services
+8. ensure the Owner local-management credential notice
+9. start MCP and HTTP services
+10. start background transfer-settlement polling
 
 ## Health Checks
 
@@ -158,10 +168,12 @@ Startup checks include:
 - EVM RPC availability
 - EVM `chainId` validation
 - USDT contract address/code/`decimals()` validation
+- USDC contract address/code/`decimals()` validation
 
 When `CKB_CHAIN_MODE=custom`, startup also validates the actual CKB `genesisHash`.
 
 Runtime `/health` performs a database availability check and returns `checks.database`.
+Background transfer settlement keeps polling according to `TRANSFER_SETTLEMENT_INTERVAL_MS`.
 
 ## KEK Rotation
 

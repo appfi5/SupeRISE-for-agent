@@ -46,19 +46,28 @@ Security boundary:
 - `nervos.balance.ckb`
 - `nervos.sign_message`
 - `nervos.transfer.ckb`
+- `nervos.tx_status`
 - `ethereum.address`
 - `ethereum.balance.eth`
 - `ethereum.balance.usdt`
+- `ethereum.balance.usdc`
 - `ethereum.sign_message`
 - `ethereum.transfer.eth`
 - `ethereum.transfer.usdt`
+- `ethereum.transfer.usdc`
+- `ethereum.tx_status`
 
 ## Tool Semantics
 
+- Supported assets are Nervos `CKB`, plus Ethereum `ETH`, `USDT`, and `USDC`
 - `amount` is always an integer string in the asset's smallest unit
 - `nervos.balance.ckb` and `nervos.transfer.ckb` use `Shannon`
-- `ethereum.balance.eth` uses `wei`
-- `ethereum.transfer.eth` uses `wei`
+- `ethereum.balance.eth` and `ethereum.transfer.eth` use `wei`
 - `ethereum.balance.usdt` and `ethereum.transfer.usdt` use the smallest USDT unit
-- balance responses include `decimals`
-- transfer tools return submission results, not final confirmation; continue polling with `wallet.operation_status`
+- `ethereum.balance.usdc` and `ethereum.transfer.usdc` use the smallest USDC unit
+- balance responses include `amount`, `decimals`, and `symbol`
+- transfer tools return results that mean the server accepted and started processing the transfer, not final on-chain confirmation
+- `wallet.operation_status` returns local orchestration states: `RESERVED`, `SUBMITTED`, `CONFIRMED`, `FAILED`
+- `nervos.tx_status` and `ethereum.tx_status` return observed chain states: `NOT_FOUND`, `PENDING`, `CONFIRMED`, `FAILED`
+- after a transfer, you will typically poll both `wallet.operation_status` and the chain-specific `tx_status` to follow internal progress and final on-chain outcome
+- when an Agent transfer hits a per-asset limit, the transfer tool returns `ASSET_LIMIT_EXCEEDED`; limits are enforced independently per asset across daily / weekly / monthly windows

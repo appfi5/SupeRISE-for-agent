@@ -75,6 +75,9 @@ pnpm docker:up
 - `WALLET_KEK_PATH`
 - `WALLET_KEK`
 - `ALLOW_PLAINTEXT_KEK_ENV`
+- `TRANSFER_SETTLEMENT_INTERVAL_MS`
+- `TRANSFER_RESERVED_TIMEOUT_MS`
+- `TRANSFER_SUBMITTED_TIMEOUT_MS`
 - `CKB_CHAIN_MODE`
 - `CKB_CHAIN_PRESET`
 - `CKB_CHAIN_CONFIG_PATH`
@@ -88,10 +91,11 @@ pnpm docker:up
 - 未设置该变量时按 `false` 处理
 - `PUBLISH_HOST` 控制 Docker 将端口发布到哪个宿主机地址，默认值为 `127.0.0.1`
 - `pnpm docker:up` 首次生成 `deploy/docker/.env` 时会自动写入本地管理面所需的高熵 JWT 签名密钥
+- `TRANSFER_SETTLEMENT_INTERVAL_MS`、`TRANSFER_RESERVED_TIMEOUT_MS`、`TRANSFER_SUBMITTED_TIMEOUT_MS` 共同控制后台转账结算轮询与超时判定
 - `CKB` 与 `EVM` 独立选择 `preset|custom`
 - `preset` 模式使用内置 `testnet|mainnet`
 - `custom` 模式分别通过各自 JSON 文件提供链配置
-- `EVM custom` 中的 `USDT` 配置路径固定为 `tokens.erc20.usdt`
+- `EVM custom` 必须同时提供 `tokens.erc20.usdt` 与 `tokens.erc20.usdc`
 
 `CKB custom` 配置示例：
 
@@ -133,6 +137,10 @@ pnpm docker:up
       "usdt": {
         "standard": "erc20",
         "contractAddress": "0x0cF531D755F7324B910879b3Cf7beDFAb872513E"
+      },
+      "usdc": {
+        "standard": "erc20",
+        "contractAddress": "0xa704C2f31628ec73A12704fa726a1806613a30ae"
       }
     }
   }
@@ -163,13 +171,14 @@ pnpm docker:up
 1. 读取环境配置
 2. 分别解析 `CKB` 与 `EVM` 的 `MODE/PRESET/CONFIG_PATH`
 3. 如某条链为 `custom`，读取并校验对应 JSON 文件
-4. 初始化日志
-5. 读取 `KEK`
-6. 初始化数据库与数据目录
-7. 执行 migration
-8. 执行启动阶段自检（`KEK` / 数据库 / CKB / EVM / USDT 合约）
-9. 检查 / 生成钱包
+4. 读取 `KEK`
+5. 初始化数据库与数据目录
+6. 执行 migration
+7. 执行启动阶段自检（`KEK` / 数据库 / CKB / EVM / `USDT` 合约 / `USDC` 合约）
+8. 检查 / 生成钱包
+9. 检查 / 生成 Owner 本地管理凭证提示
 10. 启动 MCP 与 HTTP 服务
+11. 启动后台转账结算轮询
 
 ## 6. 健康检查
 
@@ -183,6 +192,9 @@ pnpm docker:up
 - USDT 合约地址格式合法
 - USDT 合约代码存在
 - USDT `decimals()` 等于 `6`
+- USDC 合约地址格式合法
+- USDC 合约代码存在
+- USDC `decimals()` 等于 `6`
 
 当 `CKB_CHAIN_MODE=custom` 时还会额外校验：
 
@@ -195,7 +207,8 @@ pnpm docker:up
 
 当前实现说明：
 
-- 启动阶段已执行 `KEK`、数据库、CKB、EVM 与 USDT 合约自检
+- 启动阶段已执行 `KEK`、数据库、CKB、EVM、USDT 合约与 USDC 合约自检
+- 运行时会按 `TRANSFER_SETTLEMENT_INTERVAL_MS` 执行后台转账结算轮询
 - `/health` 会执行数据库可用性检查，并返回 `checks.database`
 
 ## 7. 日志与审计
