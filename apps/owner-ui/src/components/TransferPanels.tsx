@@ -1,6 +1,7 @@
 import type {
   CkbTransferFormState,
   EthTransferFormState,
+  UsdcTransferFormState,
   UsdtTransferFormState,
 } from "../types/app-state";
 
@@ -8,6 +9,7 @@ type TransferPanelsProps = {
   ckbTransfer: CkbTransferFormState;
   ethTransfer: EthTransferFormState;
   usdtTransfer: UsdtTransferFormState;
+  usdcTransfer: UsdcTransferFormState;
   onCkbAmountChange: (value: string) => void;
   onCkbSubmit: () => void;
   onCkbToChange: (value: string) => void;
@@ -17,11 +19,15 @@ type TransferPanelsProps = {
   onUsdtAmountChange: (value: string) => void;
   onUsdtSubmit: () => void;
   onUsdtToChange: (value: string) => void;
+  onUsdcAmountChange: (value: string) => void;
+  onUsdcSubmit: () => void;
+  onUsdcToChange: (value: string) => void;
 };
 
 export function TransferPanels({
   ckbTransfer,
   ethTransfer,
+  usdcTransfer,
   usdtTransfer,
   onCkbAmountChange,
   onCkbSubmit,
@@ -32,6 +38,9 @@ export function TransferPanels({
   onUsdtAmountChange,
   onUsdtSubmit,
   onUsdtToChange,
+  onUsdcAmountChange,
+  onUsdcSubmit,
+  onUsdcToChange,
 }: TransferPanelsProps) {
   return (
     <>
@@ -101,6 +110,28 @@ export function TransferPanels({
           </label>
           <button className="button primary" onClick={onUsdtSubmit}>
             提交 USDT 转账
+          </button>
+        </article>
+
+        <article className="panel">
+          <h2>Ethereum USDC 转账</h2>
+          <label className="field">
+            <span>目标地址</span>
+            <input
+              value={usdcTransfer.to}
+              onChange={(event) => onUsdcToChange(event.target.value)}
+            />
+          </label>
+          <label className="field">
+            <span>数量（最小单位整数，1000000 = 1 USDC）</span>
+            <input
+              placeholder="例如 1000000"
+              value={usdcTransfer.amount}
+              onChange={(event) => onUsdcAmountChange(event.target.value)}
+            />
+          </label>
+          <button className="button primary" onClick={onUsdcSubmit}>
+            提交 USDC 转账
           </button>
         </article>
       </section>

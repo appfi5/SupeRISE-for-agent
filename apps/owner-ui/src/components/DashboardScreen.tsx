@@ -1,3 +1,4 @@
+import { AssetLimitPanel } from "./AssetLimitPanel";
 import { AuditLogPanel } from "./AuditLogPanel";
 import { CredentialPanel } from "./CredentialPanel";
 import { RecoveryPanels } from "./RecoveryPanels";
@@ -6,10 +7,12 @@ import { TransferPanels } from "./TransferPanels";
 import { WalletStatusPanels } from "./WalletStatusPanels";
 import type {
   AppState,
+  AssetLimitFormState,
   CkbTransferFormState,
   EthTransferFormState,
   MessageSigningFormState,
   RotateCredentialFormState,
+  UsdcTransferFormState,
   UsdtTransferFormState,
 } from "../types/app-state";
 
@@ -26,6 +29,8 @@ type DashboardScreenProps = {
   nervosSignForm: MessageSigningFormState;
   nervosSignResult: string;
   rotateForm: RotateCredentialFormState;
+  assetLimitDrafts: Record<string, AssetLimitFormState>;
+  usdcTransfer: UsdcTransferFormState;
   usdtTransfer: UsdtTransferFormState;
   onCkbAmountChange: (value: string) => void;
   onCkbSubmit: () => void;
@@ -47,9 +52,18 @@ type DashboardScreenProps = {
   onRotateCurrentPasswordChange: (value: string) => void;
   onRotateNewPasswordChange: (value: string) => void;
   onRotateSubmit: () => void;
+  onAssetLimitChange: (
+    key: string,
+    field: keyof AssetLimitFormState,
+    value: string,
+  ) => void;
+  onAssetLimitSave: (key: string) => void;
   onUsdtAmountChange: (value: string) => void;
   onUsdtSubmit: () => void;
   onUsdtToChange: (value: string) => void;
+  onUsdcAmountChange: (value: string) => void;
+  onUsdcSubmit: () => void;
+  onUsdcToChange: (value: string) => void;
 };
 
 export function DashboardScreen({
@@ -65,6 +79,8 @@ export function DashboardScreen({
   nervosSignForm,
   nervosSignResult,
   rotateForm,
+  assetLimitDrafts,
+  usdcTransfer,
   usdtTransfer,
   onCkbAmountChange,
   onCkbSubmit,
@@ -86,9 +102,14 @@ export function DashboardScreen({
   onRotateCurrentPasswordChange,
   onRotateNewPasswordChange,
   onRotateSubmit,
+  onAssetLimitChange,
+  onAssetLimitSave,
   onUsdtAmountChange,
   onUsdtSubmit,
   onUsdtToChange,
+  onUsdcAmountChange,
+  onUsdcSubmit,
+  onUsdcToChange,
 }: DashboardScreenProps) {
   return (
     <main className="shell dashboard-shell">
@@ -139,9 +160,17 @@ export function DashboardScreen({
         />
       </section>
 
+      <AssetLimitPanel
+        limits={appState.assetLimits}
+        drafts={assetLimitDrafts}
+        onChange={onAssetLimitChange}
+        onSave={(limit) => onAssetLimitSave(`${limit.chain}:${limit.asset}`)}
+      />
+
       <TransferPanels
         ckbTransfer={ckbTransfer}
         ethTransfer={ethTransfer}
+        usdcTransfer={usdcTransfer}
         usdtTransfer={usdtTransfer}
         onCkbAmountChange={onCkbAmountChange}
         onCkbSubmit={onCkbSubmit}
@@ -149,6 +178,9 @@ export function DashboardScreen({
         onEthAmountChange={onEthAmountChange}
         onEthSubmit={onEthSubmit}
         onEthToChange={onEthToChange}
+        onUsdcAmountChange={onUsdcAmountChange}
+        onUsdcSubmit={onUsdcSubmit}
+        onUsdcToChange={onUsdcToChange}
         onUsdtAmountChange={onUsdtAmountChange}
         onUsdtSubmit={onUsdtSubmit}
         onUsdtToChange={onUsdtToChange}

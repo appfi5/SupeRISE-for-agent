@@ -86,6 +86,16 @@ export function WalletStatusPanels({ appState }: WalletStatusPanelsProps) {
                 )}
               </dd>
             </div>
+            <div>
+              <dt>USDC 余额</dt>
+              <dd>
+                {formatAssetAmount(
+                  appState.ethereum.usdcBalance?.amount,
+                  appState.ethereum.usdcBalance?.decimals,
+                  "USDC",
+                )}
+              </dd>
+            </div>
           </dl>
         </article>
       </section>
