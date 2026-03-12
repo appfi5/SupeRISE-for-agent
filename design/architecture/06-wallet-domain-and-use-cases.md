@@ -75,6 +75,38 @@
 - `metadata`
 - `createdAt`
 
+### 3.5 `AssetLimitPolicy`
+
+字段概念：
+
+- `policyId`
+- `chain`
+- `asset`
+- `dailyLimit`
+- `weeklyLimit`
+- `monthlyLimit`
+- `updatedBy`
+- `createdAt`
+- `updatedAt`
+
+说明：
+
+- 金额单位统一使用币种最小单位整数字符串
+- `null` 表示该周期不限额
+
+### 3.6 `AssetLimitUsageSnapshot`
+
+字段概念：
+
+- `chain`
+- `asset`
+- `dailyUsed`
+- `weeklyUsed`
+- `monthlyUsed`
+- `dailyResetsAt`
+- `weeklyResetsAt`
+- `monthlyResetsAt`
+
 ## 4. 核心业务规则
 
 ### 4.1 单钱包规则
@@ -96,6 +128,16 @@
 - Agent 永远不可获取私钥明文
 - Owner 仅在明确导出流程中可获得私钥明文
 - 系统不在普通查询或调试接口中返回私钥相关内容
+
+### 4.4 币种限额规则
+
+- 限额由 server 执行
+- 限额只对 `AGENT` 生效
+- `OWNER` 不受限额约束
+- 限额按币种独立配置
+- 限额周期固定为 `DAILY`、`WEEKLY`、`MONTHLY`
+- 限额按 server 本地时区重置
+- Agent 不可主动读取限额配置，仅在触发时收到结构化 `limit` 信息
 
 ## 5. 核心用例
 
@@ -163,7 +205,16 @@
 - `amount`
 - `decimals`
 
-### 5.7 消息签名
+### 5.7 查询 USDC 余额
+
+输出：
+
+- `chain`
+- `asset`
+- `amount`
+- `decimals`
+
+### 5.8 消息签名
 
 输入：
 
@@ -177,7 +228,7 @@
 4. 返回签名
 5. 写审计
 
-### 5.8 CKB 转账
+### 5.9 CKB 转账
 
 步骤：
 
@@ -189,7 +240,7 @@
 6. 广播
 7. 记录操作状态
 
-### 5.9 Ethereum ETH 转账
+### 5.10 Ethereum ETH 转账
 
 步骤：
 
@@ -201,7 +252,7 @@
 6. 广播
 7. 记录操作状态
 
-### 5.10 Ethereum USDT 转账
+### 5.11 Ethereum USDT 转账
 
 步骤：
 
@@ -213,7 +264,65 @@
 6. 广播
 7. 记录操作状态
 
-### 5.11 Owner 导入恢复
+### 5.12 Ethereum USDC 转账
+
+步骤：
+
+1. 校验参数
+2. 加载当前钱包
+3. 若 `actorRole=AGENT`，执行 `USDC` 限额评估
+4. 获取 `evm` 写锁
+5. 构建 USDC 转账交易
+6. 签名
+7. 广播
+8. 记录操作状态
+
+### 5.13 Owner 配置币种限额
+
+步骤：
+
+1. Owner 登录
+2. 选择 `chain + asset`
+3. 输入日、周、月限额
+4. 校验金额格式
+5. 写入或更新限额配置
+6. 写审计
+
+### 5.14 Agent 转账触发限额
+
+步骤：
+
+1. Agent 发起转账
+2. server 按币种和周期计算当前已用额度
+3. 与请求金额进行比较
+4. 若超限，返回 `ASSET_LIMIT_EXCEEDED`
+5. 返回结构化 `limit` 信息
+6. 写审计与失败操作记录
+
+```mermaid
+sequenceDiagram
+    participant Agent
+    participant Transfer as "Transfer Use Case"
+    participant Limit as "AssetLimitService"
+    participant Repo as "TransferRepository"
+    participant Chain as "Chain Adapter"
+
+    Agent->>Transfer: transfer(asset, amount, to)
+    Transfer->>Limit: evaluate(asset, amount, actor=AGENT)
+    Limit->>Repo: sumSubmittedTransfers(asset, windows)
+    Repo-->>Limit: usage snapshot
+    alt limit exceeded
+        Limit-->>Transfer: exceeded(limit details)
+        Transfer-->>Agent: ASSET_LIMIT_EXCEEDED
+    else allowed
+        Limit-->>Transfer: allowed
+        Transfer->>Chain: build/sign/broadcast
+        Chain-->>Transfer: txHash
+        Transfer-->>Agent: submitted
+    end
+```
+
+### 5.15 Owner 导入恢复
 
 步骤：
 
@@ -225,7 +334,7 @@
 6. 替换当前钱包
 7. 写审计
 
-### 5.12 Owner 导出私钥
+### 5.16 Owner 导出私钥
 
 步骤：
 
@@ -244,14 +353,16 @@
 - `KEK` 不可用
 - RPC 不可达
 - 余额不足
+- Agent 触发资产限额
 - CKB 组交易失败
 - ETH 转账广播失败
 - EVM 资产余额查询失败
 - USDT 转账广播失败
+- USDC 转账广播失败
 - 导出过程失败
 
 ## 7. 领域结论
 
 本期钱包领域的本质不是“一个通用钱包”，而是：
 
-`一个可被 Agent 自主使用、可被 Owner 后置接管、由单私钥承载多链身份和资产操作的单钱包信用账户。`
+`一个可被 Agent 自主使用、可被 Owner 后置接管、由单私钥承载多链身份、资产操作和 server 侧风险限额的单钱包信用账户。`

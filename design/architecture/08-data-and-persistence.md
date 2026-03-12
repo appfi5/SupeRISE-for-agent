@@ -24,6 +24,7 @@
 2. 鉴权状态
 3. 操作流水
 4. 审计记录
+5. 限额配置
 
 ## 4. 表设计
 
@@ -78,13 +79,21 @@
 - `role`
 - `chain`
 - `asset`
+- `requested_amount`
 - `request_payload`
 - `status`
 - `tx_hash`
 - `error_code`
 - `error_message`
+- `limit_window`
+- `limit_snapshot`
 - `created_at`
 - `updated_at`
+
+说明：
+
+- `requested_amount` 用于限额统计，不依赖解析 `request_payload`
+- 当转账被限额拦截时，应记录 `FAILED` 操作并保存 `limit_window` 与 `limit_snapshot`
 
 ### 4.4 `sign_operations`
 
@@ -134,6 +143,50 @@
 - `created_at`
 - `updated_at`
 
+### 4.7 `asset_limit_policies`
+
+用途：
+
+- 保存按币种配置的日、周、月限额
+
+字段建议：
+
+- `id`
+- `chain`
+- `asset`
+- `daily_limit`
+- `weekly_limit`
+- `monthly_limit`
+- `updated_by`
+- `created_at`
+- `updated_at`
+
+约束：
+
+- `chain + asset` 唯一
+- `null` 表示该周期不限额
+- 仅允许当前支持币种：`CKB`、`ETH`、`USDT`、`USDC`
+
+### 4.8 限额统计口径
+
+v1 不新增独立的限额计数器表。
+
+当前限额统计来源为：
+
+- `transfer_operations`
+
+统计范围：
+
+- `role=AGENT`
+- `status in (SUBMITTED, CONFIRMED)`
+- 同一 `chain + asset`
+- 落在当前日、周、月窗口内
+
+为此必须补充索引：
+
+- `(role, chain, asset, status, created_at)`
+- `(chain, asset, created_at)`
+
 ## 5. Repository 设计
 
 建议仓储接口：
@@ -144,6 +197,7 @@
 - `SignOperationRepository`
 - `AuditLogRepository`
 - `SystemConfigRepository`
+- `AssetLimitPolicyRepository`
 
 每个仓储负责：
 
@@ -175,7 +229,23 @@
 - 创建 `PENDING`
 - 更新为 `SUBMITTED` 或 `FAILED`
 
-### 6.4 导出审计事务
+### 6.4 限额拦截事务
+
+必须保证：
+
+- 限额评估结果可记录
+- 被拦截的失败操作可追踪
+- 审计日志同步写入
+
+### 6.5 限额配置事务
+
+必须保证：
+
+- 限额配置写入或更新
+- 审计日志写入
+- 同一 `chain + asset` 不产生重复配置记录
+
+### 6.6 导出审计事务
 
 必须保证：
 
@@ -193,7 +263,13 @@
 - 转账与签名记录默认保留
 - 不作为默认 UI 大量展示内容
 
-### 7.3 审计日志
+### 7.3 限额配置
+
+- 限额配置默认保留
+- 配置变更通过更新时间覆盖，不保留历史版本表
+- 变更历史通过审计日志追踪
+
+### 7.4 审计日志
 
 - 不允许静默删除
 - 后续如需归档，应单独设计
@@ -205,6 +281,8 @@
 - 钱包指纹与多链身份来源于同一私钥
 - 操作记录与实际发起角色一致
 - 审计记录不可缺失
+- 限额统计与转账金额字段口径一致
+- 限额配置与支持币种集合一致
 
 ## 9. 数据层结论
 
@@ -213,3 +291,4 @@
 - 单钱包一致性
 - 闭环操作可追踪
 - 高风险行为可审计
+- Agent 风险限额可执行

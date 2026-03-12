@@ -31,7 +31,8 @@
 
 - `MCP` 工具名集合与 `PRD` 完全一致。
 - Owner API 列表与 `PRD` 完全一致。
-- `CKB`、`ETH`、`USDT` 的余额查询与转账 DTO 完整定义。
+- `CKB`、`ETH`、`USDT`、`USDC` 的余额查询与转账 DTO 完整定义。
+- 币种限额配置 DTO 与限额超限错误结构定义。
 - 通用错误码集合稳定定义。
 - API / MCP 返回 envelope 统一定义。
 
@@ -46,14 +47,17 @@
 - `ethereum.address`
 - `ethereum.balance.eth`
 - `ethereum.balance.usdt`
+- `ethereum.balance.usdc`
 - `ethereum.sign_message`
 - `ethereum.transfer.eth`
 - `ethereum.transfer.usdt`
+- `ethereum.transfer.usdc`
 
 ### 3.5 验收标准
 
 - `packages/app-contracts/src/schemas/mcp.ts` 中的工具列表与设计文档完全一致。
-- `packages/app-contracts/src/schemas/ethereum.ts` 必须同时包含 `ETH` 余额、`ETH` 转账、`USDT` 余额、`USDT` 转账模型。
+- `packages/app-contracts/src/schemas/ethereum.ts` 必须同时包含 `ETH`、`USDT`、`USDC` 的余额与转账模型。
+- contracts 必须定义 `ASSET_LIMIT_EXCEEDED` 的结构化返回。
 - 任何开发者只看 contracts 包即可知道本期具体支持哪些动作。
 
 ## 4. 阶段 1：服务端骨架与模块装配
@@ -117,6 +121,7 @@
 ### 5.3 必须交付
 
 - 单钱包聚合模型与状态模型
+- 币种限额策略模型
 - 钱包创建、恢复、导出、查看应用服务
 - 签名操作记录
 - 转账操作记录
@@ -124,6 +129,7 @@
 - SQLite 仓储实现
 - `KEK + DEK` vault 实现
 - `operation_status` 查询能力
+- Agent 转账前的限额评估能力
 
 ### 5.4 开发要求
 
@@ -131,6 +137,8 @@
 - 导入私钥的语义必须是“恢复并替换当前钱包”，不是“新增钱包”。
 - 导出私钥必须走 Owner 权限与审计。
 - 转账状态必须可追踪，不能只返回成功或失败字符串。
+- 限额评估必须在应用层执行，不能下放到 UI 或 Agent。
+- Owner 的限额配置修改必须独立建模并审计。
 - 仓储接口定义在应用层端口，具体 SQLite 实现在基础设施层。
 
 ### 5.5 验收标准
@@ -139,6 +147,7 @@
 - 导入恢复后，地址、签名、转账都切换到新钱包。
 - 导出私钥需要登录 Owner，并生成审计记录。
 - 所有高风险操作都产生审计日志。
+- Agent 命中限额时能返回结构化 `limit` 信息。
 
 ## 6. 阶段 3：Nervos CKB 闭环
 
@@ -155,7 +164,7 @@
 
 ### 6.3 必须交付
 
-- 基于 `@ckb-ccc/core` 的地址推导
+- 基于 `@ckb-ccc/shell` 的地址推导
 - `CKB` 最小单位余额查询
 - Nervos 消息签名
 - `CKB` 转账广播
@@ -165,7 +174,7 @@
 ### 6.4 开发要求
 
 - 金额输入输出统一使用最小单位整数字符串。
-- 适配器层负责链 SDK 细节，应用层不感知 `@ckb-ccc/core` 原始对象。
+- 适配器层负责链 SDK 细节，应用层不感知 `@ckb-ccc/shell` 原始对象。
 - `nervos.transfer.ckb` 必须只处理 `CKB`，不能扩展成通用 Nervos 资产入口。
 
 ### 6.5 验收标准
@@ -174,11 +183,11 @@
 - `wallet.operation_status` 能返回 CKB 转账状态。
 - 构造失败、广播失败、余额不足都能返回可诊断错误。
 
-## 7. 阶段 4：Ethereum ETH 与 USDT 闭环
+## 7. 阶段 4：Ethereum ETH、USDT 与 USDC 闭环
 
 ### 7.1 目标
 
-完成 Ethereum 地址、`ETH` 余额、`USDT` 余额、Ethereum 签名、`ETH` 转账、`USDT` 转账。
+完成 Ethereum 地址、`ETH` 余额、`USDT` 余额、`USDC` 余额、Ethereum 签名、`ETH` 转账、`USDT` 转账、`USDC` 转账。
 
 ### 7.2 主要仓库落点
 
@@ -194,26 +203,30 @@
 - 基于 `viem` 的地址推导
 - `ETH` 最小单位余额查询
 - `USDT` 最小单位余额查询
+- `USDC` 最小单位余额查询
 - Ethereum 消息签名
 - `ETH` 原生转账
 - `USDT` ERC-20 转账
+- `USDC` ERC-20 转账
 - `evm` 链写操作串行化
-- `ETH` 与 `USDT` 的错误码映射
+- `ETH`、`USDT`、`USDC` 的错误码映射
 
 ### 7.4 开发要求
 
-- `ETH` 与 `USDT` 必须是两个明确动作，不允许用一个外部通用 transfer tool 合并。
+- `ETH`、`USDT`、`USDC` 必须是三个明确动作，不允许用一个外部通用 transfer tool 合并。
 - `packages/app-contracts/src/schemas/mcp.ts`、`wallet-tool-registry.service.ts`、应用服务层、Owner UI 必须同时覆盖 `ethereum.transfer.eth`。
-- `USDT` 合约地址必须通过配置提供，不允许写死在 UI 层。
-- `ETH` 和 `USDT` 都必须有余额查询和转账闭环，不能只实现其中一半。
+- `USDT` 与 `USDC` 合约地址必须通过配置提供，不允许写死在 UI 层。
+- `ETH`、`USDT`、`USDC` 都必须有余额查询和转账闭环，不能只实现其中一半。
 
 ### 7.5 验收标准
 
 - `ethereum.balance.eth`
 - `ethereum.balance.usdt`
+- `ethereum.balance.usdc`
 - `ethereum.sign_message`
 - `ethereum.transfer.eth`
 - `ethereum.transfer.usdt`
+- `ethereum.transfer.usdc`
 
 以上能力都能独立调用、独立报错、独立追踪状态。
 
@@ -238,6 +251,7 @@
 - wallet tool HTTP gateway
 - Owner auth / logout / credential rotation
 - current wallet / import / export / audit owner APIs
+- asset limit owner APIs
 
 ### 8.4 开发要求
 
@@ -246,12 +260,14 @@
 - gateway 必须复用同一套 tool registry。
 - 不允许为 UI 新增聚合看板接口。
 - 不允许把某个链能力只暴露给 Owner 而不暴露给 Agent，除非 `PRD` 明确区分。
+- 限额配置必须走独立 Owner API，不复用 wallet tools gateway 伪装成钱包工具。
 
 ### 8.5 验收标准
 
 - Agent 与 Owner 调用同一工具时，返回模型一致。
 - wallet tool catalog 中的工具集合与契约文档一致。
 - `wallet.current` 与 `wallet.operation_status` 在 `MCP` 与 HTTP gateway 中都可用。
+- Owner 可通过独立接口读取和修改币种限额配置。
 
 ## 9. 阶段 6：Owner UI 闭环
 
@@ -274,11 +290,14 @@
 - CKB 地址与余额展示
 - ETH 地址与余额展示
 - USDT 余额展示
+- USDC 余额展示
 - Nervos 消息签名面板
 - Ethereum 消息签名面板
 - `CKB` 转账面板
 - `ETH` 转账面板
 - `USDT` 转账面板
+- `USDC` 转账面板
+- 币种限额配置面板
 - 钱包恢复导入
 - 私钥导出
 - 凭证轮换
@@ -290,13 +309,15 @@
 - UI 看板必须完全由原子能力组合而成，不新增后端聚合接口。
 - UI 必须按链分组展示资产，但组合逻辑留在前端。
 - 每个转账面板只服务一个明确资产。
+- 限额配置 UI 必须按币种展示日、周、月三档设置。
 - UI 中的风险说明必须覆盖默认 Owner 凭证、私钥导出、恢复替换钱包、信用钱包资金隔离四类风险。
-- `TransferPanels.tsx` 和 `types/app-state.ts` 必须同时反映 `CKB`、`ETH`、`USDT` 三类资产。
+- `TransferPanels.tsx` 和 `types/app-state.ts` 必须同时反映 `CKB`、`ETH`、`USDT`、`USDC` 四类资产。
 
 ### 9.5 验收标准
 
-- Owner 登录后能完整看到 CKB、ETH、USDT 状态。
-- Owner 不需要切换工具协议，即可一键完成签名与三类转账。
+- Owner 登录后能完整看到 CKB、ETH、USDT、USDC 状态。
+- Owner 不需要切换工具协议，即可一键完成签名与四类转账。
+- Owner 可直接查看并修改四类资产的限额配置。
 - UI 不依赖任何后端聚合 dashboard API。
 
 ## 10. 阶段 7：部署、安全与运维闭环
@@ -318,8 +339,9 @@
 
 ### 10.3 必须交付
 
-- `CKB/EVM` 按链独立的 `MODE/PRESET/CONFIG_PATH` 模式化配置
-- `CKB_CHAIN_CONFIG_PATH` 与 `EVM_CHAIN_CONFIG_PATH` 驱动的 custom 链配置加载
+- `CHAIN_ENV=custom|testnet|mainnet` 模式化配置
+- `CHAIN_CONFIG_PATH` 驱动的 custom 链配置加载
+- `TZ` 驱动的 server 本地时区口径
 - 非 Docker 路径下的 `WALLET_KEK_PATH` 启动规范
 - Docker secret 路径下的 `KEK` 读取规范
 - 默认 Owner 凭证通知规范
@@ -332,7 +354,8 @@
 
 - `testnet` 与 `mainnet` 必须使用内置 preset。
 - `custom` 必须通过 JSON 文件提供完整链配置，不允许把整套链配置散落在 env。
-- `custom` 模式必须校验 CKB `genesisHash`、EVM `chainId` 和 USDT 合约 `decimals()`。
+- `custom` 模式必须校验 CKB `genesisHash`、EVM `chainId`、USDT 合约 `decimals()` 和 USDC 合约 `decimals()`。
+- 部署文档必须明确 `TZ` 对限额重置的影响。
 - 生产默认不允许依赖明文 `WALLET_KEK` 环境变量。
 - Docker 示例不得提交真实 secret。
 - 部署说明必须覆盖 Docker 与非 Docker 两条路径。
@@ -370,12 +393,15 @@
 
 - 首次启动自动生成钱包
 - 查看当前钱包
-- 查看 CKB、ETH、USDT 余额
+- 查看 CKB、ETH、USDT、USDC 余额
 - Nervos 签名
 - Ethereum 签名
 - CKB 转账
 - ETH 转账
 - USDT 转账
+- USDC 转账
+- Owner 配置币种限额
+- Agent 触发限额并收到结构化 `limit` 信息
 - Owner 登录、改密、导入、导出
 - 操作审计查询
 

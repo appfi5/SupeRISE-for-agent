@@ -11,6 +11,7 @@
 - `CKB` 链上的 `CKB`
 - `ETH` 链上的 `ETH`
 - `ETH` 链上的 `USDT`
+- `ETH` 链上的 `USDC`
 
 不支持：
 
@@ -20,34 +21,27 @@
 
 ## 3. 链环境模型
 
-本期链环境按链独立装配，不再使用单个全局 `CHAIN_ENV`。
+本期链环境统一采用：
 
-正式模式为：
+- `CHAIN_ENV=custom|testnet|mainnet`
 
-- `CKB_CHAIN_MODE=preset|custom`
-- `CKB_CHAIN_PRESET=testnet|mainnet`
-- `CKB_CHAIN_CONFIG_PATH`
-- `EVM_CHAIN_MODE=preset|custom`
-- `EVM_CHAIN_PRESET=testnet|mainnet`
-- `EVM_CHAIN_CONFIG_PATH`
+三种模式的正式语义如下：
 
-语义如下：
-
-- `preset`：使用系统内置 `testnet/mainnet` preset，面向零 setup。
+- `testnet`：使用系统内置测试网 preset，面向零 setup。
+- `mainnet`：使用系统内置主网 preset，面向正式运行。
 - `custom`：使用者显式提供完整链连接配置，面向开发、联调、自建节点和代理 RPC 场景。
 
 约束：
 
-- `CKB` 与 `EVM` 必须允许自由组合 preset/custom。
-- `preset` 只允许使用内置 preset。
+- `testnet` 与 `mainnet` 只允许使用内置 preset。
 - `custom` 允许自定义链连接参数，但不改变本期产品范围。
-- 无论处于哪种模式，对外协议仍只支持 `CKB`、`ETH`、`USDT` 三类资产动作。
+- 无论处于哪种模式，对外协议仍只支持 `CKB`、`ETH`、`USDT`、`USDC` 四类资产动作。
 
 ## 4. 链接入定案
 
 ### 4.1 CKB
 
-- SDK：`@ckb-ccc/core`
+- SDK：`@ckb-ccc/shell`
 
 适配器职责：
 
@@ -65,9 +59,11 @@
 - 私钥推导地址
 - ETH 余额查询
 - USDT 余额查询
+- USDC 余额查询
 - 消息签名
 - ETH 转账
 - USDT 转账
+- USDC 转账
 
 ### 4.3 模式化装配要求
 
@@ -81,55 +77,36 @@
 
 开发要求：
 
-- 不允许把 `@ckb-ccc/core` 和 `viem` 适配器实现成只支持硬编码 preset。
+- 不允许把 `@ckb-ccc/shell` 和 `viem` 适配器实现成只支持硬编码 preset。
 - preset profile 负责零 setup 启动。
 - custom profile 负责显式链参数接入。
 - profile 选择必须由配置层完成，不允许由业务代码猜测。
 
 ### 4.4 custom 模式配置结构
 
-`custom` 模式下，两条链必须使用各自独立的 JSON 文件，而不是把全部链参数散落在环境变量里。
+`custom` 模式下，链配置必须通过独立 JSON 文件提供，而不是把全部链参数散落在环境变量里。
 
-`CKB custom` 结构：
+建议结构：
 
 ```json
 {
-  "rpcUrl": "https://example-ckb-rpc.local",
-  "indexerUrl": "https://example-ckb-indexer.local",
-  "genesisHash": "0x...",
-  "addressPrefix": "ckt",
-  "scripts": {
-    "Secp256k1Blake160": {
-      "codeHash": "0x...",
-      "hashType": "type",
-      "cellDeps": [
-        {
-          "cellDep": {
-            "outPoint": {
-              "txHash": "0x...",
-              "index": 0
-            },
-            "depType": "depGroup"
-          }
+  "ckb": {
+    "rpcUrl": "https://example-ckb-rpc.local",
+    "indexerUrl": "https://example-ckb-indexer.local",
+    "genesisHash": "0x..."
+  },
+  "evm": {
+    "rpcUrl": "https://example-evm-rpc.local",
+    "chainId": 11155111,
+    "networkName": "custom-sepolia",
+    "tokens": {
+      "erc20": {
+        "usdt": {
+          "contractAddress": "0x..."
+        },
+        "usdc": {
+          "contractAddress": "0x..."
         }
-      ]
-    }
-  }
-}
-```
-
-`EVM custom` 结构：
-
-```json
-{
-  "rpcUrl": "https://example-evm-rpc.local",
-  "chainId": 11155111,
-  "networkName": "custom-sepolia",
-  "tokens": {
-    "erc20": {
-      "usdt": {
-        "standard": "erc20",
-        "contractAddress": "0x..."
       }
     }
   }
@@ -141,13 +118,11 @@
 - `ckb.rpcUrl` 必填
 - `ckb.indexerUrl` 必填
 - `ckb.genesisHash` 必填
-- `ckb.addressPrefix` 必填
-- `ckb.scripts.Secp256k1Blake160` 必填
 - `evm.rpcUrl` 必填
 - `evm.chainId` 必填
 - `evm.networkName` 可选，仅用于日志与展示
-- `evm.tokens.erc20.usdt.standard` 必须为 `erc20`
 - `evm.tokens.erc20.usdt.contractAddress` 必填
+- `evm.tokens.erc20.usdc.contractAddress` 必填
 
 说明：
 
@@ -191,6 +166,14 @@ interface EvmUsdtBalanceReader {
 interface EvmUsdtTransferExecutor {
   transferUsdt(privateKey: string, req: EvmUsdtTransferReq): Promise<TransferResult>;
 }
+
+interface EvmUsdcBalanceReader {
+  getUsdcBalance(privateKey: string): Promise<BalanceResult>;
+}
+
+interface EvmUsdcTransferExecutor {
+  transferUsdc(privateKey: string, req: EvmUsdcTransferReq): Promise<TransferResult>;
+}
 ```
 
 ## 6. CKB 适配器设计
@@ -210,7 +193,6 @@ interface EvmUsdtTransferExecutor {
 在 `custom` 模式下，CKB 适配器必须：
 
 - 使用 `rpcUrl` 与 `indexerUrl` 建立连接
-- 使用 `addressPrefix` 与 `scripts` 构造 `ccc` custom client
 - 在启动阶段校验链实际 `genesisHash`
 - 当 `genesisHash` 与配置不一致时直接失败
 
@@ -232,12 +214,14 @@ interface EvmUsdtTransferExecutor {
 - `getEthAddress`
 - `getEthBalance`
 - `getUsdtBalance`
+- `getUsdcBalance`
 
 ### 7.2 写能力
 
 - `signEvmMessage`
 - `transferEth`
 - `transferUsdt`
+- `transferUsdc`
 
 ### 7.3 custom 模式要求
 
@@ -246,19 +230,21 @@ interface EvmUsdtTransferExecutor {
 - 使用 `rpcUrl` 建立连接
 - 在启动阶段校验实际 `chainId`
 - 使用配置中的 `tokens.erc20.usdt.contractAddress`
-- 对目标 USDT 合约执行基础校验
+- 使用配置中的 `tokens.erc20.usdc.contractAddress`
+- 对目标稳定币合约执行基础校验
 
-USDT 配置规则：
+稳定币配置规则：
 
-- 用户配置层只需要提供 `tokens.erc20.usdt.contractAddress`
+- 用户配置层只需要提供 `contractAddress`
 - 不要求用户提供 ABI、symbol、decimals
 - 系统内部使用固定 ERC-20 ABI 片段完成余额查询与转账
 
-USDT 启动校验要求：
+稳定币启动校验要求：
 
 - 合约地址格式合法
 - 目标地址存在合约字节码
-- `decimals()` 返回值必须为 `6`
+- `USDT` 的 `decimals()` 返回值必须为 `6`
+- `USDC` 的 `decimals()` 返回值必须为 `6`
 - `symbol()` 可读取时可写入日志，但不作为启动强校验前置
 
 ### 7.4 关键风险
@@ -285,9 +271,11 @@ USDT 启动校验要求：
 - 上层调用 `getCkbBalance`
 - 上层调用 `getEthBalance`
 - 上层调用 `getUsdtBalance`
+- 上层调用 `getUsdcBalance`
 - 上层调用 `transferCkb`
 - 上层调用 `transferEth`
 - 上层调用 `transferUsdt`
+- 上层调用 `transferUsdc`
 - 上层不处理 UTXO 与 nonce 差异
 
 补充约束：

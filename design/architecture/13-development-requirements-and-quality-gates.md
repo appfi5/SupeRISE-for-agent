@@ -30,12 +30,15 @@
 | Nervos / CKB | `nervos.address` | `nervos.balance.ckb` | `nervos.sign_message` | `nervos.transfer.ckb` |
 | Ethereum / ETH | `ethereum.address` | `ethereum.balance.eth` | `ethereum.sign_message` | `ethereum.transfer.eth` |
 | Ethereum / USDT | 复用 `ethereum.address` | `ethereum.balance.usdt` | 不单独提供第二个签名工具 | `ethereum.transfer.usdt` |
+| Ethereum / USDC | 复用 `ethereum.address` | `ethereum.balance.usdc` | 不单独提供第二个签名工具 | `ethereum.transfer.usdc` |
 
 实现要求：
 
 - 不允许缺失 `ETH` 转账。
 - 不允许只做 `USDT` 转账而缺失 `ETH` 转账。
-- 不允许把 `ETH` 与 `USDT` 合并成一个外部通用 transfer tool。
+- 不允许只做 `USDC` 转账而缺失 `USDC` 余额查询。
+- 不允许把 `ETH`、`USDT`、`USDC` 合并成外部通用 transfer tool。
+- 必须提供按币种独立的日、周、月限额能力。
 
 ## 4. 单工具单职责要求
 
@@ -86,7 +89,7 @@ UI 要求：
 
 - 只编排用例和端口。
 - 不直接依赖 `NestJS`。
-- 不直接依赖 `viem` 或 `@ckb-ccc/core`。
+- 不直接依赖 `viem` 或 `@ckb-ccc/shell`。
 - 不直接感知 HTTP 请求对象。
 
 ### 6.3 `packages/domain`
@@ -146,13 +149,32 @@ UI 要求：
 - 文档示例只能引用 `.env.example` 或空目录占位文件。
 - 不允许让自动生成的钱包数据成为仓库默认输入。
 
+## 8.1 限额实现要求
+
+限额能力必须遵守：
+
+- 限额由 server 执行，不在 Agent 或 UI 侧自行判断
+- 限额只对 `AGENT` 生效
+- `OWNER` 不受限额约束
+- 限额按币种独立配置
+- 限额周期固定为 `DAILY`、`WEEKLY`、`MONTHLY`
+- 限额按 server 本地时区计算
+- Agent 只在触发时收到结构化 `limit` 信息
+
+实现要求：
+
+- 限额配置修改必须审计
+- Agent 触发限额拦截必须审计
+- 限额统计不得依赖解析 UI 状态
+- 限额金额口径必须与转账金额口径一致
+
 ## 9. 链配置实现要求
 
 链配置必须遵守：
 
-- 正式模式为按链独立的 `*_CHAIN_MODE=preset|custom`
-- `preset` 必须使用内置 `testnet|mainnet`
-- `custom` 必须通过各自 `*_CHAIN_CONFIG_PATH` 加载 JSON 配置
+- 正式模式为 `CHAIN_ENV=custom|testnet|mainnet`
+- `testnet` 与 `mainnet` 必须使用内置 preset
+- `custom` 必须通过 `CHAIN_CONFIG_PATH` 加载 JSON 配置
 - 不允许把完整链配置全部塞进环境变量
 - 不允许通过配置动态生成新的外部 wallet tool
 
@@ -161,12 +183,10 @@ UI 要求：
 - `ckb.rpcUrl`
 - `ckb.indexerUrl`
 - `ckb.genesisHash`
-- `ckb.addressPrefix`
-- `ckb.scripts.Secp256k1Blake160`
 - `evm.rpcUrl`
 - `evm.chainId`
-- `evm.tokens.erc20.usdt.standard`
 - `evm.tokens.erc20.usdt.contractAddress`
+- `evm.tokens.erc20.usdc.contractAddress`
 
 `custom` 模式必须校验：
 
@@ -175,17 +195,23 @@ UI 要求：
 - USDT 合约地址格式
 - USDT 合约代码存在
 - USDT `decimals()` 返回值为 `6`
+- USDC 合约地址格式
+- USDC 合约代码存在
+- USDC `decimals()` 返回值为 `6`
 
 ## 10. 代码评审闸门
 
 以下任一项不满足，评审不得通过：
 
 - `PRD` 范围内的工具没有在 contracts、registry、application、UI 中同步。
-- `ETH` 与 `USDT` 支持不完整。
+- `ETH`、`USDT`、`USDC` 支持不完整。
 - 新增了后端聚合接口。
 - 仍然把链环境写死为旧 `NETWORK=testnet|mainnet` 双态模型。
 - `custom` 模式没有通过 JSON 文件提供完整链配置。
 - `USDT` 依赖用户手工提供 ABI 或 decimals 才能工作。
+- `USDC` 依赖用户手工提供 ABI 或 decimals 才能工作。
+- 限额判断被放到了 UI、Agent 或 controller 层。
+- Owner 也被错误纳入 Agent 限额约束。
 - controller 中出现链 SDK 直接调用。
 - UI 中出现绕过 Owner API 的后门逻辑。
 - 高风险操作没有审计记录。
@@ -218,6 +244,10 @@ UI 要求：
 - CKB `genesisHash` 不匹配
 - EVM `chainId` 不匹配
 - USDT `decimals()` 不是 `6`
+- USDC `decimals()` 不是 `6`
+- Agent 触发日限额
+- Agent 触发周限额
+- Agent 触发月限额
 - 签名失败
 - 转账广播失败
 - 导入私钥格式错误
@@ -231,8 +261,9 @@ UI 要求：
 - 我是否把外部接口做成了单工具单职责。
 - 我是否错误地为 UI 新增了聚合接口。
 - 我是否让 contracts、application、registry、UI 同步更新。
-- 我是否补齐了 `ETH`、`CKB`、`USDT` 的需求闭环。
-- 我是否按链独立的 `MODE/PRESET/CONFIG_PATH` 实现了链配置，而不是继续沿用旧 `NETWORK` 或单个 `CHAIN_ENV` 口径。
+- 我是否补齐了 `ETH`、`CKB`、`USDT`、`USDC` 的需求闭环。
+- 我是否按 `CHAIN_ENV=custom|testnet|mainnet` 实现了链配置，而不是继续沿用旧 `NETWORK` 或按链拆开的旧口径。
 - 我是否把 `custom` 配置放进了独立 JSON，而不是把整套链参数塞进 env。
+- 我是否把限额判断留在 server 应用层，而不是散落到 UI 或 Agent。
 - 我是否避免提交运行时数据和密钥文件。
 - 我是否给高风险动作补了审计和测试。

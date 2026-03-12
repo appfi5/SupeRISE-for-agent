@@ -1,7 +1,7 @@
 # Agent 信用钱包架构设计总览
 
 > 状态：Proposed
-> 更新时间：2026-03-10
+> 更新时间：2026-03-12
 > 关联文档：`design/product/prd.md`
 > 实现约束：Node.js + TypeScript
 
@@ -19,8 +19,10 @@
 - 数据库采用 `SQLite`
 - 数据访问采用 `Kysely + better-sqlite3`
 - ETH 集成采用 `viem`
-- CKB 集成采用 `@ckb-ccc/core`
+- CKB 集成采用 `@ckb-ccc/shell`
 - 密钥管理采用 `DEK + KEK` 双层设计，`KEK` 由部署侧提供
+- 当前支持资产为 `CKB`、`ETH`、`USDT`、`USDC`
+- server 侧提供按币种独立的日、周、月限额能力，仅对 Agent 生效
 
 ## 2. 文档导航
 
@@ -39,6 +41,7 @@
 - [11 重构清理实施方案](./11-cleanup-plan.md)
 - [12 开发实施路线图](./12-implementation-roadmap.md)
 - [13 开发约束与质量闸门](./13-development-requirements-and-quality-gates.md)
+- [ADR 0001 币种限额执行模型](./adr/0001-asset-limit-enforcement.md)
 
 ## 3. 使用方式
 

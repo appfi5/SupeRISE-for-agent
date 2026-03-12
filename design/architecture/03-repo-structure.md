@@ -39,6 +39,7 @@ design/
     prd.md
   architecture/
     overview.md
+    adr/
   contracts/
     mcp-and-owner-interfaces.md
 ```
@@ -132,7 +133,7 @@ design/
 
 职责：
 
-- `@ckb-ccc/core` 的二次封装
+- `@ckb-ccc/shell` 的二次封装
 - CKB 地址推导、签名、转账、余额查询
 
 ### 4.8 `packages/adapters-evm`
@@ -140,7 +141,7 @@ design/
 职责：
 
 - `viem` 的二次封装
-- ETH 地址推导、ETH / USDT 余额查询、签名、转账
+- ETH 地址推导、ETH / USDT / USDC 余额查询、签名、转账
 
 ### 4.9 `packages/shared`
 

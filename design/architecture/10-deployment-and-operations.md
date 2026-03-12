@@ -2,7 +2,7 @@
 
 ## 1. 文档目的
 
-本文档定义部署模式、运行配置、链配置加载方式、健康检查、备份恢复与运维边界。它的职责是指导开发者和运维实现正确的部署方案，而不是记录当前实现结果。
+本文档定义部署模式、运行配置、链配置加载方式、限额时区口径、健康检查、备份恢复与运维边界。它的职责是指导开发者和运维实现正确的部署方案，而不是记录当前实现结果。
 
 ## 2. 支持的部署模式
 
@@ -29,7 +29,7 @@
 
 - 必须提供 `WALLET_KEK_PATH` 或显式允许的 `WALLET_KEK`
 - 数据目录与日志目录必须可控
-- 某条链处于 `custom` 模式时必须提供对应的 `*_CHAIN_CONFIG_PATH`
+- `custom` 模式下必须提供 `CHAIN_CONFIG_PATH`
 
 ## 3. 配置项分组
 
@@ -40,6 +40,7 @@
 - `HOST`
 - `PORT`
 - `NODE_ENV`
+- `TZ`
 
 ### 3.2 数据配置
 
@@ -54,12 +55,8 @@
 
 ### 3.4 链配置
 
-- `CKB_CHAIN_MODE`
-- `CKB_CHAIN_PRESET`
-- `CKB_CHAIN_CONFIG_PATH`
-- `EVM_CHAIN_MODE`
-- `EVM_CHAIN_PRESET`
-- `EVM_CHAIN_CONFIG_PATH`
+- `CHAIN_ENV`
+- `CHAIN_CONFIG_PATH`
 
 ### 3.5 Owner 配置
 
@@ -69,21 +66,20 @@
 
 ## 4. 链配置模式
 
-链配置采用“按链独立的 env + JSON 文件”混合模式。
+链配置采用 `env + JSON 文件` 的混合模式。
 
 正式规则：
 
-- `CKB_CHAIN_MODE=preset|custom`
-- `EVM_CHAIN_MODE=preset|custom`
-- `preset` 时使用系统内置 `testnet|mainnet`
-- `custom` 时必须提供对应链的 `*_CHAIN_CONFIG_PATH`
+- `CHAIN_ENV=custom|testnet|mainnet`
+- `CHAIN_ENV=testnet|mainnet` 时使用系统内置 preset
+- `CHAIN_ENV=custom` 时必须提供 `CHAIN_CONFIG_PATH`
 
 ### 4.1 preset 模式
 
 适用于：
 
-- `CKB_CHAIN_MODE=preset`
-- `EVM_CHAIN_MODE=preset`
+- `CHAIN_ENV=testnet`
+- `CHAIN_ENV=mainnet`
 
 要求：
 
@@ -102,50 +98,31 @@
 
 要求：
 
-- 必须提供对应链的 `*_CHAIN_CONFIG_PATH`
+- 必须提供 `CHAIN_CONFIG_PATH`
 - 配置文件必须是结构化 JSON
 - JSON 缺项直接启动失败
 
-`CKB custom` 建议结构：
+建议结构：
 
 ```json
 {
-  "rpcUrl": "https://example-ckb-rpc.local",
-  "indexerUrl": "https://example-ckb-indexer.local",
-  "genesisHash": "0x...",
-  "addressPrefix": "ckt",
-  "scripts": {
-    "Secp256k1Blake160": {
-      "codeHash": "0x...",
-      "hashType": "type",
-      "cellDeps": [
-        {
-          "cellDep": {
-            "outPoint": {
-              "txHash": "0x...",
-              "index": 0
-            },
-            "depType": "depGroup"
-          }
+  "ckb": {
+    "rpcUrl": "https://example-ckb-rpc.local",
+    "indexerUrl": "https://example-ckb-indexer.local",
+    "genesisHash": "0x..."
+  },
+  "evm": {
+    "rpcUrl": "https://example-evm-rpc.local",
+    "chainId": 11155111,
+    "networkName": "custom-sepolia",
+    "tokens": {
+      "erc20": {
+        "usdt": {
+          "contractAddress": "0x..."
+        },
+        "usdc": {
+          "contractAddress": "0x..."
         }
-      ]
-    }
-  }
-}
-```
-
-`EVM custom` 建议结构：
-
-```json
-{
-  "rpcUrl": "https://example-evm-rpc.local",
-  "chainId": 11155111,
-  "networkName": "custom-sepolia",
-  "tokens": {
-    "erc20": {
-      "usdt": {
-        "standard": "erc20",
-        "contractAddress": "0x..."
       }
     }
   }
@@ -159,24 +136,23 @@
 - `ckb.rpcUrl`
 - `ckb.indexerUrl`
 - `ckb.genesisHash`
-- `ckb.addressPrefix`
-- `ckb.scripts.Secp256k1Blake160`
 - `evm.rpcUrl`
 - `evm.chainId`
-- `evm.tokens.erc20.usdt.standard`
 - `evm.tokens.erc20.usdt.contractAddress`
+- `evm.tokens.erc20.usdc.contractAddress`
 
 可选字段：
 
 - `evm.networkName`
 
-### 4.4 USDT 配置口径
+### 4.4 稳定币配置口径
 
-本期 `USDT` 只支持 ERC-20 标准余额查询和转账。
+本期 `USDT` 与 `USDC` 都只支持 ERC-20 标准余额查询和转账。
 
 因此用户配置层只需要提供：
 
 - `tokens.erc20.usdt.contractAddress`
+- `tokens.erc20.usdc.contractAddress`
 
 不要求用户提供：
 
@@ -188,36 +164,54 @@
 
 - 内部使用固定 ERC-20 ABI 片段
 - 启动时校验目标地址存在合约字节码
-- 启动时校验 `decimals()` 返回值为 `6`
+- 启动时校验 `USDT.decimals()` 返回值为 `6`
+- 启动时校验 `USDC.decimals()` 返回值为 `6`
 
 ### 4.5 模式冲突处理
 
 必须遵守：
 
-- `*_CHAIN_MODE=preset` 时不得要求对应的 `*_CHAIN_CONFIG_PATH`
-- `*_CHAIN_MODE=custom` 时缺失对应 `*_CHAIN_CONFIG_PATH` 必须启动失败
-- `preset` 模式下如果同时提供该链 custom 文件，应直接启动失败，避免歧义
+- `CHAIN_ENV=testnet|mainnet` 时不得要求 `CHAIN_CONFIG_PATH`
+- `CHAIN_ENV=custom` 时缺失 `CHAIN_CONFIG_PATH` 必须启动失败
+- `CHAIN_ENV=testnet|mainnet` 时如果同时提供 custom 文件，应直接启动失败，避免歧义
 
-## 5. 启动顺序
+## 5. 限额时区口径
+
+按产品要求，限额按 server 本地时区重置。
+
+正式规则：
+
+- 日限额：每天 `00:00`
+- 周限额：每周一 `00:00`
+- 月限额：每月 `1 日 00:00`
+
+部署要求：
+
+- 运维必须显式设置 `TZ`
+- 应用启动日志必须打印解析后的本地时区
+- 多环境之间不得默认依赖宿主机隐式时区
+
+## 6. 启动顺序
 
 固定启动顺序：
 
 1. 读取基础配置
-2. 分别解析 `CKB` 与 `EVM` 的 `MODE/PRESET/CONFIG_PATH`
-3. 对每条处于 `custom` 模式的链读取并校验链配置 JSON
-4. 初始化日志
-5. 读取 `KEK`
-6. 初始化 SQLite 与 migration
-7. 检查链 RPC 可用性
-8. 检查或创建当前钱包
-9. 检查或创建默认 Owner 凭证
-10. 启动 MCP
-11. 启动 Owner HTTP API
-12. 提供静态 UI
+2. 解析 `CHAIN_ENV`
+3. 如为 `custom`，读取并校验链配置 JSON
+4. 解析本地时区
+5. 初始化日志
+6. 读取 `KEK`
+7. 初始化 SQLite 与 migration
+8. 检查链 RPC 可用性
+9. 检查或创建当前钱包
+10. 检查或创建默认 Owner 凭证
+11. 启动 MCP
+12. 启动 Owner HTTP API
+13. 提供静态 UI
 
-## 6. 健康检查
+## 7. 健康检查
 
-### 6.1 启动阶段自检
+### 7.1 启动阶段自检
 
 必须检查：
 
@@ -225,61 +219,58 @@
 - SQLite 可初始化
 - CKB RPC 可达
 - ETH RPC 可达
+- server 本地时区可解析
+
+当 `CHAIN_ENV=custom` 时还必须检查：
+
+- CKB 实际 `genesisHash` 与配置一致
 - EVM 实际 `chainId` 与配置一致
 - `USDT` 合约地址格式合法
 - `USDT` 合约代码存在
 - `USDT` 合约 `decimals()` 返回值为 `6`
+- `USDC` 合约地址格式合法
+- `USDC` 合约代码存在
+- `USDC` 合约 `decimals()` 返回值为 `6`
 
-当 `CKB_CHAIN_MODE=custom` 时还必须检查：
-
-- CKB 实际 `genesisHash` 与配置一致
-
-### 6.2 运行中检查
+### 7.2 运行中检查
 
 至少提供：
 
 - 进程存活检查
 - 数据库可用性检查
 
-## 7. 备份与恢复
+## 8. 备份与恢复
 
-### 7.1 必须备份的内容
+### 8.1 必须备份的内容
 
 - SQLite 数据库
 - `KEK` 来源文件或 docker secret 源
 
-当 `CKB_CHAIN_MODE=custom` 时还必须备份：
+当 `CHAIN_ENV=custom` 时还必须备份：
 
-- `CKB_CHAIN_CONFIG_PATH` 指向的 JSON 配置文件
+- `CHAIN_CONFIG_PATH` 指向的 JSON 配置文件
 
-当 `EVM_CHAIN_MODE=custom` 时还必须备份：
-
-- `EVM_CHAIN_CONFIG_PATH` 指向的 JSON 配置文件
-
-### 7.2 恢复要求
+### 8.2 恢复要求
 
 恢复时必须同时恢复：
 
 - 数据库
 - `KEK`
 
-当 `CKB_CHAIN_MODE=custom` 时还必须恢复：
+当 `CHAIN_ENV=custom` 时还必须恢复：
 
-- `CKB` 链配置 JSON
-
-当 `EVM_CHAIN_MODE=custom` 时还必须恢复：
-
-- `EVM` 链配置 JSON
+- 链配置 JSON
 
 否则无法解密钱包私钥或恢复正确链环境。
 
-## 8. 运维边界
+## 9. 运维边界
 
 运维文档应指导以下事项：
 
 - 如何提供 `KEK`
-- 如何选择每条链的 `MODE/PRESET`
-- 如何在 `custom` 模式下挂载 `CKB/EVM` 两份链配置 JSON
+- 如何选择 `CHAIN_ENV`
+- 如何在 `custom` 模式下挂载链配置 JSON
+- 如何设置 `TZ`
 - 如何启动服务
 - 如何检查健康状态
 - 如何备份与恢复
@@ -290,8 +281,8 @@
 - 描述当前代码是否已经实现某项能力
 - 记录临时开发差异
 
-## 9. 部署结论
+## 10. 部署结论
 
 本期部署设计的目标是：
 
-`让单机钱包服务在受控密钥和受控链配置前提下稳定启动、可诊断、可恢复。`
+`让单机钱包服务在受控密钥、受控链配置和受控时区口径前提下稳定启动、可诊断、可恢复。`

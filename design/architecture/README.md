@@ -1,7 +1,7 @@
 # Agent 信用钱包详细架构设计文档集
 
 > 状态：Proposed
-> 更新时间：2026-03-09
+> 更新时间：2026-03-12
 > 关联文档：`design/product/prd.md`
 
 本目录是 Agent 信用钱包重构的正式架构文档集。该文档集用于指导开发团队完成一次彻底重构，不为历史代码提供兼容路径，也不以现有实现作为设计边界。
@@ -27,6 +27,7 @@
 11. [11 重构清理实施方案](./11-cleanup-plan.md)
 12. [12 开发实施路线图](./12-implementation-roadmap.md)
 13. [13 开发约束与质量闸门](./13-development-requirements-and-quality-gates.md)
+14. [ADR 0001 币种限额执行模型](./adr/0001-asset-limit-enforcement.md)
 
 ## 本次重构的正式定案
 
@@ -39,8 +40,10 @@
 - 数据库：`SQLite`
 - 数据访问：`Kysely + better-sqlite3`
 - EVM：`viem`
-- CKB：`@ckb-ccc/core`
+- CKB：`@ckb-ccc/shell`
 - 密钥管理：`DEK + KEK` 双层设计，`KEK` 由部署侧提供
+- 当前支持资产：`CKB`、`ETH`、`USDT`、`USDC`
+- server 侧按币种执行 `daily/weekly/monthly` 三档限额
 
 ## 文档边界
 

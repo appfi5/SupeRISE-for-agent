@@ -30,6 +30,7 @@
 - `DatabaseModule`
 - `VaultModule`
 - `WalletModule`
+- `AssetLimitModule`
 - `OwnerAuthModule`
 - `OwnerApiModule`
 - `WalletToolsModule`
@@ -69,7 +70,8 @@
 - 服务端口与主机
 - 数据目录与 SQLite 路径
 - `KEK` 读取方式
-- 链网络 preset
+- 链网络 preset / custom 配置
+- `TZ`
 - Owner JWT 配置
 
 ### 4.3 `LoggingModule`
@@ -131,15 +133,23 @@
 - CKB 余额查询
 - ETH 余额查询
 - USDT 余额查询
+- USDC 余额查询
 - 消息签名
 - CKB 转账编排
 - ETH 转账编排
 - USDT 转账编排
+- USDC 转账编排
 - 导入恢复
 - 导出私钥
 - 启动时自动创建钱包
 
 WalletModule 是本期核心业务模块。
+
+额外要求：
+
+- Agent 转账路径必须在进入链适配器前调用限额评估
+- Owner 转账路径必须显式绕过限额评估
+- 限额评估失败时必须返回结构化 `ASSET_LIMIT_EXCEEDED`
 
 ### 4.7 `OwnerAuthModule`
 
@@ -169,9 +179,33 @@ WalletModule 是本期核心业务模块。
 - `OwnerAuthController`
 - `OwnerCredentialController`
 - `OwnerWalletController`
+- `OwnerAssetLimitController`
 - `OwnerAuditController`
 
-### 4.9 `WalletToolsModule`
+### 4.9 `AssetLimitModule`
+
+职责：
+
+- 保存按币种的日、周、月限额配置
+- 在 Agent 转账前执行限额评估
+- 计算当前周期的已用额度
+- 返回限额超出时的结构化信息
+
+必须支持：
+
+- `CKB`
+- `ETH`
+- `USDT`
+- `USDC`
+
+业务规则：
+
+- 限额只对 `AGENT` 生效
+- `OWNER` 不受限额约束
+- 限额按 server 本地时区重置
+- 限额口径使用币种最小单位整数字符串
+
+### 4.10 `WalletToolsModule`
 
 职责：
 
@@ -185,7 +219,7 @@ WalletModule 是本期核心业务模块。
 - 不新增独立业务语义
 - 不绕过应用层直接访问数据库
 
-### 4.10 `McpModule`
+### 4.11 `McpModule`
 
 职责：
 
@@ -200,23 +234,23 @@ WalletModule 是本期核心业务模块。
 - 不直接依赖链 SDK
 - 不复制业务逻辑
 
-### 4.11 `CkbModule`
+### 4.12 `CkbModule`
 
 职责：
 
 - 注册 `CkbWalletAdapter`
-- 封装 `@ckb-ccc/core`
+- 封装 `@ckb-ccc/shell`
 - 提供地址推导、CKB 余额查询、签名、CKB 转账
 
-### 4.12 `EvmModule`
+### 4.13 `EvmModule`
 
 职责：
 
 - 注册 `EvmWalletAdapter`
 - 封装 `viem`
-- 提供地址推导、ETH 余额查询、USDT 余额查询、签名、ETH 转账、USDT 转账
+- 提供地址推导、ETH 余额查询、USDT 余额查询、USDC 余额查询、签名、ETH 转账、USDT 转账、USDC 转账
 
-### 4.13 `AuditModule`
+### 4.14 `AuditModule`
 
 职责：
 
@@ -230,10 +264,12 @@ WalletModule 是本期核心业务模块。
 - 凭证修改
 - 钱包导入
 - 私钥导出
+- 限额配置修改
+- Agent 触发限额拦截
 - 签名
 - 转账
 
-### 4.14 `HealthModule`
+### 4.15 `HealthModule`
 
 职责：
 
@@ -245,6 +281,9 @@ WalletModule 是本期核心业务模块。
 - `KEK` 读取检查
 - SQLite 初始化 / migration
 - 链 RPC 可达性检查
+- custom 链配置一致性检查
+- ERC-20 合约校验
+- server 本地时区可解析
 
 运行中接口建议至少提供：
 
