@@ -1,5 +1,6 @@
 export * from "./ports";
 export * from "./services/asset-limit.service";
+export * from "./services/address-book.service";
 export * from "./services/ethereum.service";
 export * from "./services/nervos.service";
 export * from "./services/bootstrap.service";

@@ -42,6 +42,14 @@
 
 - `wallet.current`
 - `wallet.operation_status`
+- `address_book.list`
+- `address_book.search`
+- `address_book.lookup_by_address`
+- `address_book.get`
+- `address_book.get_all`
+- `address_book.create`
+- `address_book.update`
+- `address_book.delete`
 - `nervos.address`
 - `nervos.balance.ckb`
 - `nervos.sign_message`
@@ -71,3 +79,8 @@
 - `nervos.tx_status` 与 `ethereum.tx_status` 返回链上观察状态：`NOT_FOUND`、`PENDING`、`CONFIRMED`、`FAILED`
 - 一次转账后，通常需要同时使用 `wallet.operation_status` 与对应链的 `tx_status` 跟踪内部进度和链上最终结果
 - 当 Agent 转账命中按资产限额时，transfer 工具会返回 `ASSET_LIMIT_EXCEEDED`；限额按资产独立执行，并按日 / 周 / 月窗口统计
+- 地址簿工具用于维护共享联系人；`address_book.lookup_by_address` 只表达“地址簿中有哪些匹配联系人”，不表达链上真实归属
+- 四个 transfer 工具都支持可选 `toType`
+  - `toType=address` 表示 `to` 是原始链地址；省略时默认按这个模式处理
+  - `toType=contact_name` 表示 `to` 是联系人名称；server 会按当前链解析最终地址
+  - `toType=address` 时不会自动反查地址簿，也不会回填联系人名称

@@ -5,7 +5,7 @@ export const walletToolNameSchema = z.enum(MCP_TOOL_NAMES);
 
 export const walletToolArgumentSchema = z.object({
   name: z.string().min(1),
-  type: z.literal("string"),
+  type: z.enum(["string", "object"]),
   required: z.boolean(),
   description: z.string().min(1),
 });

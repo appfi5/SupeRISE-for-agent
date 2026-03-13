@@ -4,6 +4,7 @@ import {
   nonNegativeIntegerStringSchema,
   privateKeyHexSchema,
   positiveIntegerStringSchema,
+  transferTargetTypeSchema,
   transferStatusSchema,
   txStatusSchema,
 } from "./_common";
@@ -54,16 +55,19 @@ export const ethereumSignMessageResponseSchema = z.object({
 
 export const ethereumTransferUsdtRequestSchema = z.object({
   to: z.string().min(1),
+  toType: transferTargetTypeSchema,
   amount: positiveIntegerStringSchema,
 });
 
 export const ethereumTransferUsdcRequestSchema = z.object({
   to: z.string().min(1),
+  toType: transferTargetTypeSchema,
   amount: positiveIntegerStringSchema,
 });
 
 export const ethereumTransferEthRequestSchema = z.object({
   to: z.string().min(1),
+  toType: transferTargetTypeSchema,
   amount: positiveIntegerStringSchema,
 });
 
@@ -73,6 +77,9 @@ export const ethereumTransferEthResponseSchema = z.object({
   operationId: z.string(),
   txHash: z.string(),
   status: transferStatusSchema,
+  toType: transferTargetTypeSchema,
+  contactName: z.string().trim().min(1).optional(),
+  resolvedAddress: z.string().trim().min(1),
 });
 
 export const ethereumTransferUsdtResponseSchema = z.object({
@@ -81,6 +88,9 @@ export const ethereumTransferUsdtResponseSchema = z.object({
   operationId: z.string(),
   txHash: z.string(),
   status: transferStatusSchema,
+  toType: transferTargetTypeSchema,
+  contactName: z.string().trim().min(1).optional(),
+  resolvedAddress: z.string().trim().min(1),
 });
 
 export const ethereumTransferUsdcResponseSchema = z.object({
@@ -89,6 +99,9 @@ export const ethereumTransferUsdcResponseSchema = z.object({
   operationId: z.string(),
   txHash: z.string(),
   status: transferStatusSchema,
+  toType: transferTargetTypeSchema,
+  contactName: z.string().trim().min(1).optional(),
+  resolvedAddress: z.string().trim().min(1),
 });
 
 export const ethereumTxStatusRequestSchema = z.object({

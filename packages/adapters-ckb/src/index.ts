@@ -39,6 +39,18 @@ export class CkbCccWalletAdapter implements CkbWalletAdapter {
     return this.createSigner(privateKey).getRecommendedAddress();
   }
 
+  async normalizeAddress(address: string): Promise<string> {
+    try {
+      const parsed = await Address.fromString(address.trim(), this.createClient());
+      return parsed.toString();
+    } catch (error) {
+      throw new WalletDomainError(
+        "VALIDATION_ERROR",
+        `Nervos address is invalid: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
   async getBalance(privateKey: string): Promise<string> {
     const balance = await this.createSigner(privateKey).getBalance();
     return balance.toString();
@@ -56,7 +68,10 @@ export class CkbCccWalletAdapter implements CkbWalletAdapter {
     request: NervosTransferCkbRequest,
   ): Promise<{ txHash: string }> {
     const signer = this.createSigner(privateKey);
-    const receiver = await Address.fromString(request.to, signer.client);
+    const receiver = await Address.fromString(
+      await this.normalizeAddress(request.to),
+      signer.client,
+    );
     const amount = BigInt(request.amount);
     const minimumCapacity = fixedPointFrom(
       CellOutput.from({ capacity: 0n, lock: receiver.script }).occupiedSize,

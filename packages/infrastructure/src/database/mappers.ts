@@ -1,4 +1,5 @@
 import type {
+  AddressBookContact,
   AuditLog,
   AssetLimitPolicy,
   AssetLimitReservation,
@@ -11,6 +12,7 @@ import type {
 import { parseJson, serializeJson } from "@superise/shared";
 import type { Insertable, Selectable } from "kysely";
 import type {
+  AddressBookContactsTable,
   AuditLogsTable,
   AssetLimitPoliciesTable,
   AssetLimitReservationsTable,
@@ -89,11 +91,23 @@ export function transferOperationFromRow(
     actorRole: row.role as TransferOperation["actorRole"],
     chain: row.chain as TransferOperation["chain"],
     asset: row.asset as TransferOperation["asset"],
-    requestPayload: parseJson(row.request_payload, {}),
+    targetType: row.target_type as TransferOperation["targetType"],
+    targetInput: row.target_input,
+    resolvedToAddress: row.resolved_to_address,
+    resolvedContactName: row.resolved_contact_name,
+    requestedAmount: row.requested_amount,
+    requestPayload: parseJson<Record<string, unknown>>(row.request_payload, {}),
     status: row.status as TransferOperation["status"],
     txHash: row.tx_hash,
     errorCode: row.error_code as TransferOperation["errorCode"],
     errorMessage: row.error_message,
+    submittedAt: row.submitted_at,
+    confirmedAt: row.confirmed_at,
+    failedAt: row.failed_at,
+    lastChainStatus: row.last_chain_status as TransferOperation["lastChainStatus"],
+    lastChainCheckedAt: row.last_chain_checked_at,
+    limitWindow: row.limit_window as TransferOperation["limitWindow"],
+    limitSnapshot: parseJson(row.limit_snapshot, null),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -107,13 +121,59 @@ export function transferOperationToRow(
     role: operation.actorRole,
     chain: operation.chain,
     asset: operation.asset,
+    target_type: operation.targetType,
+    target_input: operation.targetInput,
+    resolved_to_address: operation.resolvedToAddress,
+    resolved_contact_name: operation.resolvedContactName,
+    requested_amount: operation.requestedAmount,
     request_payload: serializeJson(operation.requestPayload),
     status: operation.status,
     tx_hash: operation.txHash,
     error_code: operation.errorCode,
     error_message: operation.errorMessage,
+    submitted_at: operation.submittedAt,
+    confirmed_at: operation.confirmedAt,
+    failed_at: operation.failedAt,
+    last_chain_status: operation.lastChainStatus,
+    last_chain_checked_at: operation.lastChainCheckedAt,
+    limit_window: operation.limitWindow,
+    limit_snapshot: serializeJson(operation.limitSnapshot),
     created_at: operation.createdAt,
     updated_at: operation.updatedAt,
+  };
+}
+
+export function addressBookContactFromRow(
+  row: Selectable<AddressBookContactsTable>,
+): AddressBookContact {
+  return {
+    contactId: row.id,
+    name: row.name,
+    normalizedName: row.normalized_name,
+    note: row.note,
+    nervosAddress: row.nervos_address,
+    normalizedNervosAddress: row.normalized_nervos_address,
+    ethereumAddress: row.ethereum_address,
+    normalizedEthereumAddress: row.normalized_ethereum_address,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function addressBookContactToRow(
+  contact: AddressBookContact,
+): Insertable<AddressBookContactsTable> {
+  return {
+    id: contact.contactId,
+    name: contact.name,
+    normalized_name: contact.normalizedName,
+    note: contact.note,
+    nervos_address: contact.nervosAddress,
+    normalized_nervos_address: contact.normalizedNervosAddress,
+    ethereum_address: contact.ethereumAddress,
+    normalized_ethereum_address: contact.normalizedEthereumAddress,
+    created_at: contact.createdAt,
+    updated_at: contact.updatedAt,
   };
 }
 

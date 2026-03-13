@@ -26,6 +26,10 @@ import type {
   WalletRepository,
 } from "../ports";
 import { AssetLimitService } from "./asset-limit.service";
+import {
+  extractLimitFailureContext,
+  TransferTargetResolverService,
+} from "./address-book.service";
 import { mapTransferErrorCode } from "../utils/transfer-errors";
 import { loadDecryptedPrivateKey } from "../utils/wallet-access";
 
@@ -163,10 +167,22 @@ export class NervosCkbTransferService {
     actorRole: Extract<ActorRole, "AGENT" | "OWNER">,
     request: NervosTransferCkbRequest,
   ): Promise<NervosTransferCkbResponse> {
+    const resolver = new TransferTargetResolverService(this.repos.addressBooks, {
+      ckb: this.ckb,
+    });
+    const resolvedTarget = await resolver.resolve("ckb", {
+      to: request.to,
+      toType: request.toType,
+    });
     const operation = createTransferOperation({
       actorRole,
       chain: "ckb",
       asset: "CKB",
+      targetType: resolvedTarget.targetType,
+      targetInput: resolvedTarget.inputValue,
+      resolvedToAddress: resolvedTarget.resolvedAddress,
+      resolvedContactName: resolvedTarget.resolvedContactName,
+      requestedAmount: request.amount,
       requestPayload: request,
     });
 
@@ -187,7 +203,10 @@ export class NervosCkbTransferService {
 
       const { privateKey } = await loadDecryptedPrivateKey(this.repos.wallets, this.vault);
       const transferResult = await this.locker.execute("ckb", async () =>
-        this.ckb.transfer(privateKey, request),
+        this.ckb.transfer(privateKey, {
+          ...request,
+          to: resolvedTarget.resolvedAddress,
+        }),
       );
 
       const submitted = markTransferSubmitted(operation, transferResult.txHash);
@@ -213,6 +232,10 @@ export class NervosCkbTransferService {
         operationId: submitted.operationId,
         txHash: submitted.txHash ?? "",
         status: submitted.status,
+        toType: resolvedTarget.toType,
+        contactName: submitted.resolvedContactName ?? undefined,
+        resolvedAddress:
+          submitted.resolvedToAddress ?? resolvedTarget.resolvedAddress,
       };
     } catch (error) {
       if (hasReservation) {
@@ -222,10 +245,15 @@ export class NervosCkbTransferService {
         );
       }
 
+      const failureContext = extractLimitFailureContext(error);
       const failed = markTransferFailed(
         operation,
         mapTransferErrorCode(error, "ckb"),
         toErrorMessage(error),
+        {
+          limitWindow: failureContext.limitWindow,
+          limitSnapshot: failureContext.limitSnapshot,
+        },
       );
 
       await this.unitOfWork.run(async (repos) => {

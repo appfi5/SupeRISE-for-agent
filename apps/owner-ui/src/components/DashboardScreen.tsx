@@ -1,3 +1,4 @@
+import { AddressBookPanel } from "./AddressBookPanel";
 import { AssetLimitPanel } from "./AssetLimitPanel";
 import { AuditLogPanel } from "./AuditLogPanel";
 import { CredentialPanel } from "./CredentialPanel";
@@ -7,6 +8,7 @@ import { TransferPanels } from "./TransferPanels";
 import { WalletStatusPanels } from "./WalletStatusPanels";
 import type {
   AppState,
+  AddressBookEditorState,
   AssetLimitFormState,
   CkbTransferFormState,
   EthTransferFormState,
@@ -18,6 +20,10 @@ import type {
 
 type DashboardScreenProps = {
   appState: AppState;
+  addressBookEditor: AddressBookEditorState;
+  addressBookFilter: string;
+  addressLookupAddress: string;
+  addressLookupResult: import("@superise/app-contracts").AddressBookLookupByAddressResponse | null;
   ckbTransfer: CkbTransferFormState;
   ethTransfer: EthTransferFormState;
   ethereumSignForm: MessageSigningFormState;
@@ -58,16 +64,35 @@ type DashboardScreenProps = {
     value: string,
   ) => void;
   onAssetLimitSave: (key: string) => void;
+  onAddressBookDelete: () => void;
+  onAddressBookEditorChange: (
+    field: keyof Omit<AddressBookEditorState, "currentName">,
+    value: string,
+  ) => void;
+  onAddressBookFilterChange: (value: string) => void;
+  onAddressBookLookup: () => void;
+  onAddressBookLookupAddressChange: (value: string) => void;
+  onAddressBookReset: () => void;
+  onAddressBookSave: () => void;
+  onAddressBookSelect: (contact: AppState["addressBookContacts"][number]) => void;
   onUsdtAmountChange: (value: string) => void;
   onUsdtSubmit: () => void;
   onUsdtToChange: (value: string) => void;
+  onUsdtToTypeChange: (value: "address" | "contact_name") => void;
   onUsdcAmountChange: (value: string) => void;
   onUsdcSubmit: () => void;
   onUsdcToChange: (value: string) => void;
+  onUsdcToTypeChange: (value: "address" | "contact_name") => void;
+  onCkbToTypeChange: (value: "address" | "contact_name") => void;
+  onEthToTypeChange: (value: "address" | "contact_name") => void;
 };
 
 export function DashboardScreen({
   appState,
+  addressBookEditor,
+  addressBookFilter,
+  addressLookupAddress,
+  addressLookupResult,
   ckbTransfer,
   ethTransfer,
   ethereumSignForm,
@@ -104,12 +129,24 @@ export function DashboardScreen({
   onRotateSubmit,
   onAssetLimitChange,
   onAssetLimitSave,
+  onAddressBookDelete,
+  onAddressBookEditorChange,
+  onAddressBookFilterChange,
+  onAddressBookLookup,
+  onAddressBookLookupAddressChange,
+  onAddressBookReset,
+  onAddressBookSave,
+  onAddressBookSelect,
   onUsdtAmountChange,
   onUsdtSubmit,
   onUsdtToChange,
+  onUsdtToTypeChange,
   onUsdcAmountChange,
   onUsdcSubmit,
   onUsdcToChange,
+  onUsdcToTypeChange,
+  onCkbToTypeChange,
+  onEthToTypeChange,
 }: DashboardScreenProps) {
   return (
     <main className="shell dashboard-shell">
@@ -167,6 +204,22 @@ export function DashboardScreen({
         onSave={(limit) => onAssetLimitSave(`${limit.chain}:${limit.asset}`)}
       />
 
+      <AddressBookPanel
+        contacts={appState.addressBookContacts}
+        editor={addressBookEditor}
+        filter={addressBookFilter}
+        lookupAddress={addressLookupAddress}
+        lookupResult={addressLookupResult}
+        onDelete={onAddressBookDelete}
+        onEditorChange={onAddressBookEditorChange}
+        onFilterChange={onAddressBookFilterChange}
+        onLookup={onAddressBookLookup}
+        onLookupAddressChange={onAddressBookLookupAddressChange}
+        onReset={onAddressBookReset}
+        onSave={onAddressBookSave}
+        onSelectContact={onAddressBookSelect}
+      />
+
       <TransferPanels
         ckbTransfer={ckbTransfer}
         ethTransfer={ethTransfer}
@@ -175,15 +228,19 @@ export function DashboardScreen({
         onCkbAmountChange={onCkbAmountChange}
         onCkbSubmit={onCkbSubmit}
         onCkbToChange={onCkbToChange}
+        onCkbToTypeChange={onCkbToTypeChange}
         onEthAmountChange={onEthAmountChange}
         onEthSubmit={onEthSubmit}
         onEthToChange={onEthToChange}
+        onEthToTypeChange={onEthToTypeChange}
         onUsdcAmountChange={onUsdcAmountChange}
         onUsdcSubmit={onUsdcSubmit}
         onUsdcToChange={onUsdcToChange}
+        onUsdcToTypeChange={onUsdcToTypeChange}
         onUsdtAmountChange={onUsdtAmountChange}
         onUsdtSubmit={onUsdtSubmit}
         onUsdtToChange={onUsdtToChange}
+        onUsdtToTypeChange={onUsdtToTypeChange}
       />
 
       <RecoveryPanels

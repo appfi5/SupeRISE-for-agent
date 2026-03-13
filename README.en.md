@@ -23,6 +23,8 @@ The default Chinese version is [README.md](./README.md).
 
 - `Agents` integrate through `MCP`; `Owners` manage the wallet and limits through the local management surface and local `HTTP API`
 - Supported assets are Nervos `CKB`, plus Ethereum `ETH`, `USDT`, and `USDC`
+- A shared address book maps contact names to `Nervos` / `Ethereum` addresses and supports exact-address reverse lookup
+- All four transfer tools support `to + toType`: they can send to a raw address directly or resolve a contact name on the current chain first
 - Agent transfers are enforced with independent daily / weekly / monthly limits per asset; Owner transfers are exempt
 - `wallet.operation_status` reports server-side orchestration status, while on-chain progress must be checked through `nervos.tx_status` and `ethereum.tx_status`
 

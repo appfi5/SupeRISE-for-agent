@@ -7,6 +7,7 @@ export type ChainKind = "ckb" | "evm";
 
 export type AssetKind = "CKB" | "ETH" | "USDT" | "USDC";
 export type TransferStatus = "RESERVED" | "SUBMITTED" | "CONFIRMED" | "FAILED";
+export type TransferTargetType = "ADDRESS" | "CONTACT_NAME";
 export type AuditResult = "SUCCESS" | "FAILED";
 export type CredentialStatus = "DEFAULT_PENDING_ROTATION" | "ACTIVE";
 export type AssetLimitWindow = "DAILY" | "WEEKLY" | "MONTHLY";
@@ -41,11 +42,36 @@ export type TransferOperation = {
   actorRole: Extract<ActorRole, "AGENT" | "OWNER">;
   chain: ChainKind;
   asset: AssetKind;
+  targetType: TransferTargetType;
+  targetInput: string;
+  resolvedToAddress: string | null;
+  resolvedContactName: string | null;
+  requestedAmount: string;
   requestPayload: Record<string, unknown>;
   status: TransferStatus;
   txHash: string | null;
   errorCode: ErrorCode | null;
   errorMessage: string | null;
+  submittedAt: string | null;
+  confirmedAt: string | null;
+  failedAt: string | null;
+  lastChainStatus: ChainTransactionStatus | null;
+  lastChainCheckedAt: string | null;
+  limitWindow: AssetLimitWindow | null;
+  limitSnapshot: JsonValue | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AddressBookContact = {
+  contactId: string;
+  name: string;
+  normalizedName: string;
+  note: string | null;
+  nervosAddress: string | null;
+  normalizedNervosAddress: string | null;
+  ethereumAddress: string | null;
+  normalizedEthereumAddress: string | null;
   createdAt: string;
   updatedAt: string;
 };

@@ -4,6 +4,7 @@ import {
   messageEncodingSchema,
   privateKeyHexSchema,
   positiveIntegerStringSchema,
+  transferTargetTypeSchema,
   transferStatusSchema,
   txStatusSchema,
 } from "./_common";
@@ -38,6 +39,7 @@ export const nervosSignMessageResponseSchema = z.object({
 
 export const nervosTransferCkbRequestSchema = z.object({
   to: z.string().min(1),
+  toType: transferTargetTypeSchema,
   amount: positiveIntegerStringSchema,
 });
 
@@ -47,6 +49,9 @@ export const nervosTransferCkbResponseSchema = z.object({
   operationId: z.string(),
   txHash: z.string(),
   status: transferStatusSchema,
+  toType: transferTargetTypeSchema,
+  contactName: z.string().trim().min(1).optional(),
+  resolvedAddress: z.string().trim().min(1),
 });
 
 export const nervosTxStatusRequestSchema = z.object({

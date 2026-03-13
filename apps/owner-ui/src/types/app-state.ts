@@ -1,4 +1,5 @@
 import type {
+  AddressBookContactDto,
   AuditLogDto,
   EthereumAddressDto,
   EthereumBalanceEthDto,
@@ -23,22 +24,34 @@ export type MessageSigningFormState = {
 
 export type CkbTransferFormState = {
   to: string;
+  toType: "address" | "contact_name";
   amount: string;
 };
 
 export type EthTransferFormState = {
   to: string;
+  toType: "address" | "contact_name";
   amount: string;
 };
 
 export type UsdtTransferFormState = {
   to: string;
+  toType: "address" | "contact_name";
   amount: string;
 };
 
 export type UsdcTransferFormState = {
   to: string;
+  toType: "address" | "contact_name";
   amount: string;
+};
+
+export type AddressBookEditorState = {
+  currentName: string | null;
+  name: string;
+  note: string;
+  nervosAddress: string;
+  ethereumAddress: string;
 };
 
 export type AssetLimitFormState = {
@@ -60,6 +73,7 @@ export type AppState = {
     usdtBalance: EthereumBalanceUsdtDto | null;
     usdcBalance: EthereumBalanceUsdcDto | null;
   };
+  addressBookContacts: AddressBookContactDto[];
   assetLimits: OwnerAssetLimitEntryDto[];
   audits: AuditLogDto[];
 };
@@ -84,6 +98,7 @@ export const emptyAppState: AppState = {
     usdtBalance: null,
     usdcBalance: null,
   },
+  addressBookContacts: [],
   assetLimits: [],
   audits: [],
 };

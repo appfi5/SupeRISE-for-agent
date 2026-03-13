@@ -1,4 +1,5 @@
 import type {
+  AddressBookRepository,
   AssetLimitPolicyRepository,
   AssetLimitReservationRepository,
   AuditLogRepository,
@@ -11,9 +12,11 @@ import type {
   WalletRepository,
 } from "@superise/application";
 import type {
+  AddressBookContact,
   AuditLog,
   AssetLimitPolicy,
   AssetLimitReservation,
+  ChainKind,
   OwnerCredential,
   SignOperation,
   SystemConfigSnapshot,
@@ -24,6 +27,8 @@ import type {
 import type { Kysely } from "kysely";
 import type { DatabaseSchema, Executor } from "../database/schema";
 import {
+  addressBookContactFromRow,
+  addressBookContactToRow,
   auditLogFromRow,
   auditLogToRow,
   assetLimitPolicyFromRow,
@@ -127,6 +132,86 @@ class SqliteTransferOperationRepository implements TransferOperationRepository {
         oc.column("id").doUpdateSet(transferOperationToRow(operation)),
       )
       .execute();
+  }
+}
+
+class SqliteAddressBookRepository implements AddressBookRepository {
+  constructor(private readonly executor: Executor) {}
+
+  async getByName(name: string): Promise<AddressBookContact | null> {
+    const row = await this.executor
+      .selectFrom("address_book_contacts")
+      .selectAll()
+      .where("name", "=", name)
+      .executeTakeFirst();
+
+    return row ? addressBookContactFromRow(row) : null;
+  }
+
+  async getByNormalizedName(normalizedName: string): Promise<AddressBookContact | null> {
+    const row = await this.executor
+      .selectFrom("address_book_contacts")
+      .selectAll()
+      .where("normalized_name", "=", normalizedName)
+      .executeTakeFirst();
+
+    return row ? addressBookContactFromRow(row) : null;
+  }
+
+  async listAll(): Promise<AddressBookContact[]> {
+    const rows = await this.executor
+      .selectFrom("address_book_contacts")
+      .selectAll()
+      .orderBy("name", "asc")
+      .execute();
+
+    return rows.map(addressBookContactFromRow);
+  }
+
+  async searchByNormalizedName(query: string): Promise<AddressBookContact[]> {
+    const rows = await this.executor
+      .selectFrom("address_book_contacts")
+      .selectAll()
+      .where("normalized_name", "like", `%${query}%`)
+      .orderBy("name", "asc")
+      .execute();
+
+    return rows.map(addressBookContactFromRow);
+  }
+
+  async listByNormalizedAddress(
+    chain: ChainKind,
+    normalizedAddress: string,
+  ): Promise<AddressBookContact[]> {
+    const column =
+      chain === "ckb" ? "normalized_nervos_address" : "normalized_ethereum_address";
+    const rows = await this.executor
+      .selectFrom("address_book_contacts")
+      .selectAll()
+      .where(column, "=", normalizedAddress)
+      .orderBy("name", "asc")
+      .execute();
+
+    return rows.map(addressBookContactFromRow);
+  }
+
+  async save(contact: AddressBookContact): Promise<void> {
+    await this.executor
+      .insertInto("address_book_contacts")
+      .values(addressBookContactToRow(contact))
+      .onConflict((oc) =>
+        oc.column("id").doUpdateSet(addressBookContactToRow(contact)),
+      )
+      .execute();
+  }
+
+  async deleteById(contactId: string): Promise<boolean> {
+    const result = await this.executor
+      .deleteFrom("address_book_contacts")
+      .where("id", "=", contactId)
+      .executeTakeFirst();
+
+    return Number(result.numDeletedRows) > 0;
   }
 }
 
@@ -272,6 +357,7 @@ export function createRepositoryBundle(executor: Executor): RepositoryBundle {
     wallets: new SqliteWalletRepository(executor),
     ownerCredentials: new SqliteOwnerCredentialRepository(executor),
     transfers: new SqliteTransferOperationRepository(executor),
+    addressBooks: new SqliteAddressBookRepository(executor),
     signs: new SqliteSignOperationRepository(executor),
     audits: new SqliteAuditLogRepository(executor),
     assetLimitPolicies: new SqliteAssetLimitPolicyRepository(executor),

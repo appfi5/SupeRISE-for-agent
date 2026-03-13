@@ -32,6 +32,10 @@ import type {
   WalletRepository,
 } from "../ports";
 import { AssetLimitService } from "./asset-limit.service";
+import {
+  extractLimitFailureContext,
+  TransferTargetResolverService,
+} from "./address-book.service";
 import { mapTransferErrorCode } from "../utils/transfer-errors";
 import { loadDecryptedPrivateKey } from "../utils/wallet-access";
 
@@ -218,7 +222,11 @@ export class EthereumUsdtTransferService {
       asset: "USDT",
       action: "ethereum.transfer_usdt",
       request,
-      transfer: (privateKey) => this.evm.transferUsdt(privateKey, request),
+      transfer: (privateKey, to) =>
+        this.evm.transferUsdt(privateKey, {
+          ...request,
+          to,
+        }),
     });
   }
 }
@@ -248,7 +256,11 @@ export class EthereumUsdcTransferService {
       asset: "USDC",
       action: "ethereum.transfer_usdc",
       request,
-      transfer: (privateKey) => this.evm.transferUsdc(privateKey, request),
+      transfer: (privateKey, to) =>
+        this.evm.transferUsdc(privateKey, {
+          ...request,
+          to,
+        }),
     });
   }
 }
@@ -278,14 +290,22 @@ export class EthereumEthTransferService {
       asset: "ETH",
       action: "ethereum.transfer_eth",
       request,
-      transfer: (privateKey) => this.evm.transferEth(privateKey, request),
+      transfer: (privateKey, to) =>
+        this.evm.transferEth(privateKey, {
+          ...request,
+          to,
+        }),
     });
   }
 }
 
 async function executeEthereumTransfer<
   TAsset extends Extract<AssetKind, "ETH" | "USDT" | "USDC">,
-  TRequest extends Record<string, unknown>,
+  TRequest extends {
+    to: string;
+    amount: string;
+    toType: "address" | "contact_name";
+  },
 >(input: {
   repos: RepositoryBundle;
   unitOfWork: UnitOfWork;
@@ -297,18 +317,33 @@ async function executeEthereumTransfer<
   asset: TAsset;
   action: "ethereum.transfer_eth" | "ethereum.transfer_usdt" | "ethereum.transfer_usdc";
   request: TRequest;
-  transfer: (privateKey: string) => Promise<{ txHash: string }>;
+  transfer: (privateKey: string, to: string) => Promise<{ txHash: string }>;
 }): Promise<{
   chain: "ethereum";
   asset: TAsset;
+  toType: TRequest["toType"];
   operationId: string;
   txHash: string;
   status: "RESERVED" | "SUBMITTED" | "CONFIRMED" | "FAILED";
+  resolvedAddress: string;
+  contactName?: string;
 }> {
+  const resolver = new TransferTargetResolverService(input.repos.addressBooks, {
+    evm: input.evm,
+  });
+  const resolvedTarget = await resolver.resolve("evm", {
+    to: input.request.to,
+    toType: input.request.toType,
+  });
   const operation = createTransferOperation({
     actorRole: input.actorRole,
     chain: "evm",
     asset: input.asset,
+    targetType: resolvedTarget.targetType,
+    targetInput: resolvedTarget.inputValue,
+    resolvedToAddress: resolvedTarget.resolvedAddress,
+    resolvedContactName: resolvedTarget.resolvedContactName,
+    requestedAmount: String(input.request.amount),
     requestPayload: input.request,
   });
 
@@ -329,7 +364,7 @@ async function executeEthereumTransfer<
 
     const { privateKey } = await loadDecryptedPrivateKey(input.repos.wallets, input.vault);
     const transferResult = await input.locker.execute("evm", async () =>
-      input.transfer(privateKey),
+      input.transfer(privateKey, resolvedTarget.resolvedAddress),
     );
     const submitted = markTransferSubmitted(operation, transferResult.txHash);
 
@@ -354,6 +389,10 @@ async function executeEthereumTransfer<
       operationId: submitted.operationId,
       txHash: submitted.txHash ?? "",
       status: submitted.status,
+      toType: resolvedTarget.toType,
+      contactName: submitted.resolvedContactName ?? undefined,
+      resolvedAddress:
+        submitted.resolvedToAddress ?? resolvedTarget.resolvedAddress,
     };
   } catch (error) {
     if (hasReservation) {
@@ -363,10 +402,15 @@ async function executeEthereumTransfer<
       );
     }
 
+    const failureContext = extractLimitFailureContext(error);
     const failed = markTransferFailed(
       operation,
       mapTransferErrorCode(error, "evm"),
       toErrorMessage(error),
+      {
+        limitWindow: failureContext.limitWindow,
+        limitSnapshot: failureContext.limitSnapshot,
+      },
     );
 
     await input.unitOfWork.run(async (repos) => {

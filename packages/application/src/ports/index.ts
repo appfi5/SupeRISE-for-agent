@@ -5,6 +5,7 @@ import type {
   NervosTransferCkbRequest,
 } from "@superise/app-contracts";
 import type {
+  AddressBookContact,
   AuditLog,
   AssetLimitPolicy,
   AssetLimitReservation,
@@ -54,6 +55,19 @@ export interface TransferOperationRepository {
   save(operation: TransferOperation): Promise<void>;
 }
 
+export interface AddressBookRepository {
+  getByName(name: string): Promise<AddressBookContact | null>;
+  getByNormalizedName(normalizedName: string): Promise<AddressBookContact | null>;
+  listAll(): Promise<AddressBookContact[]>;
+  searchByNormalizedName(query: string): Promise<AddressBookContact[]>;
+  listByNormalizedAddress(
+    chain: ChainKind,
+    normalizedAddress: string,
+  ): Promise<AddressBookContact[]>;
+  save(contact: AddressBookContact): Promise<void>;
+  deleteById(contactId: string): Promise<boolean>;
+}
+
 export interface SignOperationRepository {
   save(operation: SignOperation): Promise<void>;
 }
@@ -90,6 +104,7 @@ export type RepositoryBundle = {
   wallets: WalletRepository;
   ownerCredentials: OwnerCredentialRepository;
   transfers: TransferOperationRepository;
+  addressBooks: AddressBookRepository;
   signs: SignOperationRepository;
   audits: AuditLogRepository;
   systemConfig: SystemConfigRepository;
@@ -171,6 +186,7 @@ export type ChainTxStatusResult = {
 
 export interface CkbWalletAdapter {
   deriveAddress(privateKey: string): Promise<string>;
+  normalizeAddress(address: string): Promise<string>;
   getBalance(privateKey: string): Promise<string>;
   signMessage(
     privateKey: string,
@@ -186,6 +202,7 @@ export interface CkbWalletAdapter {
 
 export interface EvmWalletAdapter {
   deriveAddress(privateKey: string): Promise<string>;
+  normalizeAddress(address: string): Promise<string>;
   getEthBalance(privateKey: string): Promise<string>;
   getUsdtBalance(privateKey: string): Promise<string>;
   getUsdcBalance(privateKey: string): Promise<string>;

@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import type {
+  AddressBookCreateResponse,
+  AddressBookDeleteResponse,
+  AddressBookGetAllResponse,
+  AddressBookLookupByAddressResponse,
+  AddressBookUpdateResponse,
   AuditLogDto,
   EthereumAddressDto,
   EthereumBalanceEthDto,
@@ -31,6 +36,7 @@ import { LoginScreen } from "./components/LoginScreen";
 import {
   emptyAppState,
   type AppState,
+  type AddressBookEditorState,
   type AssetLimitFormState,
   type CkbTransferFormState,
   type EthTransferFormState,
@@ -48,22 +54,34 @@ const EMPTY_MESSAGE_SIGNING_FORM: MessageSigningFormState = {
 
 const EMPTY_CKB_TRANSFER_FORM: CkbTransferFormState = {
   to: "",
+  toType: "address",
   amount: "",
 };
 
 const EMPTY_ETH_TRANSFER_FORM: EthTransferFormState = {
   to: "",
+  toType: "address",
   amount: "",
 };
 
 const EMPTY_USDT_TRANSFER_FORM: UsdtTransferFormState = {
   to: "",
+  toType: "address",
   amount: "",
 };
 
 const EMPTY_USDC_TRANSFER_FORM: UsdcTransferFormState = {
   to: "",
+  toType: "address",
   amount: "",
+};
+
+const EMPTY_ADDRESS_BOOK_EDITOR: AddressBookEditorState = {
+  currentName: null,
+  name: "",
+  note: "",
+  nervosAddress: "",
+  ethereumAddress: "",
 };
 
 export function App() {
@@ -90,6 +108,12 @@ export function App() {
     useState<UsdtTransferFormState>(EMPTY_USDT_TRANSFER_FORM);
   const [usdcTransfer, setUsdcTransfer] =
     useState<UsdcTransferFormState>(EMPTY_USDC_TRANSFER_FORM);
+  const [addressBookEditor, setAddressBookEditor] =
+    useState<AddressBookEditorState>(EMPTY_ADDRESS_BOOK_EDITOR);
+  const [addressBookFilter, setAddressBookFilter] = useState("");
+  const [addressLookupAddress, setAddressLookupAddress] = useState("");
+  const [addressLookupResult, setAddressLookupResult] =
+    useState<AddressBookLookupByAddressResponse | null>(null);
   const [assetLimitDrafts, setAssetLimitDrafts] = useState<
     Record<string, AssetLimitFormState>
   >({});
@@ -120,9 +144,10 @@ export function App() {
     const refreshToken = ++refreshTokenRef.current;
 
     try {
-      const [credential, current, assetLimits, audits] = await Promise.all([
+      const [credential, current, addressBook, assetLimits, audits] = await Promise.all([
         request<OwnerCredentialStatusDto>("/api/owner/credential/status"),
         callWalletTool<WalletCurrentDto>("wallet.current"),
+        callWalletTool<AddressBookGetAllResponse>("address_book.get_all"),
         request<OwnerAssetLimitEntryDto[]>("/api/owner/asset-limits"),
         request<AuditLogDto[]>("/api/owner/audit-logs?limit=20"),
       ]);
@@ -136,6 +161,7 @@ export function App() {
         ...currentState,
         credential,
         current,
+        addressBookContacts: addressBook.contacts,
         assetLimits,
         audits,
       }));
@@ -287,6 +313,10 @@ export function App() {
     setImportConfirmed(false);
     setNervosSignResult("");
     setEthereumSignResult("");
+    setAddressBookEditor(EMPTY_ADDRESS_BOOK_EDITOR);
+    setAddressBookFilter("");
+    setAddressLookupAddress("");
+    setAddressLookupResult(null);
     setMessage(nextMessage);
   }
 
@@ -350,7 +380,7 @@ export function App() {
       "nervos.transfer.ckb",
       ckbTransfer,
     );
-    setMessage(`CKB 转账已提交：${result.operationId}`);
+    setMessage(formatTransferMessage("CKB", result));
     setCkbTransfer(EMPTY_CKB_TRANSFER_FORM);
     await refreshAuthenticatedState();
   }
@@ -360,7 +390,7 @@ export function App() {
       "ethereum.transfer.usdt",
       usdtTransfer,
     );
-    setMessage(`USDT 转账已提交：${result.operationId}`);
+    setMessage(formatTransferMessage("USDT", result));
     setUsdtTransfer(EMPTY_USDT_TRANSFER_FORM);
     await refreshAuthenticatedState();
   }
@@ -370,7 +400,7 @@ export function App() {
       "ethereum.transfer.usdc",
       usdcTransfer,
     );
-    setMessage(`USDC 转账已提交：${result.operationId}`);
+    setMessage(formatTransferMessage("USDC", result));
     setUsdcTransfer(EMPTY_USDC_TRANSFER_FORM);
     await refreshAuthenticatedState();
   }
@@ -380,9 +410,79 @@ export function App() {
       "ethereum.transfer.eth",
       ethTransfer,
     );
-    setMessage(`ETH 转账已提交：${result.operationId}`);
+    setMessage(formatTransferMessage("ETH", result));
     setEthTransfer(EMPTY_ETH_TRANSFER_FORM);
     await refreshAuthenticatedState();
+  }
+
+  async function handleSaveAddressBookContact() {
+    const name = addressBookEditor.name.trim();
+    const note = addressBookEditor.note.trim();
+    const nervosAddress = addressBookEditor.nervosAddress.trim();
+    const ethereumAddress = addressBookEditor.ethereumAddress.trim();
+
+    if (addressBookEditor.currentName) {
+      const result = await callWalletTool<AddressBookUpdateResponse>("address_book.update", {
+        currentName: addressBookEditor.currentName,
+        contact: {
+          name,
+          note: note ? note : null,
+          addresses: {
+            nervosAddress: nervosAddress || null,
+            ethereumAddress: ethereumAddress || null,
+          },
+        },
+      });
+
+      setAddressBookEditor(createAddressBookEditor(result.contact));
+      setMessage(`联系人已更新：${result.contact.name}`);
+    } else {
+      const addresses: Record<string, string> = {};
+      if (nervosAddress) {
+        addresses.nervosAddress = nervosAddress;
+      }
+      if (ethereumAddress) {
+        addresses.ethereumAddress = ethereumAddress;
+      }
+
+      const result = await callWalletTool<AddressBookCreateResponse>("address_book.create", {
+        contact: {
+          name,
+          note: note ? note : null,
+          addresses,
+        },
+      });
+
+      setAddressBookEditor(createAddressBookEditor(result.contact));
+      setMessage(`联系人已创建：${result.contact.name}`);
+    }
+
+    await refreshAuthenticatedState();
+  }
+
+  async function handleDeleteAddressBookContact() {
+    if (!addressBookEditor.currentName) {
+      setMessage("请先选择一个联系人。");
+      return;
+    }
+
+    const result = await callWalletTool<AddressBookDeleteResponse>("address_book.delete", {
+      name: addressBookEditor.currentName,
+    });
+    setAddressBookEditor(EMPTY_ADDRESS_BOOK_EDITOR);
+    setMessage(`联系人已删除：${result.name}`);
+    await refreshAuthenticatedState();
+  }
+
+  async function handleLookupAddressBook() {
+    const result = await callWalletTool<AddressBookLookupByAddressResponse>(
+      "address_book.lookup_by_address",
+      {
+        address: addressLookupAddress,
+      },
+    );
+    setAddressLookupResult(result);
+    setMessage(result.matched ? "地址反查完成。" : "地址未匹配到联系人。");
   }
 
   async function handleSaveAssetLimit(key: string) {
@@ -454,6 +554,10 @@ export function App() {
   return (
     <DashboardScreen
       appState={appState}
+      addressBookEditor={addressBookEditor}
+      addressBookFilter={addressBookFilter}
+      addressLookupAddress={addressLookupAddress}
+      addressLookupResult={addressLookupResult}
       ckbTransfer={ckbTransfer}
       ethTransfer={ethTransfer}
       ethereumSignForm={ethereumSignForm}
@@ -518,6 +622,19 @@ export function App() {
         }))
       }
       onAssetLimitSave={(key) => runAction(() => handleSaveAssetLimit(key))}
+      onAddressBookDelete={() => runAction(handleDeleteAddressBookContact)}
+      onAddressBookEditorChange={(field, value) =>
+        setAddressBookEditor((current) => ({
+          ...current,
+          [field]: value,
+        }))
+      }
+      onAddressBookFilterChange={setAddressBookFilter}
+      onAddressBookLookup={() => runAction(handleLookupAddressBook)}
+      onAddressBookLookupAddressChange={setAddressLookupAddress}
+      onAddressBookReset={() => setAddressBookEditor(EMPTY_ADDRESS_BOOK_EDITOR)}
+      onAddressBookSave={() => runAction(handleSaveAddressBookContact)}
+      onAddressBookSelect={(contact) => setAddressBookEditor(createAddressBookEditor(contact))}
       onUsdcAmountChange={(value) =>
         setUsdcTransfer((current) => ({ ...current, amount: value }))
       }
@@ -525,12 +642,24 @@ export function App() {
       onUsdcToChange={(value) =>
         setUsdcTransfer((current) => ({ ...current, to: value }))
       }
+      onUsdcToTypeChange={(value) =>
+        setUsdcTransfer((current) => ({ ...current, toType: value }))
+      }
       onUsdtAmountChange={(value) =>
         setUsdtTransfer((current) => ({ ...current, amount: value }))
       }
       onUsdtSubmit={() => runAction(handleTransferUsdt)}
       onUsdtToChange={(value) =>
         setUsdtTransfer((current) => ({ ...current, to: value }))
+      }
+      onUsdtToTypeChange={(value) =>
+        setUsdtTransfer((current) => ({ ...current, toType: value }))
+      }
+      onCkbToTypeChange={(value) =>
+        setCkbTransfer((current) => ({ ...current, toType: value }))
+      }
+      onEthToTypeChange={(value) =>
+        setEthTransfer((current) => ({ ...current, toType: value }))
       }
     />
   );
@@ -553,4 +682,30 @@ function createAssetLimitDraftMap(
       },
     ]),
   );
+}
+
+function createAddressBookEditor(
+  contact: AppState["addressBookContacts"][number],
+): AddressBookEditorState {
+  return {
+    currentName: contact.name,
+    name: contact.name,
+    note: contact.note ?? "",
+    nervosAddress: contact.addresses.nervosAddress ?? "",
+    ethereumAddress: contact.addresses.ethereumAddress ?? "",
+  };
+}
+
+function formatTransferMessage(
+  asset: "CKB" | "ETH" | "USDT" | "USDC",
+  result:
+    | NervosTransferCkbResponse
+    | EthereumTransferEthResponse
+    | EthereumTransferUsdtResponse
+    | EthereumTransferUsdcResponse,
+): string {
+  const targetLabel = result.contactName
+    ? `${result.contactName} (${result.resolvedAddress})`
+    : result.resolvedAddress;
+  return `${asset} 转账已提交：${result.operationId} -> ${targetLabel}`;
 }
