@@ -42,6 +42,14 @@ Security boundary:
 
 - `wallet.current`
 - `wallet.operation_status`
+- `address_book.list`
+- `address_book.search`
+- `address_book.lookup_by_address`
+- `address_book.get`
+- `address_book.get_all`
+- `address_book.create`
+- `address_book.update`
+- `address_book.delete`
 - `nervos.address`
 - `nervos.balance.ckb`
 - `nervos.sign_message`
@@ -71,3 +79,8 @@ Security boundary:
 - `nervos.tx_status` and `ethereum.tx_status` return observed chain states: `NOT_FOUND`, `PENDING`, `CONFIRMED`, `FAILED`
 - after a transfer, you will typically poll both `wallet.operation_status` and the chain-specific `tx_status` to follow internal progress and final on-chain outcome
 - when an Agent transfer hits a per-asset limit, the transfer tool returns `ASSET_LIMIT_EXCEEDED`; limits are enforced independently per asset across daily / weekly / monthly windows
+- address-book tools manage shared contacts; `address_book.lookup_by_address` only answers which contact names match in the local address book and does not claim real on-chain ownership
+- all four transfer tools accept optional `toType`
+  - `toType=address` means `to` is a raw chain address; omitted defaults to this mode
+  - `toType=contact_name` means `to` is a contact name; the server resolves it on the current chain before transfer
+  - `toType=address` does not auto-lookup the address book and does not backfill a contact name

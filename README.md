@@ -23,6 +23,8 @@ SupeRISE Agent Wallet 是一个面向 Agent 的单钱包信用钱包服务。正
 
 - `Agent` 通过 `MCP` 接入；`Owner` 通过本地管理面和本地 `HTTP API` 管理钱包与限额
 - 当前支持资产为 Nervos `CKB`，以及 Ethereum `ETH`、`USDT`、`USDC`
+- 提供共享地址簿，可维护联系人名称与 `Nervos` / `Ethereum` 地址映射，并支持按精确地址反查联系人
+- 四个 transfer 工具都支持 `to + toType`：可直接转原始地址，也可按联系人名称解析为当前链地址
 - Agent 转账按资产执行独立的日 / 周 / 月限额；Owner 转账不受该限额约束
 - `wallet.operation_status` 表示 server 本地编排状态；链上状态需要分别使用 `nervos.tx_status` 与 `ethereum.tx_status`
 
