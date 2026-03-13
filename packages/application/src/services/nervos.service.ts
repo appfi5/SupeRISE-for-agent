@@ -167,6 +167,11 @@ export class NervosCkbTransferService {
       actorRole,
       chain: "ckb",
       asset: "CKB",
+      targetType: request.toType === "contact_name" ? "CONTACT_NAME" : "ADDRESS",
+      targetInput: request.to,
+      resolvedToAddress: request.to,
+      resolvedContactName: request.toType === "contact_name" ? request.to : null,
+      requestedAmount: request.amount,
       requestPayload: request,
     });
 
@@ -213,6 +218,9 @@ export class NervosCkbTransferService {
         operationId: submitted.operationId,
         txHash: submitted.txHash ?? "",
         status: submitted.status,
+        toType: request.toType,
+        contactName: submitted.resolvedContactName ?? undefined,
+        resolvedAddress: submitted.resolvedToAddress ?? request.to,
       };
     } catch (error) {
       if (hasReservation) {

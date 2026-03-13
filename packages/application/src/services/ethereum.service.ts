@@ -285,7 +285,11 @@ export class EthereumEthTransferService {
 
 async function executeEthereumTransfer<
   TAsset extends Extract<AssetKind, "ETH" | "USDT" | "USDC">,
-  TRequest extends Record<string, unknown>,
+  TRequest extends {
+    to: string;
+    amount: string;
+    toType: "address" | "contact_name";
+  },
 >(input: {
   repos: RepositoryBundle;
   unitOfWork: UnitOfWork;
@@ -301,14 +305,23 @@ async function executeEthereumTransfer<
 }): Promise<{
   chain: "ethereum";
   asset: TAsset;
+  toType: TRequest["toType"];
   operationId: string;
   txHash: string;
   status: "RESERVED" | "SUBMITTED" | "CONFIRMED" | "FAILED";
+  resolvedAddress: string;
+  contactName?: string;
 }> {
   const operation = createTransferOperation({
     actorRole: input.actorRole,
     chain: "evm",
     asset: input.asset,
+    targetType: input.request.toType === "contact_name" ? "CONTACT_NAME" : "ADDRESS",
+    targetInput: String(input.request.to),
+    resolvedToAddress: String(input.request.to),
+    resolvedContactName:
+      input.request.toType === "contact_name" ? String(input.request.to) : null,
+    requestedAmount: String(input.request.amount),
     requestPayload: input.request,
   });
 
@@ -354,6 +367,9 @@ async function executeEthereumTransfer<
       operationId: submitted.operationId,
       txHash: submitted.txHash ?? "",
       status: submitted.status,
+      toType: input.request.toType,
+      contactName: submitted.resolvedContactName ?? undefined,
+      resolvedAddress: submitted.resolvedToAddress ?? String(input.request.to),
     };
   } catch (error) {
     if (hasReservation) {

@@ -28,11 +28,36 @@ export type TransferOperationsTable = {
   role: string;
   chain: string;
   asset: string;
+  target_type: string;
+  target_input: string;
+  resolved_to_address: string | null;
+  resolved_contact_name: string | null;
+  requested_amount: string;
   request_payload: string;
   status: string;
   tx_hash: string | null;
   error_code: string | null;
   error_message: string | null;
+  submitted_at: string | null;
+  confirmed_at: string | null;
+  failed_at: string | null;
+  last_chain_status: string | null;
+  last_chain_checked_at: string | null;
+  limit_window: string | null;
+  limit_snapshot: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AddressBookContactsTable = {
+  id: string;
+  name: string;
+  normalized_name: string;
+  note: string | null;
+  nervos_address: string | null;
+  normalized_nervos_address: string | null;
+  ethereum_address: string | null;
+  normalized_ethereum_address: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -100,6 +125,7 @@ export type DatabaseSchema = {
   wallet_state: WalletStateTable;
   owner_credentials: OwnerCredentialsTable;
   transfer_operations: TransferOperationsTable;
+  address_book_contacts: AddressBookContactsTable;
   sign_operations: SignOperationsTable;
   audit_logs: AuditLogsTable;
   asset_limit_policies: AssetLimitPoliciesTable;

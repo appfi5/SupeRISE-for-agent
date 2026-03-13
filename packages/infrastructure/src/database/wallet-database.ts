@@ -55,11 +55,38 @@ export class WalletDatabase {
       .addColumn("role", "text", (column) => column.notNull())
       .addColumn("chain", "text", (column) => column.notNull())
       .addColumn("asset", "text", (column) => column.notNull())
+      .addColumn("target_type", "text", (column) => column.notNull().defaultTo("ADDRESS"))
+      .addColumn("target_input", "text", (column) => column.notNull().defaultTo(""))
+      .addColumn("resolved_to_address", "text")
+      .addColumn("resolved_contact_name", "text")
+      .addColumn("requested_amount", "text", (column) => column.notNull().defaultTo("0"))
       .addColumn("request_payload", "text", (column) => column.notNull())
       .addColumn("status", "text", (column) => column.notNull())
       .addColumn("tx_hash", "text")
       .addColumn("error_code", "text")
       .addColumn("error_message", "text")
+      .addColumn("submitted_at", "text")
+      .addColumn("confirmed_at", "text")
+      .addColumn("failed_at", "text")
+      .addColumn("last_chain_status", "text")
+      .addColumn("last_chain_checked_at", "text")
+      .addColumn("limit_window", "text")
+      .addColumn("limit_snapshot", "text")
+      .addColumn("created_at", "text", (column) => column.notNull())
+      .addColumn("updated_at", "text", (column) => column.notNull())
+      .execute();
+
+    await this.db.schema
+      .createTable("address_book_contacts")
+      .ifNotExists()
+      .addColumn("id", "text", (column) => column.primaryKey())
+      .addColumn("name", "text", (column) => column.notNull())
+      .addColumn("normalized_name", "text", (column) => column.notNull())
+      .addColumn("note", "text")
+      .addColumn("nervos_address", "text")
+      .addColumn("normalized_nervos_address", "text")
+      .addColumn("ethereum_address", "text")
+      .addColumn("normalized_ethereum_address", "text")
       .addColumn("created_at", "text", (column) => column.notNull())
       .addColumn("updated_at", "text", (column) => column.notNull())
       .execute();
@@ -140,6 +167,31 @@ export class WalletDatabase {
       .addColumn("updated_at", "text", (column) => column.notNull())
       .execute();
 
+    await this.ensureColumn(
+      "transfer_operations",
+      "target_type",
+      "text not null default 'ADDRESS'",
+    );
+    await this.ensureColumn(
+      "transfer_operations",
+      "target_input",
+      "text not null default ''",
+    );
+    await this.ensureColumn("transfer_operations", "resolved_to_address", "text");
+    await this.ensureColumn("transfer_operations", "resolved_contact_name", "text");
+    await this.ensureColumn(
+      "transfer_operations",
+      "requested_amount",
+      "text not null default '0'",
+    );
+    await this.ensureColumn("transfer_operations", "submitted_at", "text");
+    await this.ensureColumn("transfer_operations", "confirmed_at", "text");
+    await this.ensureColumn("transfer_operations", "failed_at", "text");
+    await this.ensureColumn("transfer_operations", "last_chain_status", "text");
+    await this.ensureColumn("transfer_operations", "last_chain_checked_at", "text");
+    await this.ensureColumn("transfer_operations", "limit_window", "text");
+    await this.ensureColumn("transfer_operations", "limit_snapshot", "text");
+
     await this.db.schema
       .createIndex("idx_transfer_operations_status_created_at")
       .ifNotExists()
@@ -152,6 +204,42 @@ export class WalletDatabase {
       .ifNotExists()
       .on("transfer_operations")
       .column("tx_hash")
+      .execute();
+
+    await this.db.schema
+      .createIndex("idx_transfer_operations_target_type_target_input")
+      .ifNotExists()
+      .on("transfer_operations")
+      .columns(["target_type", "target_input"])
+      .execute();
+
+    await this.db.schema
+      .createIndex("idx_address_book_contacts_normalized_name")
+      .ifNotExists()
+      .unique()
+      .on("address_book_contacts")
+      .column("normalized_name")
+      .execute();
+
+    await this.db.schema
+      .createIndex("idx_address_book_contacts_normalized_nervos_address")
+      .ifNotExists()
+      .on("address_book_contacts")
+      .column("normalized_nervos_address")
+      .execute();
+
+    await this.db.schema
+      .createIndex("idx_address_book_contacts_normalized_ethereum_address")
+      .ifNotExists()
+      .on("address_book_contacts")
+      .column("normalized_ethereum_address")
+      .execute();
+
+    await this.db.schema
+      .createIndex("idx_address_book_contacts_updated_at")
+      .ifNotExists()
+      .on("address_book_contacts")
+      .column("updated_at")
       .execute();
 
     await this.db.schema
@@ -182,7 +270,7 @@ export class WalletDatabase {
       .columns(["actor_role", "chain", "asset", "status", "monthly_window_start"])
       .execute();
 
-    await sql`PRAGMA user_version = 2`.execute(this.db);
+    await sql`PRAGMA user_version = 3`.execute(this.db);
   }
 
   async checkHealth(): Promise<void> {
@@ -192,5 +280,23 @@ export class WalletDatabase {
   async close(): Promise<void> {
     await this.db.destroy();
     this.sqlite.close();
+  }
+
+  private async ensureColumn(
+    tableName: string,
+    columnName: string,
+    definition: string,
+  ): Promise<void> {
+    const columns = this.sqlite
+      .prepare(`PRAGMA table_info(${tableName})`)
+      .all() as Array<{ name: string }>;
+
+    if (columns.some((column) => column.name === columnName)) {
+      return;
+    }
+
+    this.sqlite
+      .prepare(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`)
+      .run();
   }
 }

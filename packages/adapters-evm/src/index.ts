@@ -50,10 +50,14 @@ export class ViemEvmWalletAdapter implements EvmWalletAdapter {
     return privateKeyToAccount(normalizePrivateKeyHex(privateKey)).address;
   }
 
+  async normalizeAddress(address: string): Promise<string> {
+    return this.normalizeAddressOrThrow(address, "Address");
+  }
+
   async getEthBalance(privateKey: string): Promise<string> {
     const address = await this.deriveAddress(privateKey);
     const balance = await this.createPublicClient().getBalance({
-      address: this.normalizeAddress(address, "Wallet"),
+      address: this.normalizeAddressOrThrow(address, "Wallet"),
     });
 
     return balance.toString();
@@ -112,7 +116,7 @@ export class ViemEvmWalletAdapter implements EvmWalletAdapter {
       address: this.getUsdtContractAddress(),
       abi: erc20Abi,
       functionName: "transfer",
-      args: [this.normalizeAddress(request.to, "Recipient"), amount],
+      args: [this.normalizeAddressOrThrow(request.to, "Recipient"), amount],
     });
     const txHash = await walletClient.writeContract(txRequest);
     return { txHash };
@@ -137,7 +141,7 @@ export class ViemEvmWalletAdapter implements EvmWalletAdapter {
       address: this.getUsdcContractAddress(),
       abi: erc20Abi,
       functionName: "transfer",
-      args: [this.normalizeAddress(request.to, "Recipient"), amount],
+      args: [this.normalizeAddressOrThrow(request.to, "Recipient"), amount],
     });
     const txHash = await walletClient.writeContract(txRequest);
     return { txHash };
@@ -156,7 +160,7 @@ export class ViemEvmWalletAdapter implements EvmWalletAdapter {
 
     const txHash = await walletClient.sendTransaction({
       account,
-      to: this.normalizeAddress(request.to, "Recipient"),
+      to: this.normalizeAddressOrThrow(request.to, "Recipient"),
       value: BigInt(request.amount),
     });
 
@@ -289,14 +293,29 @@ export class ViemEvmWalletAdapter implements EvmWalletAdapter {
   }
 
   private getUsdtContractAddress(): `0x${string}` {
-    return this.normalizeAddress(
+    return this.normalizeAddressOrThrow(
       this.config.tokens.erc20.usdt.contractAddress,
       "USDT contract",
     );
   }
 
+  private normalizeAddressOrThrow(
+    address: string,
+    label: string,
+  ): `0x${string}` {
+    const candidate = address.trim();
+    if (!isAddress(candidate)) {
+      throw new WalletDomainError(
+        "VALIDATION_ERROR",
+        `${label} address is invalid: ${address}`,
+      );
+    }
+
+    return getAddress(candidate);
+  }
+
   private getUsdcContractAddress(): `0x${string}` {
-    return this.normalizeAddress(
+    return this.normalizeAddressOrThrow(
       this.config.tokens.erc20.usdc.contractAddress,
       "USDC contract",
     );
@@ -307,18 +326,6 @@ export class ViemEvmWalletAdapter implements EvmWalletAdapter {
       chain: this.getChain(),
       transport: http(this.getRpcUrl()),
     });
-  }
-
-  private normalizeAddress(address: string, label: string): `0x${string}` {
-    const candidate = address.trim().toLowerCase();
-    if (!isAddress(candidate)) {
-      throw new WalletDomainError(
-        "VALIDATION_ERROR",
-        `${label} address is invalid: ${address}`,
-      );
-    }
-
-    return getAddress(candidate);
   }
 
   private normalizeTxHash(txHash: string): `0x${string}` {
