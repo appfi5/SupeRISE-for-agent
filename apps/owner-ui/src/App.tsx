@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState } from "react";
+import { App as AntdApp } from "antd";
 import type {
   AddressBookCreateResponse,
   AddressBookDeleteResponse,
@@ -36,6 +37,7 @@ import { LoginScreen } from "./components/LoginScreen";
 import {
   emptyAppState,
   type AppState,
+  type AssetAmountInputState,
   type AddressBookEditorState,
   type AssetLimitFormState,
   type CkbTransferFormState,
@@ -45,7 +47,12 @@ import {
   type UsdcTransferFormState,
   type UsdtTransferFormState,
 } from "./types/app-state";
-import { createLimitKey } from "./components/AssetLimitPanel";
+import {
+  createAmountInputFromBaseValue,
+  createEmptyAmountInput,
+  validateAmountInput,
+  type SupportedAsset,
+} from "./utils/asset-amounts";
 
 const EMPTY_MESSAGE_SIGNING_FORM: MessageSigningFormState = {
   message: "",
@@ -55,25 +62,25 @@ const EMPTY_MESSAGE_SIGNING_FORM: MessageSigningFormState = {
 const EMPTY_CKB_TRANSFER_FORM: CkbTransferFormState = {
   to: "",
   toType: "address",
-  amount: "",
+  amount: createEmptyAmountInput(),
 };
 
 const EMPTY_ETH_TRANSFER_FORM: EthTransferFormState = {
   to: "",
   toType: "address",
-  amount: "",
+  amount: createEmptyAmountInput(),
 };
 
 const EMPTY_USDT_TRANSFER_FORM: UsdtTransferFormState = {
   to: "",
   toType: "address",
-  amount: "",
+  amount: createEmptyAmountInput(),
 };
 
 const EMPTY_USDC_TRANSFER_FORM: UsdcTransferFormState = {
   to: "",
   toType: "address",
-  amount: "",
+  amount: createEmptyAmountInput(),
 };
 
 const EMPTY_ADDRESS_BOOK_EDITOR: AddressBookEditorState = {
@@ -86,11 +93,12 @@ const EMPTY_ADDRESS_BOOK_EDITOR: AddressBookEditorState = {
 
 export function App() {
   const refreshTokenRef = useRef(0);
+  const { message, modal } = AntdApp.useApp();
   const [appState, setAppState] = useState<AppState>(emptyAppState);
   const [authenticated, setAuthenticated] = useState(false);
   const [booting, setBooting] = useState(true);
-  const [message, setMessage] = useState("");
-  const [exportedKey, setExportedKey] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+  const [activeAction, setActiveAction] = useState<string | null>(null);
   const [loginPassword, setLoginPassword] = useState("");
   const [rotateForm, setRotateForm] = useState<RotateCredentialFormState>({
     currentPassword: "",
@@ -121,7 +129,7 @@ export function App() {
   const [importConfirmed, setImportConfirmed] = useState(false);
   const [nervosSignResult, setNervosSignResult] = useState("");
   const [ethereumSignResult, setEthereumSignResult] = useState("");
-  const [isPending, startTransition] = useTransition();
+  const [exportedKey, setExportedKey] = useState("");
 
   useEffect(() => {
     void boot();
@@ -129,19 +137,20 @@ export function App() {
 
   async function boot() {
     try {
-      await refreshAuthenticatedState();
+      await refreshAuthenticatedState({ quiet: true });
     } finally {
       setBooting(false);
     }
   }
 
-  async function refreshAuthenticatedState() {
+  async function refreshAuthenticatedState(options?: { quiet?: boolean }) {
     if (!hasOwnerAccessToken()) {
       resetToLogin();
       return;
     }
 
     const refreshToken = ++refreshTokenRef.current;
+    setRefreshing(true);
 
     try {
       const [credential, current, addressBook, assetLimits, audits] = await Promise.all([
@@ -167,103 +176,108 @@ export function App() {
       }));
       setAssetLimitDrafts(createAssetLimitDraftMap(assetLimits));
 
-      void refreshChainState(refreshToken);
+      await refreshChainState(refreshToken);
+
+      if (!options?.quiet) {
+        message.success("数据已刷新。");
+      }
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         resetToLogin("登录状态已过期，请重新登录。");
         return;
       }
 
-      setMessage(error instanceof Error ? error.message : "Failed to load Owner Mode");
+      message.error(error instanceof Error ? error.message : "Owner Mode 加载失败");
+    } finally {
+      if (refreshToken === refreshTokenRef.current) {
+        setRefreshing(false);
+      }
     }
   }
 
   async function refreshChainState(refreshToken: number) {
-    void loadChainSlice(
-      refreshToken,
-      () => callWalletTool<NervosAddressDto>("nervos.address"),
-      (value) =>
-        setAppState((currentState) => ({
-          ...currentState,
-          nervos: {
-            ...currentState.nervos,
-            address: value,
-          },
-        })),
-      "Nervos 地址",
-    );
-    void loadChainSlice(
-      refreshToken,
-      () => callWalletTool<NervosBalanceCkbDto>("nervos.balance.ckb"),
-      (value) =>
-        setAppState((currentState) => ({
-          ...currentState,
-          nervos: {
-            ...currentState.nervos,
-            ckbBalance: value,
-          },
-        })),
-      "Nervos 余额",
-    );
-    void loadChainSlice(
-      refreshToken,
-      () => callWalletTool<EthereumAddressDto>("ethereum.address"),
-      (value) =>
-        setAppState((currentState) => ({
-          ...currentState,
-          ethereum: {
-            ...currentState.ethereum,
-            address: value,
-          },
-        })),
-      "Ethereum 地址",
-    );
-    void loadChainSlice(
-      refreshToken,
-      () => callWalletTool<EthereumBalanceEthDto>("ethereum.balance.eth"),
-      (value) =>
-        setAppState((currentState) => ({
-          ...currentState,
-          ethereum: {
-            ...currentState.ethereum,
-            ethBalance: value,
-          },
-        })),
-      "ETH 余额",
-    );
-    void loadChainSlice(
-      refreshToken,
-      () => callWalletTool<EthereumBalanceUsdtDto>("ethereum.balance.usdt"),
-      (value) =>
-        setAppState((currentState) => ({
-          ...currentState,
-          ethereum: {
-            ...currentState.ethereum,
-            usdtBalance: value,
-          },
-        })),
-      "USDT 余额",
-    );
-    void loadChainSlice(
-      refreshToken,
-      () => callWalletTool<EthereumBalanceUsdcDto>("ethereum.balance.usdc"),
-      (value) =>
-        setAppState((currentState) => ({
-          ...currentState,
-          ethereum: {
-            ...currentState.ethereum,
-            usdcBalance: value,
-          },
-        })),
-      "USDC 余额",
-    );
+    const chainTasks: Array<Promise<void>> = [
+      loadChainSlice(
+        refreshToken,
+        () => callWalletTool<NervosAddressDto>("nervos.address"),
+        (value) =>
+          setAppState((currentState) => ({
+            ...currentState,
+            nervos: {
+              ...currentState.nervos,
+              address: value,
+            },
+          })),
+      ),
+      loadChainSlice(
+        refreshToken,
+        () => callWalletTool<NervosBalanceCkbDto>("nervos.balance.ckb"),
+        (value) =>
+          setAppState((currentState) => ({
+            ...currentState,
+            nervos: {
+              ...currentState.nervos,
+              ckbBalance: value,
+            },
+          })),
+      ),
+      loadChainSlice(
+        refreshToken,
+        () => callWalletTool<EthereumAddressDto>("ethereum.address"),
+        (value) =>
+          setAppState((currentState) => ({
+            ...currentState,
+            ethereum: {
+              ...currentState.ethereum,
+              address: value,
+            },
+          })),
+      ),
+      loadChainSlice(
+        refreshToken,
+        () => callWalletTool<EthereumBalanceEthDto>("ethereum.balance.eth"),
+        (value) =>
+          setAppState((currentState) => ({
+            ...currentState,
+            ethereum: {
+              ...currentState.ethereum,
+              ethBalance: value,
+            },
+          })),
+      ),
+      loadChainSlice(
+        refreshToken,
+        () => callWalletTool<EthereumBalanceUsdtDto>("ethereum.balance.usdt"),
+        (value) =>
+          setAppState((currentState) => ({
+            ...currentState,
+            ethereum: {
+              ...currentState.ethereum,
+              usdtBalance: value,
+            },
+          })),
+      ),
+      loadChainSlice(
+        refreshToken,
+        () => callWalletTool<EthereumBalanceUsdcDto>("ethereum.balance.usdc"),
+        (value) =>
+          setAppState((currentState) => ({
+            ...currentState,
+            ethereum: {
+              ...currentState.ethereum,
+              usdcBalance: value,
+            },
+          })),
+      ),
+    ];
+
+    await Promise.all(chainTasks);
   }
 
   async function loadChainSlice<T>(
     refreshToken: number,
     task: () => Promise<T>,
     onSuccess: (value: T) => void,
-    label: string,
   ) {
     try {
       const value = await task();
@@ -282,30 +296,32 @@ export function App() {
         return;
       }
 
-      setMessage((current) =>
-        current || `${label} 刷新失败：${error instanceof Error ? error.message : "请求失败"}`,
-      );
+      message.error(error instanceof Error ? error.message : "链上数据刷新失败");
     }
   }
 
-  function runAction(task: () => Promise<void>) {
-    startTransition(() => {
-      void task().catch((error) => {
-        if (error instanceof ApiError && error.status === 401) {
-          resetToLogin(
-            authenticated ? "登录状态已过期，请重新登录。" : error.message,
-          );
-          return;
-        }
+  async function runAction(actionKey: string, task: () => Promise<void>) {
+    setActiveAction(actionKey);
 
-        setMessage(error instanceof Error ? error.message : "Operation failed");
-      });
-    });
+    try {
+      await task();
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        resetToLogin(authenticated ? "登录状态已过期，请重新登录。" : error.message);
+        return;
+      }
+
+      message.error(error instanceof Error ? error.message : "操作失败");
+    } finally {
+      setActiveAction((current) => (current === actionKey ? null : current));
+    }
   }
 
-  function resetToLogin(nextMessage = "") {
+  function resetToLogin(nextMessage?: string) {
     clearOwnerAccessToken();
     setAuthenticated(false);
+    setRefreshing(false);
+    setActiveAction(null);
     setAppState(emptyAppState);
     setAssetLimitDrafts({});
     setExportedKey("");
@@ -317,7 +333,10 @@ export function App() {
     setAddressBookFilter("");
     setAddressLookupAddress("");
     setAddressLookupResult(null);
-    setMessage(nextMessage);
+
+    if (nextMessage) {
+      message.warning(nextMessage);
+    }
   }
 
   async function handleLogin() {
@@ -327,13 +346,13 @@ export function App() {
     });
     setOwnerAccessToken(result.accessToken);
     setAuthenticated(true);
-    setMessage(
+    setLoginPassword("");
+    message.success(
       result.credentialStatus === "DEFAULT_PENDING_ROTATION"
         ? "已登录。当前仍是默认凭证，请尽快轮换。"
         : "已登录 Owner Mode。",
     );
-    setLoginPassword("");
-    await refreshAuthenticatedState();
+    await refreshAuthenticatedState({ quiet: true });
   }
 
   async function handleLogout() {
@@ -351,8 +370,8 @@ export function App() {
       method: "POST",
       body: JSON.stringify(rotateForm),
     });
-    resetToLogin("Owner 凭证已更新，请使用新密码重新登录。");
     setRotateForm({ currentPassword: "", newPassword: "" });
+    resetToLogin("Owner 凭证已更新，请使用新密码重新登录。");
   }
 
   async function handleNervosSignMessage() {
@@ -361,8 +380,8 @@ export function App() {
       nervosSignForm,
     );
     setNervosSignResult(formatSignResult(result.signingAddress, result.signature));
-    setMessage("Nervos 消息签名完成。");
-    await refreshAuthenticatedState();
+    message.success("Nervos 消息签名完成。");
+    await refreshAuthenticatedState({ quiet: true });
   }
 
   async function handleEthereumSignMessage() {
@@ -371,48 +390,64 @@ export function App() {
       ethereumSignForm,
     );
     setEthereumSignResult(formatSignResult(result.signingAddress, result.signature));
-    setMessage("Ethereum 消息签名完成。");
-    await refreshAuthenticatedState();
+    message.success("Ethereum 消息签名完成。");
+    await refreshAuthenticatedState({ quiet: true });
   }
 
   async function handleTransferCkb() {
+    const amount = requireAmount("CKB", ckbTransfer.amount);
     const result = await callWalletTool<NervosTransferCkbResponse>(
       "nervos.transfer.ckb",
-      ckbTransfer,
+      {
+        ...ckbTransfer,
+        amount,
+      },
     );
-    setMessage(formatTransferMessage("CKB", result));
     setCkbTransfer(EMPTY_CKB_TRANSFER_FORM);
-    await refreshAuthenticatedState();
+    message.success(formatTransferMessage("CKB", result));
+    await refreshAuthenticatedState({ quiet: true });
   }
 
   async function handleTransferUsdt() {
+    const amount = requireAmount("USDT", usdtTransfer.amount);
     const result = await callWalletTool<EthereumTransferUsdtResponse>(
       "ethereum.transfer.usdt",
-      usdtTransfer,
+      {
+        ...usdtTransfer,
+        amount,
+      },
     );
-    setMessage(formatTransferMessage("USDT", result));
     setUsdtTransfer(EMPTY_USDT_TRANSFER_FORM);
-    await refreshAuthenticatedState();
+    message.success(formatTransferMessage("USDT", result));
+    await refreshAuthenticatedState({ quiet: true });
   }
 
   async function handleTransferUsdc() {
+    const amount = requireAmount("USDC", usdcTransfer.amount);
     const result = await callWalletTool<EthereumTransferUsdcResponse>(
       "ethereum.transfer.usdc",
-      usdcTransfer,
+      {
+        ...usdcTransfer,
+        amount,
+      },
     );
-    setMessage(formatTransferMessage("USDC", result));
     setUsdcTransfer(EMPTY_USDC_TRANSFER_FORM);
-    await refreshAuthenticatedState();
+    message.success(formatTransferMessage("USDC", result));
+    await refreshAuthenticatedState({ quiet: true });
   }
 
   async function handleTransferEth() {
+    const amount = requireAmount("ETH", ethTransfer.amount);
     const result = await callWalletTool<EthereumTransferEthResponse>(
       "ethereum.transfer.eth",
-      ethTransfer,
+      {
+        ...ethTransfer,
+        amount,
+      },
     );
-    setMessage(formatTransferMessage("ETH", result));
     setEthTransfer(EMPTY_ETH_TRANSFER_FORM);
-    await refreshAuthenticatedState();
+    message.success(formatTransferMessage("ETH", result));
+    await refreshAuthenticatedState({ quiet: true });
   }
 
   async function handleSaveAddressBookContact() {
@@ -435,7 +470,7 @@ export function App() {
       });
 
       setAddressBookEditor(createAddressBookEditor(result.contact));
-      setMessage(`联系人已更新：${result.contact.name}`);
+      message.success(`联系人已更新：${result.contact.name}`);
     } else {
       const addresses: Record<string, string> = {};
       if (nervosAddress) {
@@ -454,15 +489,15 @@ export function App() {
       });
 
       setAddressBookEditor(createAddressBookEditor(result.contact));
-      setMessage(`联系人已创建：${result.contact.name}`);
+      message.success(`联系人已创建：${result.contact.name}`);
     }
 
-    await refreshAuthenticatedState();
+    await refreshAuthenticatedState({ quiet: true });
   }
 
   async function handleDeleteAddressBookContact() {
     if (!addressBookEditor.currentName) {
-      setMessage("请先选择一个联系人。");
+      message.warning("请先选择一个联系人。");
       return;
     }
 
@@ -470,8 +505,8 @@ export function App() {
       name: addressBookEditor.currentName,
     });
     setAddressBookEditor(EMPTY_ADDRESS_BOOK_EDITOR);
-    setMessage(`联系人已删除：${result.name}`);
-    await refreshAuthenticatedState();
+    message.success(`联系人已删除：${result.name}`);
+    await refreshAuthenticatedState({ quiet: true });
   }
 
   async function handleLookupAddressBook() {
@@ -482,7 +517,12 @@ export function App() {
       },
     );
     setAddressLookupResult(result);
-    setMessage(result.matched ? "地址反查完成。" : "地址未匹配到联系人。");
+    if (result.matched) {
+      message.success("地址反查完成。");
+      return;
+    }
+
+    message.info("地址未匹配到联系人。");
   }
 
   async function handleSaveAssetLimit(key: string) {
@@ -490,28 +530,25 @@ export function App() {
     const draft = assetLimitDrafts[key];
 
     if (!limit || !draft) {
-      setMessage("未找到对应的限额配置。");
+      message.warning("未找到对应的限额配置。");
       return;
     }
 
-    await request<OwnerAssetLimitEntryDto>(
-      `/api/owner/asset-limits/${limit.chain}/${limit.asset}`,
-      {
-        method: "PUT",
-        body: JSON.stringify({
-          dailyLimit: draft.dailyLimit.trim() ? draft.dailyLimit.trim() : null,
-          weeklyLimit: draft.weeklyLimit.trim() ? draft.weeklyLimit.trim() : null,
-          monthlyLimit: draft.monthlyLimit.trim() ? draft.monthlyLimit.trim() : null,
-        }),
-      },
-    );
-    setMessage(`${limit.asset} 限额已保存。`);
-    await refreshAuthenticatedState();
+    await request<OwnerAssetLimitEntryDto>(`/api/owner/asset-limits/${limit.chain}/${limit.asset}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        dailyLimit: optionalAmount(limit.asset as SupportedAsset, draft.dailyLimit),
+        weeklyLimit: optionalAmount(limit.asset as SupportedAsset, draft.weeklyLimit),
+        monthlyLimit: optionalAmount(limit.asset as SupportedAsset, draft.monthlyLimit),
+      }),
+    });
+    message.success(`${limit.asset} 限额已保存。`);
+    await refreshAuthenticatedState({ quiet: true });
   }
 
   async function handleImportWallet() {
     if (!importConfirmed) {
-      setMessage("请先确认导入会替换当前唯一钱包。");
+      message.warning("请先确认导入会替换当前唯一钱包。");
       return;
     }
 
@@ -521,8 +558,8 @@ export function App() {
     });
     setImportKey("");
     setImportConfirmed(false);
-    setMessage("钱包已导入并替换当前钱包。");
-    await refreshAuthenticatedState();
+    message.success("钱包已导入并替换当前钱包。");
+    await refreshAuthenticatedState({ quiet: true });
   }
 
   async function handleExportWallet() {
@@ -531,8 +568,30 @@ export function App() {
       body: JSON.stringify({ confirmed: true }),
     });
     setExportedKey(result.privateKey);
-    setMessage("私钥已导出。请按高风险动作处理。");
-    await refreshAuthenticatedState();
+    message.success("私钥已导出。请按高风险动作处理。");
+    await refreshAuthenticatedState({ quiet: true });
+  }
+
+  function confirmImportWallet() {
+    void modal.confirm({
+      title: "确认导入并替换当前钱包？",
+      content: "该操作会直接替换当前唯一钱包，仅建议在恢复场景中使用。",
+      okText: "确认导入",
+      okType: "danger",
+      cancelText: "取消",
+      onOk: async () => runAction("import-wallet", handleImportWallet),
+    });
+  }
+
+  function confirmExportWallet() {
+    void modal.confirm({
+      title: "确认导出私钥？",
+      content: "导出后 Owner 将直接掌握钱包控制权，请按高风险动作处理导出的私钥。",
+      okText: "确认导出",
+      okType: "danger",
+      cancelText: "取消",
+      onOk: async () => runAction("export-wallet", handleExportWallet),
+    });
   }
 
   if (booting) {
@@ -542,17 +601,17 @@ export function App() {
   if (!authenticated) {
     return (
       <LoginScreen
-        isPending={isPending}
+        isPending={activeAction === "login"}
         loginPassword={loginPassword}
-        message={message}
         onLoginPasswordChange={setLoginPassword}
-        onSubmit={() => runAction(handleLogin)}
+        onSubmit={() => void runAction("login", handleLogin)}
       />
     );
   }
 
   return (
     <DashboardScreen
+      activeAction={activeAction}
       appState={appState}
       addressBookEditor={addressBookEditor}
       addressBookFilter={addressBookFilter}
@@ -565,24 +624,43 @@ export function App() {
       exportedKey={exportedKey}
       importConfirmed={importConfirmed}
       importKey={importKey}
-      message={message}
+      isRefreshing={refreshing}
       nervosSignForm={nervosSignForm}
       nervosSignResult={nervosSignResult}
       rotateForm={rotateForm}
       assetLimitDrafts={assetLimitDrafts}
       usdcTransfer={usdcTransfer}
       usdtTransfer={usdtTransfer}
+      onRefresh={() => void refreshAuthenticatedState()}
       onCkbAmountChange={(value) =>
-        setCkbTransfer((current) => ({ ...current, amount: value }))
+        setCkbTransfer((current) => ({
+          ...current,
+          amount: { ...current.amount, value },
+        }))
       }
-      onCkbSubmit={() => runAction(handleTransferCkb)}
+      onCkbAmountUnitChange={(unit) =>
+        setCkbTransfer((current) => ({
+          ...current,
+          amount: { ...current.amount, unit },
+        }))
+      }
+      onCkbSubmit={() => void runAction("transfer-ckb", handleTransferCkb)}
       onCkbToChange={(value) =>
         setCkbTransfer((current) => ({ ...current, to: value }))
       }
       onEthAmountChange={(value) =>
-        setEthTransfer((current) => ({ ...current, amount: value }))
+        setEthTransfer((current) => ({
+          ...current,
+          amount: { ...current.amount, value },
+        }))
       }
-      onEthSubmit={() => runAction(handleTransferEth)}
+      onEthAmountUnitChange={(unit) =>
+        setEthTransfer((current) => ({
+          ...current,
+          amount: { ...current.amount, unit },
+        }))
+      }
+      onEthSubmit={() => void runAction("transfer-eth", handleTransferEth)}
       onEthToChange={(value) =>
         setEthTransfer((current) => ({ ...current, to: value }))
       }
@@ -592,37 +670,62 @@ export function App() {
       onEthereumSignMessageChange={(value) =>
         setEthereumSignForm((current) => ({ ...current, message: value }))
       }
-      onEthereumSignSubmit={() => runAction(handleEthereumSignMessage)}
-      onExport={() => runAction(handleExportWallet)}
-      onImport={() => runAction(handleImportWallet)}
+      onEthereumSignSubmit={() =>
+        void runAction("sign-ethereum", handleEthereumSignMessage)
+      }
+      onExport={confirmExportWallet}
+      onImport={confirmImportWallet}
       onImportConfirmedChange={setImportConfirmed}
       onImportKeyChange={setImportKey}
-      onLogout={() => runAction(handleLogout)}
+      onLogout={() => void runAction("logout", handleLogout)}
       onNervosSignEncodingChange={(value) =>
         setNervosSignForm((current) => ({ ...current, encoding: value }))
       }
       onNervosSignMessageChange={(value) =>
         setNervosSignForm((current) => ({ ...current, message: value }))
       }
-      onNervosSignSubmit={() => runAction(handleNervosSignMessage)}
+      onNervosSignSubmit={() => void runAction("sign-nervos", handleNervosSignMessage)}
       onRotateCurrentPasswordChange={(value) =>
         setRotateForm((current) => ({ ...current, currentPassword: value }))
       }
       onRotateNewPasswordChange={(value) =>
         setRotateForm((current) => ({ ...current, newPassword: value }))
       }
-      onRotateSubmit={() => runAction(handleRotateCredential)}
+      onRotateSubmit={() => void runAction("rotate-credential", handleRotateCredential)}
       onAssetLimitChange={(key, field, value) =>
         setAssetLimitDrafts((current) => ({
           ...current,
           [key]: {
-            ...(current[key] ?? { dailyLimit: "", weeklyLimit: "", monthlyLimit: "" }),
-            [field]: value,
+            ...(current[key] ?? {
+              dailyLimit: createEmptyAmountInput(),
+              weeklyLimit: createEmptyAmountInput(),
+              monthlyLimit: createEmptyAmountInput(),
+            }),
+            [field]: {
+              ...(current[key]?.[field] ?? createEmptyAmountInput()),
+              value,
+            },
           },
         }))
       }
-      onAssetLimitSave={(key) => runAction(() => handleSaveAssetLimit(key))}
-      onAddressBookDelete={() => runAction(handleDeleteAddressBookContact)}
+      onAssetLimitUnitChange={(key, field, unit) =>
+        setAssetLimitDrafts((current) => ({
+          ...current,
+          [key]: {
+            ...(current[key] ?? {
+              dailyLimit: createEmptyAmountInput(),
+              weeklyLimit: createEmptyAmountInput(),
+              monthlyLimit: createEmptyAmountInput(),
+            }),
+            [field]: {
+              ...(current[key]?.[field] ?? createEmptyAmountInput()),
+              unit,
+            },
+          },
+        }))
+      }
+      onAssetLimitSave={(key) => void runAction(`limit:${key}`, () => handleSaveAssetLimit(key))}
+      onAddressBookDelete={() => runAction("address-book-delete", handleDeleteAddressBookContact)}
       onAddressBookEditorChange={(field, value) =>
         setAddressBookEditor((current) => ({
           ...current,
@@ -630,15 +733,24 @@ export function App() {
         }))
       }
       onAddressBookFilterChange={setAddressBookFilter}
-      onAddressBookLookup={() => runAction(handleLookupAddressBook)}
+      onAddressBookLookup={() => void runAction("address-book-lookup", handleLookupAddressBook)}
       onAddressBookLookupAddressChange={setAddressLookupAddress}
       onAddressBookReset={() => setAddressBookEditor(EMPTY_ADDRESS_BOOK_EDITOR)}
-      onAddressBookSave={() => runAction(handleSaveAddressBookContact)}
+      onAddressBookSave={() => runAction("address-book-save", handleSaveAddressBookContact)}
       onAddressBookSelect={(contact) => setAddressBookEditor(createAddressBookEditor(contact))}
       onUsdcAmountChange={(value) =>
-        setUsdcTransfer((current) => ({ ...current, amount: value }))
+        setUsdcTransfer((current) => ({
+          ...current,
+          amount: { ...current.amount, value },
+        }))
       }
-      onUsdcSubmit={() => runAction(handleTransferUsdc)}
+      onUsdcAmountUnitChange={(unit) =>
+        setUsdcTransfer((current) => ({
+          ...current,
+          amount: { ...current.amount, unit },
+        }))
+      }
+      onUsdcSubmit={() => void runAction("transfer-usdc", handleTransferUsdc)}
       onUsdcToChange={(value) =>
         setUsdcTransfer((current) => ({ ...current, to: value }))
       }
@@ -646,9 +758,18 @@ export function App() {
         setUsdcTransfer((current) => ({ ...current, toType: value }))
       }
       onUsdtAmountChange={(value) =>
-        setUsdtTransfer((current) => ({ ...current, amount: value }))
+        setUsdtTransfer((current) => ({
+          ...current,
+          amount: { ...current.amount, value },
+        }))
       }
-      onUsdtSubmit={() => runAction(handleTransferUsdt)}
+      onUsdtAmountUnitChange={(unit) =>
+        setUsdtTransfer((current) => ({
+          ...current,
+          amount: { ...current.amount, unit },
+        }))
+      }
+      onUsdtSubmit={() => void runAction("transfer-usdt", handleTransferUsdt)}
       onUsdtToChange={(value) =>
         setUsdtTransfer((current) => ({ ...current, to: value }))
       }
@@ -676,9 +797,9 @@ function createAssetLimitDraftMap(
     limits.map((limit) => [
       createLimitKey(limit),
       {
-        dailyLimit: limit.dailyLimit ?? "",
-        weeklyLimit: limit.weeklyLimit ?? "",
-        monthlyLimit: limit.monthlyLimit ?? "",
+        dailyLimit: createAmountInputFromBaseValue(limit.asset as SupportedAsset, limit.dailyLimit),
+        weeklyLimit: createAmountInputFromBaseValue(limit.asset as SupportedAsset, limit.weeklyLimit),
+        monthlyLimit: createAmountInputFromBaseValue(limit.asset as SupportedAsset, limit.monthlyLimit),
       },
     ]),
   );
@@ -708,4 +829,33 @@ function formatTransferMessage(
     ? `${result.contactName} (${result.resolvedAddress})`
     : result.resolvedAddress;
   return `${asset} 转账已提交：${result.operationId} -> ${targetLabel}`;
+}
+
+function requireAmount(asset: SupportedAsset, input: AssetAmountInputState): string {
+  const result = validateAmountInput(asset, input, {
+    requirePositive: true,
+  });
+  if (result.error || !result.baseValue) {
+    throw new Error(result.error ?? "金额无效。");
+  }
+
+  return result.baseValue;
+}
+
+function optionalAmount(
+  asset: SupportedAsset,
+  input: AssetAmountInputState,
+): string | null {
+  const result = validateAmountInput(asset, input, {
+    allowEmpty: true,
+  });
+  if (result.error) {
+    throw new Error(result.error);
+  }
+
+  return result.baseValue;
+}
+
+function createLimitKey(limit: Pick<OwnerAssetLimitEntryDto, "chain" | "asset">): string {
+  return `${limit.chain}:${limit.asset}`;
 }

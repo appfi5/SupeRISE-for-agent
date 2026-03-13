@@ -22,28 +22,35 @@ export type MessageSigningFormState = {
   encoding: "utf8" | "hex";
 };
 
+export type AssetAmountUnit = "display" | "gwei" | "base";
+
+export type AssetAmountInputState = {
+  value: string;
+  unit: AssetAmountUnit;
+};
+
 export type CkbTransferFormState = {
   to: string;
   toType: "address" | "contact_name";
-  amount: string;
+  amount: AssetAmountInputState;
 };
 
 export type EthTransferFormState = {
   to: string;
   toType: "address" | "contact_name";
-  amount: string;
+  amount: AssetAmountInputState;
 };
 
 export type UsdtTransferFormState = {
   to: string;
   toType: "address" | "contact_name";
-  amount: string;
+  amount: AssetAmountInputState;
 };
 
 export type UsdcTransferFormState = {
   to: string;
   toType: "address" | "contact_name";
-  amount: string;
+  amount: AssetAmountInputState;
 };
 
 export type AddressBookEditorState = {
@@ -55,9 +62,9 @@ export type AddressBookEditorState = {
 };
 
 export type AssetLimitFormState = {
-  dailyLimit: string;
-  weeklyLimit: string;
-  monthlyLimit: string;
+  dailyLimit: AssetAmountInputState;
+  weeklyLimit: AssetAmountInputState;
+  monthlyLimit: AssetAmountInputState;
 };
 
 export type AppState = {

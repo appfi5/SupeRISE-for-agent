@@ -10,7 +10,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@ant-design/icons": "^6.0.0",
     "@superise/app-contracts": "workspace:*",
+    "antd": "^5.27.0",
+    "decimal.js": "^10.6.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   },
