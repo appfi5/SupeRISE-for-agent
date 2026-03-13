@@ -1,5 +1,6 @@
 export * from "./errors";
 export * from "./responses";
+export * from "./schemas/address-book";
 export * from "./schemas/audit";
 export * from "./schemas/ethereum";
 export * from "./schemas/mcp";

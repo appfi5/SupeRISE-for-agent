@@ -22,12 +22,18 @@ export const txStatusSchema = z.enum([
   "FAILED",
 ]);
 
+export const transferTargetTypeSchema = z
+  .enum(["address", "contact_name"])
+  .default("address");
+
 export const credentialStatusSchema = z.enum([
   "DEFAULT_PENDING_ROTATION",
   "ACTIVE",
 ]);
 
 export const publicChainSchema = z.enum(["nervos", "ethereum"]);
+
+export const addressBookChainSchema = z.enum(["NERVOS", "ETHEREUM"]);
 
 export const supportedAssetSchema = z.enum([
   "CKB",
