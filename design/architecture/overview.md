@@ -22,6 +22,7 @@
 - CKB 集成采用 `@ckb-ccc/shell`
 - 密钥管理采用 `DEK + KEK` 双层设计，`KEK` 由部署侧提供
 - 当前支持资产为 `CKB`、`ETH`、`USDT`、`USDC`
+- 当前支持地址簿能力：按名称管理 `Nervos` / `Ethereum` 收款目标，并支持按精确地址反查已知联系人名称
 - server 侧提供按币种独立的日、周、月限额能力，仅对 Agent 生效
 - Agent 转账采用“额度预占 + 异步结算”模型
 - `CKB` 与 `Ethereum` 都提供链上 `tx status` 查询能力
@@ -45,6 +46,7 @@
 - [13 开发约束与质量闸门](./13-development-requirements-and-quality-gates.md)
 - [ADR 0001 币种限额执行模型](./adr/0001-asset-limit-enforcement.md)
 - [ADR 0002 转账结算与链上状态跟踪](./adr/0002-transfer-settlement-and-tx-status.md)
+- [ADR 0003 地址簿与转账目标解析模型](./adr/0003-address-book-and-transfer-target-resolution.md)
 
 ## 3. 使用方式
 

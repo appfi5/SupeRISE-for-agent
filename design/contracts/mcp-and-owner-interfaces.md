@@ -30,20 +30,28 @@ MCP 的定位是：
 
 1. `wallet.current`
 2. `wallet.operation_status`
-3. `nervos.address`
-4. `nervos.balance.ckb`
-5. `nervos.sign_message`
-6. `nervos.transfer.ckb`
-7. `nervos.tx_status`
-8. `ethereum.address`
-9. `ethereum.balance.eth`
-10. `ethereum.balance.usdt`
-11. `ethereum.balance.usdc`
-12. `ethereum.sign_message`
-13. `ethereum.transfer.eth`
-14. `ethereum.transfer.usdt`
-15. `ethereum.transfer.usdc`
-16. `ethereum.tx_status`
+3. `address_book.list`
+4. `address_book.search`
+5. `address_book.lookup_by_address`
+6. `address_book.get`
+7. `address_book.get_all`
+8. `address_book.create`
+9. `address_book.update`
+10. `address_book.delete`
+11. `nervos.address`
+12. `nervos.balance.ckb`
+13. `nervos.sign_message`
+14. `nervos.transfer.ckb`
+15. `nervos.tx_status`
+16. `ethereum.address`
+17. `ethereum.balance.eth`
+18. `ethereum.balance.usdt`
+19. `ethereum.balance.usdc`
+20. `ethereum.sign_message`
+21. `ethereum.transfer.eth`
+22. `ethereum.transfer.usdt`
+23. `ethereum.transfer.usdc`
+24. `ethereum.tx_status`
 
 ### 3.2.1 Agent 可见元数据要求
 
@@ -81,6 +89,230 @@ MCP 的定位是：
 - `walletFingerprint`
 - `status`
 - `source`
+
+#### `address_book.list`
+
+用途：
+
+- 返回当前地址簿的联系人摘要列表
+
+输入：
+
+- 无
+
+输出：
+
+- `contacts[]`
+
+`contacts[]` 中每项至少包括：
+
+- `name`
+- `note?`
+- `chains`
+- `updatedAt`
+
+说明：
+
+- 列表以 `name` 为主视角
+- 列表默认按 `name` 升序返回
+- 列表返回摘要，不返回完整多链地址映射
+- `chains` 只允许返回 `NERVOS`、`ETHEREUM` 中的一个或两个值
+
+#### `address_book.search`
+
+用途：
+
+- 按名称搜索联系人摘要
+
+输入：
+
+- `query`
+
+输出：
+
+- `contacts[]`
+
+说明：
+
+- 仅按 `name` 搜索
+- `query` 去首尾空格后不能为空；空查询应改用 `address_book.list`
+- 搜索按归一化名称执行大小写不敏感匹配
+- 返回结构与 `address_book.list` 一致
+
+#### `address_book.get`
+
+用途：
+
+- 返回单个联系人的完整信息
+
+输入：
+
+- `name`
+
+输出：
+
+- `contact`
+
+`contact` 至少包括：
+
+- `name`
+- `note?`
+- `addresses`
+- `createdAt`
+- `updatedAt`
+
+`addresses` 中允许：
+
+- `nervosAddress?`
+- `ethereumAddress?`
+
+#### `address_book.lookup_by_address`
+
+用途：
+
+- 按精确地址查询该地址在地址簿中匹配到哪些联系人名称
+
+输入：
+
+- `address`
+
+输出：
+
+- `address`
+- `chain?`
+- `matched`
+- `contacts`
+
+说明：
+
+- `contacts` 只返回联系人名称数组，不返回完整联系人详情
+- 该查询只表达“地址簿中有哪些匹配联系人”，不表达链上真实归属
+- 服务端先尝试识别该地址属于当前支持的哪条链，再按链内规范化结果做精确匹配
+- 当同一地址被多个联系人名称记录时，必须返回全部匹配名称
+- 输入为空时返回 `VALIDATION_ERROR`
+- 输入无法识别为当前支持链地址格式时，返回 `matched=false` 与空数组，不作为错误
+
+#### `address_book.get_all`
+
+用途：
+
+- 一次性返回全部联系人的完整信息
+
+输入：
+
+- 无
+
+输出：
+
+- `contacts[]`
+
+说明：
+
+- 返回完整多链地址信息
+- 不分页
+
+#### `address_book.create`
+
+用途：
+
+- 创建新的联系人条目
+
+输入：
+
+- `contact`
+
+`contact` 至少包括：
+
+- `name`
+- `note?`
+- `addresses`
+
+`addresses` 中允许：
+
+- `nervosAddress?`
+- `ethereumAddress?`
+
+要求：
+
+- `name` 必填
+- 名称必须唯一
+- 至少提供一个链地址
+- 创建时必须校验地址格式合法性
+- 不限制同一链下的同一个地址被多个联系人名称复用
+
+输出：
+
+- `contact`
+
+说明：
+
+- 返回结果至少包括 `name`、`note?`、`addresses`、`createdAt`、`updatedAt`
+
+#### `address_book.update`
+
+用途：
+
+- 更新联系人条目
+
+输入：
+
+- `currentName`
+- `contact`
+
+`contact` 表示更新后的最终状态，至少包括：
+
+- `name`
+- `note?`
+- `addresses`
+
+`addresses` 中允许：
+
+- `nervosAddress?`
+- `ethereumAddress?`
+
+规则：
+
+- `update` 使用“最终状态替换”语义，不使用 patch 语义
+- 若需要移除某条链地址，应显式传入 `null`
+- 更新后的联系人必须仍然至少保留一个链地址
+- 更新时必须校验保留地址的格式合法性
+- 不限制同一链下的同一个地址被多个联系人名称复用
+
+输出：
+
+- `contact`
+
+说明：
+
+- 返回结果至少包括 `name`、`note?`、`addresses`、`createdAt`、`updatedAt`
+
+#### `address_book.delete`
+
+用途：
+
+- 删除整个联系人条目
+
+输入：
+
+- `name`
+
+输出：
+
+- `deleted`
+- `name`
+
+说明：
+
+- 删除成功时 `deleted` 固定为 `true`
+- 联系人不存在时直接返回 `ADDRESS_BOOK_CONTACT_NOT_FOUND`
+
+地址簿契约补充规则：
+
+- 联系人名称按“去首尾空格 + 大小写不敏感”判断唯一性
+- 对外仍返回原始展示名称，不返回归一化名称
+- `get`、`update`、`delete` 对联系人名称使用精确匹配
+- `lookup_by_address` 按地址精确匹配，不支持地址字符串模糊匹配
+- 地址簿详情中不暴露内部数据库主键
 
 #### `nervos.address`
 
@@ -129,6 +361,7 @@ MCP 的定位是：
 输入：
 
 - `to`
+- `toType?`，可选值为 `address` 或 `contact_name`；省略时按 `address` 处理
 - `amount`，单位为 `Shannon` 的正整数字符串，`100000000` 表示 `1 CKB`
 
 输出：
@@ -138,6 +371,15 @@ MCP 的定位是：
 - `operationId`
 - `txHash`
 - `status`
+- `toType`
+- `contactName?`
+- `resolvedAddress`
+
+说明：
+
+- `toType=contact_name` 时，系统会先解析该联系人在 `Nervos` 下的地址
+- 返回结果必须同时给出联系人名称和最终解析地址
+- `toType=address` 时不自动反查地址簿，也不回填 `contactName`
 
 #### `nervos.tx_status`
 
@@ -235,6 +477,7 @@ MCP 的定位是：
 输入：
 
 - `to`
+- `toType?`，可选值为 `address` 或 `contact_name`；省略时按 `address` 处理
 - `amount`，单位为 `wei` 的正整数字符串，`1000000000000000000` 表示 `1 ETH`
 
 输出：
@@ -244,12 +487,22 @@ MCP 的定位是：
 - `operationId`
 - `txHash`
 - `status`
+- `toType`
+- `contactName?`
+- `resolvedAddress`
+
+说明：
+
+- `toType=contact_name` 时，系统会先解析该联系人在 `Ethereum` 下的地址
+- 返回结果必须同时给出联系人名称和最终解析地址
+- `toType=address` 时不自动反查地址簿，也不回填 `contactName`
 
 #### `ethereum.transfer.usdt`
 
 输入：
 
 - `to`
+- `toType?`，可选值为 `address` 或 `contact_name`；省略时按 `address` 处理
 - `amount`，单位为 USDT 最小单位的正整数字符串，`1000000` 表示 `1 USDT`
 
 输出：
@@ -259,12 +512,22 @@ MCP 的定位是：
 - `operationId`
 - `txHash`
 - `status`
+- `toType`
+- `contactName?`
+- `resolvedAddress`
+
+说明：
+
+- `toType=contact_name` 时，系统会先解析该联系人在 `Ethereum` 下的地址
+- `USDT` 与 `ETH` 共用同一个联系人 `Ethereum` 地址映射
+- `toType=address` 时不自动反查地址簿，也不回填 `contactName`
 
 #### `ethereum.transfer.usdc`
 
 输入：
 
 - `to`
+- `toType?`，可选值为 `address` 或 `contact_name`；省略时按 `address` 处理
 - `amount`，单位为 USDC 最小单位的正整数字符串，`1000000` 表示 `1 USDC`
 
 输出：
@@ -274,6 +537,15 @@ MCP 的定位是：
 - `operationId`
 - `txHash`
 - `status`
+- `toType`
+- `contactName?`
+- `resolvedAddress`
+
+说明：
+
+- `toType=contact_name` 时，系统会先解析该联系人在 `Ethereum` 下的地址
+- `USDC` 与 `ETH` 共用同一个联系人 `Ethereum` 地址映射
+- `toType=address` 时不自动反查地址簿，也不回填 `contactName`
 
 #### `ethereum.tx_status`
 
@@ -456,6 +728,14 @@ Owner HTTP API 不提供跨链聚合 `dashboard`。
 UI 应在已登录状态下自行组合以下原子能力：
 
 - `wallet-tools/call(name=wallet.current)`
+- `wallet-tools/call(name=address_book.list)`
+- `wallet-tools/call(name=address_book.search)`
+- `wallet-tools/call(name=address_book.lookup_by_address)`
+- `wallet-tools/call(name=address_book.get)`
+- `wallet-tools/call(name=address_book.get_all)`
+- `wallet-tools/call(name=address_book.create)`
+- `wallet-tools/call(name=address_book.update)`
+- `wallet-tools/call(name=address_book.delete)`
 - `credential/status`
 - `wallet-tools/call(name=nervos.address)`
 - `wallet-tools/call(name=nervos.balance.ckb)`
@@ -488,6 +768,12 @@ UI 应在已登录状态下自行组合以下原子能力：
 - `TRANSFER_BROADCAST_FAILED`
 - `SIGN_MESSAGE_FAILED`
 - `ASSET_LIMIT_EXCEEDED`
+- `ADDRESS_BOOK_CONTACT_NOT_FOUND`
+- `ADDRESS_BOOK_CONTACT_ALREADY_EXISTS`
+- `ADDRESS_BOOK_CONTACT_EMPTY`
+- `ADDRESS_BOOK_INVALID_NERVOS_ADDRESS`
+- `ADDRESS_BOOK_INVALID_ETHEREUM_ADDRESS`
+- `ADDRESS_BOOK_ADDRESS_NOT_FOUND_FOR_CHAIN`
 
 要求：
 
@@ -512,6 +798,14 @@ UI 应在已登录状态下自行组合以下原子能力：
 允许：
 
 - 查询当前钱包
+- 查询地址簿列表
+- 搜索地址簿
+- 按精确地址查询匹配联系人
+- 查看单个联系人
+- 查看全部联系人
+- 创建联系人
+- 更新联系人
+- 删除联系人
 - 查询 Nervos 地址
 - 查询 Nervos CKB 余额
 - Nervos 消息签名
@@ -525,6 +819,8 @@ UI 应在已登录状态下自行组合以下原子能力：
 - Ethereum USDT 转账
 - Ethereum USDC 转账
 - 查询操作状态
+- 查询 Nervos 交易状态
+- 查询 Ethereum 交易状态
 
 禁止：
 
@@ -564,3 +860,4 @@ UI 应在已登录状态下自行组合以下原子能力：
 - 一个 tool 只对应一个明确动作和一个明确资产范围
 - 当前需求基线支持什么，就定义什么 tool
 - 后续新增币种或动作时，新增新的明确 tool，而不是把已有 tool 扩成万能入口
+- 地址簿的列表、搜索、按地址查询、详情、创建、更新、删除必须保持独立 tool，不合并成万能 `address_book.manage`
