@@ -200,6 +200,7 @@ interface EvmTransactionStatusReader {
 - `getCkbAddress`
 - `getCkbBalance`
 - `getCkbTxStatus`
+- `normalizeCkbAddress`
 
 ### 6.2 写能力
 
@@ -249,6 +250,7 @@ interface EvmTransactionStatusReader {
 - `getUsdtBalance`
 - `getUsdcBalance`
 - `getEvmTxStatus`
+- `normalizeEvmAddress`
 
 ### 7.2 写能力
 
@@ -324,6 +326,8 @@ interface EvmTransactionStatusReader {
 - 上层只暴露当前需求明确需要的动作
 - 下层处理链级差异
 - 对外不提供万能余额查询或万能转账入口
+- 联系人名称解析发生在应用层，链适配器只接收最终链地址
+- 按精确地址查询联系人时，由应用层尝试链识别并调用链适配器做地址规范化
 
 即：
 
@@ -336,6 +340,9 @@ interface EvmTransactionStatusReader {
 - 上层调用 `transferUsdt`
 - 上层调用 `transferUsdc`
 - 上层不处理 UTXO 与 nonce 差异
+- 上层负责把 `contact_name` 解析为最终地址
+- 上层负责把原始 `address` 识别并规范化后用于地址簿精确匹配
+- 上层不把链适配器地址识别结果扩展成“链上真实归属”结论
 
 补充约束：
 

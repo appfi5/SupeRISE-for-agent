@@ -21,6 +21,14 @@
 
 任何一层缺失，均视为功能未完成。
 
+地址簿能力额外要求同步检查：
+
+- `address_book.xxx` tools 契约
+- `address_book.lookup_by_address` 的输入输出与匹配语义
+- 转账 schema 中的 `toType`
+- 地址簿仓储与名称唯一性规则
+- 转账结果中的 `resolvedAddress` / `contactName`
+
 ## 3. 本期能力覆盖矩阵
 
 开发者必须以此为最小实现集合：
@@ -41,6 +49,17 @@
 - 不允许缺失 `nervos.tx_status` 或 `ethereum.tx_status`。
 - 必须提供按币种独立的日、周、月限额能力。
 
+地址簿能力最小集合：
+
+- `address_book.list`
+- `address_book.search`
+- `address_book.lookup_by_address`
+- `address_book.get`
+- `address_book.get_all`
+- `address_book.create`
+- `address_book.update`
+- `address_book.delete`
+
 ## 4. 单工具单职责要求
 
 对外接口必须遵守：
@@ -50,6 +69,8 @@
 - 一个转账 tool 只服务一个链上资产。
 - 不允许提供 `wallet.transfer`、`ethereum.transfer.asset`、`balance.asset` 这类外部万能入口。
 - 不允许把两条链的 `tx status` 合并成 `wallet.tx_status` 这类外部万能入口。
+- 不允许提供 `address_book.manage`、`address_book.resolve` 这类外部万能入口。
+- 不允许把按名称搜索和按精确地址匹配混成同一个外部工具。
 
 内部可以复用共享实现，但外部契约不得变成抽象占位符。
 
@@ -174,7 +195,37 @@ UI 要求：
 - 广播失败、链上失败、确认超时都必须释放额度预占
 - 必须存在后台结算任务清理 `RESERVED` 与 `SUBMITTED` 操作
 
-## 8.2 转账状态追踪要求
+## 8.2 地址簿实现要求
+
+地址簿能力必须遵守：
+
+- 地址簿以联系人名称为主视角
+- 同一个联系人名称可同时记录 `Nervos` 地址和 `Ethereum` 地址
+- 同一链下只允许一个地址
+- 同一链下的同一个地址允许被多个联系人名称复用
+- 名称唯一性必须按归一化规则判断
+- 地址簿是共享数据，不是权限边界
+- Agent 与 Owner 共享同一地址簿数据
+
+实现要求：
+
+- 地址簿当前只按两条链固定字段建模，不抽象成任意链映射表
+- 同一链地址不得加唯一约束
+- `create` 和 `update` 时必须校验至少保留一个链地址
+- `create` 和 `update` 时必须严格校验地址合法性
+- `update` 使用最终状态替换语义，不使用 patch 语义
+- 地址簿必须持久化用于精确匹配的规范化地址
+- `lookup_by_address` 只输入 `address`，不要求调用方提供 `chain`
+- `lookup_by_address` 只返回匹配联系人名称，不返回完整联系人详情
+- `lookup_by_address` 对空字符串返回校验错误；地址无法识别时返回未匹配结果
+- 转账中的 `contact_name` 必须在应用层解析
+- 链适配器只允许接收最终链地址
+- `toType` 省略时按 `address` 处理，不允许自动猜测联系人名称
+- 名称不存在或当前链下无地址时必须明确失败
+- 解析失败时不允许降级到其他链地址
+- `toType=address` 的转账不自动执行地址簿反查，也不回填联系人名称
+
+## 8.3 转账状态追踪要求
 
 必须遵守：
 
@@ -231,6 +282,13 @@ UI 要求：
 - 没有额度预占，直到链上确认才记额度。
 - 没有后台结算任务，导致失败交易无法返还额度。
 - `wallet.operation_status` 与链上 `tx status` 混成同一个外部接口。
+- 地址簿名称唯一性规则不稳定，导致 `Bob` / `bob` 可重复。
+- 给地址字段错误加了唯一约束，导致同一地址不能挂到多个联系人。
+- 新增了 `address_book.manage` 之类的外部万能接口。
+- 把名称搜索与按精确地址匹配合并成同一个外部接口。
+- 转账时自动猜测 `to` 是地址还是联系人名称。
+- `lookup_by_address` 返回了联系人详情甚至链上归属结论，而不是名称匹配结果。
+- 在链适配器或 UI 层解析联系人名称。
 - Owner 也被错误纳入 Agent 限额约束。
 - controller 中出现链 SDK 直接调用。
 - UI 中出现绕过 Owner API 的后门逻辑。
@@ -255,6 +313,10 @@ UI 要求：
 - 操作状态追踪测试
 - 额度预占与返还测试
 - 后台结算恢复测试
+- 地址簿名称唯一性测试
+- 同地址多联系人测试
+- 地址簿按链解析测试
+- 按精确地址查询匹配联系人测试
 
 最少失败路径：
 
@@ -266,6 +328,14 @@ UI 要求：
 - 已提交交易长时间未确认后的超时处理
 - `nervos.tx_status` 查不到交易
 - `ethereum.tx_status` receipt 失败
+- 联系人名称不存在
+- 联系人存在但当前链下无地址
+- 按精确地址查询无匹配联系人
+- 按精确地址查询无法识别链格式
+- 按精确地址查询输入为空
+- 地址簿重名创建
+- 同一地址被多个联系人记录
+- 更新联系人后地址全被清空
 - 链节点不可用
 - `custom` 链配置 JSON 缺项
 - CKB `genesisHash` 不匹配
@@ -289,6 +359,10 @@ UI 要求：
 - 我是否错误地为 UI 新增了聚合接口。
 - 我是否让 contracts、application、registry、UI 同步更新。
 - 我是否补齐了 `ETH`、`CKB`、`USDT`、`USDC` 的需求闭环。
+- 我是否让地址簿保持独立 tools，而不是做成万能入口。
+- 我是否把按精确地址查询单独做成了地址簿工具，而不是塞进名称搜索。
+- 我是否把联系人名称解析放在了应用层，而不是 UI 或链适配层。
+- 我是否把地址簿反查结果收敛为“匹配联系人名称”，而不是扩展成归属判断。
 - 我是否按 `CHAIN_ENV=custom|testnet|mainnet` 实现了链配置，而不是继续沿用旧 `NETWORK` 或按链拆开的旧口径。
 - 我是否把 `custom` 配置放进了独立 JSON，而不是把整套链参数塞进 env。
 - 我是否把限额判断留在 server 应用层，而不是散落到 UI 或 Agent。

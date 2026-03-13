@@ -30,6 +30,7 @@
 - `DatabaseModule`
 - `VaultModule`
 - `WalletModule`
+- `AddressBookModule`
 - `TransferTrackingModule`
 - `AssetLimitModule`
 - `OwnerAuthModule`
@@ -148,12 +149,35 @@ WalletModule 是本期核心业务模块。
 
 额外要求：
 
+- 转账路径必须先解析 `to + toType`，得到最终链地址后再进入限额与链适配流程
+- `toType=address` 的转账不自动触发地址簿反查
 - Agent 转账路径必须在进入链适配器前完成限额评估与额度预占
 - Owner 转账路径必须显式绕过限额评估
 - 限额评估失败时必须返回结构化 `ASSET_LIMIT_EXCEEDED`
 - 广播失败时必须显式释放已预占额度
 
-### 4.7 `TransferTrackingModule`
+### 4.7 `AddressBookModule`
+
+职责：
+
+- 提供地址簿的新增、查看、修改和删除能力
+- 提供联系人列表、名称搜索、单个详情、全量详情能力
+- 提供按精确地址查询匹配联系人名称的能力
+- 提供转账前的联系人名称解析能力
+- 对名称唯一性和地址格式进行校验
+
+要求：
+
+- 地址簿是共享数据，不区分 Agent 与 Owner 私有条目
+- 地址簿不承担权限隔离和白名单语义
+- 同一链下的同一个地址允许被多个联系人名称复用
+- `create` 与 `update` 必须严格校验地址合法性
+- `lookup_by_address` 只做轻量地址识别与精确匹配，不承担链上真实归属判断
+- `lookup_by_address` 输入为空时返回校验错误；地址无法识别时返回未匹配结果
+- 名称解析必须按当前转账链执行，不允许跨链降级
+- `AddressBookModule` 返回联系人数据，不直接执行转账逻辑
+
+### 4.8 `TransferTrackingModule`
 
 职责：
 
@@ -172,7 +196,7 @@ WalletModule 是本期核心业务模块。
 - 调度器不得直接调用链 SDK 原始对象
 - 调度器必须能处理进程重启后的未结算操作恢复
 
-### 4.8 `OwnerAuthModule`
+### 4.9 `OwnerAuthModule`
 
 职责：
 
@@ -186,7 +210,7 @@ WalletModule 是本期核心业务模块。
 - 不与钱包私钥加密逻辑耦合
 - 不承担 `KEK` 管理职责
 
-### 4.9 `OwnerApiModule`
+### 4.10 `OwnerApiModule`
 
 职责：
 
@@ -203,7 +227,7 @@ WalletModule 是本期核心业务模块。
 - `OwnerAssetLimitController`
 - `OwnerAuditController`
 
-### 4.10 `AssetLimitModule`
+### 4.11 `AssetLimitModule`
 
 职责：
 
@@ -230,7 +254,7 @@ WalletModule 是本期核心业务模块。
 - 限额口径使用币种最小单位整数字符串
 - 已用额度口径为 `ACTIVE reservation + CONSUMED reservation`
 
-### 4.11 `WalletToolsModule`
+### 4.12 `WalletToolsModule`
 
 职责：
 
@@ -244,7 +268,7 @@ WalletModule 是本期核心业务模块。
 - 不新增独立业务语义
 - 不绕过应用层直接访问数据库
 
-### 4.12 `McpModule`
+### 4.13 `McpModule`
 
 职责：
 
@@ -259,7 +283,7 @@ WalletModule 是本期核心业务模块。
 - 不直接依赖链 SDK
 - 不复制业务逻辑
 
-### 4.13 `CkbModule`
+### 4.14 `CkbModule`
 
 职责：
 
@@ -267,7 +291,7 @@ WalletModule 是本期核心业务模块。
 - 封装 `@ckb-ccc/shell`
 - 提供地址推导、CKB 余额查询、签名、CKB 转账、CKB `tx status` 查询
 
-### 4.14 `EvmModule`
+### 4.15 `EvmModule`
 
 职责：
 
@@ -275,7 +299,7 @@ WalletModule 是本期核心业务模块。
 - 封装 `viem`
 - 提供地址推导、ETH 余额查询、USDT 余额查询、USDC 余额查询、签名、ETH 转账、USDT 转账、USDC 转账、EVM `tx status` 查询
 
-### 4.15 `AuditModule`
+### 4.16 `AuditModule`
 
 职责：
 
@@ -294,7 +318,7 @@ WalletModule 是本期核心业务模块。
 - 签名
 - 转账
 
-### 4.16 `HealthModule`
+### 4.17 `HealthModule`
 
 职责：
 

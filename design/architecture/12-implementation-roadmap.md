@@ -31,6 +31,7 @@
 
 - `MCP` 工具名集合与当前需求基线完全一致。
 - Owner API 列表与当前需求基线完全一致。
+- 地址簿 `list/search/lookup_by_address/get/get_all/create/update/delete` DTO 完整定义。
 - `CKB`、`ETH`、`USDT`、`USDC` 的余额查询与转账 DTO 完整定义。
 - `CKB` 与 `Ethereum` 的 `tx status` DTO 完整定义。
 - 币种限额配置 DTO 与限额超限错误结构定义。
@@ -41,6 +42,14 @@
 
 - `wallet.current`
 - `wallet.operation_status`
+- `address_book.list`
+- `address_book.search`
+- `address_book.lookup_by_address`
+- `address_book.get`
+- `address_book.get_all`
+- `address_book.create`
+- `address_book.update`
+- `address_book.delete`
 - `nervos.address`
 - `nervos.balance.ckb`
 - `nervos.sign_message`
@@ -86,6 +95,7 @@
 - `CkbModule`
 - `EvmModule`
 - `WalletModule`
+- `AddressBookModule`
 - `TransferTrackingModule`
 - `WalletToolsModule`
 - `McpModule`
@@ -125,10 +135,15 @@
 ### 5.3 必须交付
 
 - 单钱包聚合模型与状态模型
+- 地址簿联系人模型
+- 地址簿按精确地址匹配模型
+- 转账目标解析模型
 - 币种限额策略模型
+- 地址簿创建、列表、搜索、按精确地址查询、详情、全量详情、更新、删除应用服务
 - 钱包创建、恢复、导出、查看应用服务
 - 签名操作记录
 - 转账操作记录
+- 地址簿仓储实现
 - 审计日志写入
 - SQLite 仓储实现
 - `KEK + DEK` vault 实现
@@ -142,7 +157,14 @@
 - 钱包模型必须坚持“全系统只有一个当前钱包”。
 - 导入私钥的语义必须是“恢复并替换当前钱包”，不是“新增钱包”。
 - 导出私钥必须走 Owner 权限与审计。
+- 地址簿名称唯一性必须按归一化规则执行。
+- 同一链下的同一个地址允许被多个联系人名称复用，不得加唯一限制。
+- 地址簿是共享数据，不做 Agent / Owner 私有隔离。
+- 地址簿按精确地址查询必须只返回匹配联系人名称，不返回链上真实归属判断。
+- 地址簿创建与更新必须严格校验地址合法性，并持久化规范化地址。
 - 转账状态必须可追踪，不能只返回成功或失败字符串。
+- 转账中的 `contact_name` 必须在应用层解析为最终地址。
+- 地址匹配查询只输入 `address`，由应用层完成链识别与规范化。
 - 限额评估必须在应用层执行，不能下放到 UI 或 Agent。
 - Agent 转账必须先预占额度，再进入链适配器。
 - 广播失败、链上失败或超时都必须返还额度。
@@ -155,6 +177,7 @@
 - 首次启动可自动创建钱包。
 - 导入恢复后，地址、签名、转账都切换到新钱包。
 - 导出私钥需要登录 Owner，并生成审计记录。
+- 地址簿 CRUD、列表、搜索、按精确地址查询、详情、全量详情能力全部可用。
 - 所有高风险操作都产生审计日志。
 - Agent 命中限额时能返回结构化 `limit` 信息。
 - `RESERVED` 操作在进程重启后仍能被恢复和结算。
@@ -187,11 +210,13 @@
 - 金额输入输出统一使用最小单位整数字符串。
 - 适配器层负责链 SDK 细节，应用层不感知 `@ckb-ccc/shell` 原始对象。
 - `nervos.transfer.ckb` 必须只处理 `CKB`，不能扩展成通用 Nervos 资产入口。
+- `nervos.transfer.ckb` 必须支持 `toType=address|contact_name`。
 
 ### 6.5 验收标准
 
 - `nervos.address`、`nervos.balance.ckb`、`nervos.sign_message`、`nervos.transfer.ckb` 全部可用。
 - `nervos.tx_status` 可按 `txHash` 返回链上状态。
+- `nervos.transfer.ckb` 使用 `contact_name` 时可解析到 `Nervos` 地址。
 - `wallet.operation_status` 能返回 CKB 转账状态。
 - 构造失败、广播失败、余额不足都能返回可诊断错误。
 
@@ -231,6 +256,7 @@
 - `USDT` 与 `USDC` 合约地址必须通过配置提供，不允许写死在 UI 层。
 - `ETH`、`USDT`、`USDC` 都必须有余额查询和转账闭环，不能只实现其中一半。
 - `ethereum.tx_status` 必须能被 Agent 和后台结算任务共同复用。
+- `ethereum.transfer.eth`、`ethereum.transfer.usdt`、`ethereum.transfer.usdc` 都必须支持 `toType=address|contact_name`。
 
 ### 7.5 验收标准
 
@@ -264,6 +290,7 @@
 - MCP transport
 - wallet tool catalog
 - wallet tool HTTP gateway
+- address book tools transport exposure
 - Owner auth / logout / credential rotation
 - current wallet / import / export / audit owner APIs
 - asset limit owner APIs
@@ -277,12 +304,15 @@
 - 不允许把某个链能力只暴露给 Owner 而不暴露给 Agent，除非 `PRD` 明确区分。
 - 限额配置必须走独立 Owner API，不复用 wallet tools gateway 伪装成钱包工具。
 - `nervos.tx_status` 与 `ethereum.tx_status` 必须经由同一 registry 暴露。
+- 地址簿能力必须通过 `address_book.xxx` tools 暴露，不新增第二组 Owner 专用地址簿后端接口。
+- `address_book.lookup_by_address` 必须与其他地址簿 tools 一起经由同一 registry 暴露。
 
 ### 8.5 验收标准
 
 - Agent 与 Owner 调用同一工具时，返回模型一致。
 - wallet tool catalog 中的工具集合与契约文档一致。
 - `wallet.current`、`wallet.operation_status`、`nervos.tx_status`、`ethereum.tx_status` 在 `MCP` 与 HTTP gateway 中都可用。
+- `address_book.list/search/lookup_by_address/get/get_all/create/update/delete` 在 `MCP` 与 HTTP gateway 中都可用。
 - Owner 可通过独立接口读取和修改币种限额配置。
 
 ## 9. 阶段 6：Owner UI 闭环
@@ -303,6 +333,11 @@
 
 - 登录页
 - 当前钱包状态
+- 地址簿联系人列表
+- 地址簿名称搜索
+- 按精确地址查询匹配联系人
+- 联系人详情查看
+- 联系人新增/编辑表单
 - CKB 地址与余额展示
 - ETH 地址与余额展示
 - USDT 余额展示
@@ -324,7 +359,10 @@
 
 - UI 看板必须完全由原子能力组合而成，不新增后端聚合接口。
 - UI 必须按链分组展示资产，但组合逻辑留在前端。
+- 地址簿 UI 必须以联系人名称为主视角展示，不按链拆成多行列表。
+- 精确地址查询结果只展示匹配联系人名称列表，不把它误写成链上归属说明。
 - 每个转账面板只服务一个明确资产。
+- 转账表单必须支持输入原始地址或联系人名称。
 - 限额配置 UI 必须按币种展示日、周、月三档设置。
 - UI 中的风险说明必须覆盖默认 Owner 凭证、私钥导出、恢复替换钱包、信用钱包资金隔离四类风险。
 - `TransferPanels.tsx` 和 `types/app-state.ts` 必须同时反映 `CKB`、`ETH`、`USDT`、`USDC` 四类资产。
@@ -332,6 +370,7 @@
 ### 9.5 验收标准
 
 - Owner 登录后能完整看到 CKB、ETH、USDT、USDC 状态。
+- Owner 可完成地址簿的新增、查看、修改、删除、搜索、按精确地址查询和详情查看。
 - Owner 不需要切换工具协议，即可一键完成签名与四类转账。
 - Owner 可直接查看并修改四类资产的限额配置。
 - UI 不依赖任何后端聚合 dashboard API。

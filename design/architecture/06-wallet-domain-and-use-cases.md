@@ -140,6 +140,42 @@
 - `effectiveUsed = consumed + reserved`
 - Agent 限额判断必须基于 `effectiveUsed`
 
+### 3.8 `AddressBookContact`
+
+字段概念：
+
+- `contactId`
+- `name`
+- `normalizedName`
+- `note`
+- `nervosAddress`
+- `normalizedNervosAddress`
+- `ethereumAddress`
+- `normalizedEthereumAddress`
+- `createdAt`
+- `updatedAt`
+
+说明：
+
+- `name` 是对外主键
+- `normalizedName` 用于唯一性判断
+- 同一联系人在不同链上的地址共享同一条联系人记录
+- `normalized*Address` 用于精确匹配与稳定反查，不对外暴露
+
+### 3.9 `TransferTarget`
+
+字段概念：
+
+- `targetType`
+- `inputValue`
+- `resolvedAddress`
+- `resolvedContactName`
+
+状态：
+
+- `ADDRESS`
+- `CONTACT_NAME`
+
 ## 4. 核心业务规则
 
 ### 4.1 单钱包规则
@@ -187,6 +223,38 @@
 - `nervos.tx_status` 与 `ethereum.tx_status` 表示链上观察状态
 - 本地操作状态和链上状态不是同一个概念，不能互相替代
 - 后台结算任务必须复用与 MCP 相同的链上 `tx status` 查询能力
+
+### 4.7 地址簿规则
+
+- 地址簿以联系人名称为主视角
+- 同一个联系人名称可同时拥有 `Nervos` 地址和 `Ethereum` 地址
+- 同一个联系人名称在同一条链下只允许一个地址
+- 同一条链下的同一个地址允许被多个联系人名称复用
+- 联系人名称按归一化规则唯一
+- 地址簿是共享数据，不区分 Agent 或 Owner 私有条目
+- 联系人必须至少保留一个链地址
+- 创建和更新联系人时必须校验所提供地址的合法性
+
+### 4.8 转账目标解析规则
+
+- 转账目标输入同时支持原始地址和联系人名称
+- `toType=address` 时直接校验原始地址
+- `toType=contact_name` 时必须先解析为当前链对应地址
+- 联系人名称解析必须发生在应用层
+- 名称不存在或当前链下无地址时必须明确失败
+- 解析失败时不允许降级到其他链地址
+- `toType=address` 时不自动执行地址簿反查，也不回填联系人名称
+
+### 4.9 按精确地址查询规则
+
+- 地址匹配查询只输入一个精确地址，不输入 `chain`
+- 系统必须先尝试识别该地址属于当前支持的哪条链
+- 识别成功后，必须按该链规范化地址后执行精确匹配
+- 该查询只表达“地址簿中有哪些匹配联系人”，不表达链上真实归属
+- 查询结果只返回匹配联系人名称，不返回完整联系人详情
+- 匹配到多少联系人，就返回多少联系人
+- 地址无法识别为当前支持链格式时返回未匹配结果，不作为业务错误
+- 空字符串输入应视为校验错误
 
 ## 5. 核心用例
 
@@ -263,7 +331,117 @@
 - `amount`
 - `decimals`
 
-### 5.8 消息签名
+### 5.8 查询联系人列表
+
+输出：
+
+- `contacts[]`
+
+`contacts[]` 中每项至少包括：
+
+- `name`
+- `note?`
+- `chains`
+- `updatedAt`
+
+### 5.9 搜索联系人
+
+输入：
+
+- `query`
+
+输出：
+
+- `contacts[]`
+
+说明：
+
+- 仅按名称搜索
+- 返回联系人摘要
+
+### 5.10 查看联系人详情
+
+输入：
+
+- `name`
+
+输出：
+
+- `contact`
+
+### 5.11 查看全部联系人完整信息
+
+输出：
+
+- `contacts[]`
+
+说明：
+
+- 返回全部联系人完整信息
+- 不分页
+
+### 5.12 按精确地址查询匹配联系人
+
+输入：
+
+- `address`
+
+输出：
+
+- `address`
+- `chain?`
+- `matched`
+- `contacts`，联系人名称数组
+
+步骤：
+
+1. 去除首尾空格并校验输入非空
+2. 尝试识别该地址属于 `Nervos` 或 `Ethereum`
+3. 若无法识别，则返回 `matched=false`
+4. 若识别成功，则按链规则生成规范化地址
+5. 按规范化地址在地址簿中精确查询匹配联系人
+6. 返回匹配到的联系人名称数组
+
+说明：
+
+- `contacts` 只返回联系人名称
+- 该查询不表达链上真实归属
+
+### 5.13 创建联系人
+
+步骤：
+
+1. 校验名称、备注和链地址格式
+2. 归一化联系人名称
+3. 对链地址生成规范化值
+4. 检查名称唯一性
+5. 校验至少存在一个链地址
+6. 持久化联系人
+7. 写审计
+
+### 5.14 更新联系人
+
+步骤：
+
+1. 读取 `currentName`
+2. 校验更新后的最终状态
+3. 归一化更新后的联系人名称
+4. 对保留地址生成规范化值
+5. 检查名称唯一性冲突
+6. 校验更新后仍至少存在一个链地址
+7. 持久化替换后的联系人状态
+8. 写审计
+
+### 5.15 删除联系人
+
+步骤：
+
+1. 按名称读取联系人
+2. 校验联系人存在
+3. 删除联系人
+4. 写审计
+
+### 5.16 消息签名
 
 输入：
 
@@ -277,67 +455,71 @@
 4. 返回签名
 5. 写审计
 
-### 5.9 CKB 转账
+### 5.17 CKB 转账
 
 步骤：
 
 1. 校验参数
 2. 加载当前钱包
-3. 若 `actorRole=AGENT`，获取 `wallet + ckb + ckb` 额度锁
-4. 若 `actorRole=AGENT`，执行 `CKB` 限额评估并创建额度预占
-5. 获取 `ckb` 写锁
-6. 构建交易
-7. 签名
-8. 广播
-9. 广播成功则写入 `txHash` 并更新为 `SUBMITTED`
-10. 广播失败则更新为 `FAILED` 并释放额度预占
+3. 解析 `to + toType`，得到最终 `Nervos` 地址
+4. 若 `actorRole=AGENT`，获取 `wallet + ckb + ckb` 额度锁
+5. 若 `actorRole=AGENT`，执行 `CKB` 限额评估并创建额度预占
+6. 获取 `ckb` 写锁
+7. 构建交易
+8. 签名
+9. 广播
+10. 广播成功则写入 `txHash` 并更新为 `SUBMITTED`
+11. 广播失败则更新为 `FAILED` 并释放额度预占
 
-### 5.10 Ethereum ETH 转账
-
-步骤：
-
-1. 校验参数
-2. 加载当前钱包
-3. 若 `actorRole=AGENT`，获取 `wallet + ethereum + eth` 额度锁
-4. 若 `actorRole=AGENT`，执行 `ETH` 限额评估并创建额度预占
-5. 获取 `evm` 写锁
-6. 构建 ETH 转账交易
-7. 签名
-8. 广播
-9. 广播成功则写入 `txHash` 并更新为 `SUBMITTED`
-10. 广播失败则更新为 `FAILED` 并释放额度预占
-
-### 5.11 Ethereum USDT 转账
+### 5.18 Ethereum ETH 转账
 
 步骤：
 
 1. 校验参数
 2. 加载当前钱包
-3. 若 `actorRole=AGENT`，获取 `wallet + ethereum + usdt` 额度锁
-4. 若 `actorRole=AGENT`，执行 `USDT` 限额评估并创建额度预占
-5. 获取 `evm` 写锁
-6. 构建 USDT 转账交易
-7. 签名
-8. 广播
-9. 广播成功则写入 `txHash` 并更新为 `SUBMITTED`
-10. 广播失败则更新为 `FAILED` 并释放额度预占
+3. 解析 `to + toType`，得到最终 `Ethereum` 地址
+4. 若 `actorRole=AGENT`，获取 `wallet + ethereum + eth` 额度锁
+5. 若 `actorRole=AGENT`，执行 `ETH` 限额评估并创建额度预占
+6. 获取 `evm` 写锁
+7. 构建 ETH 转账交易
+8. 签名
+9. 广播
+10. 广播成功则写入 `txHash` 并更新为 `SUBMITTED`
+11. 广播失败则更新为 `FAILED` 并释放额度预占
 
-### 5.12 Ethereum USDC 转账
+### 5.19 Ethereum USDT 转账
 
 步骤：
 
 1. 校验参数
 2. 加载当前钱包
-3. 若 `actorRole=AGENT`，获取 `wallet + ethereum + usdc` 额度锁
-4. 若 `actorRole=AGENT`，执行 `USDC` 限额评估并创建额度预占
-5. 获取 `evm` 写锁
-6. 构建 USDC 转账交易
-7. 签名
-8. 广播
-9. 广播成功则写入 `txHash` 并更新为 `SUBMITTED`
-10. 广播失败则更新为 `FAILED` 并释放额度预占
+3. 解析 `to + toType`，得到最终 `Ethereum` 地址
+4. 若 `actorRole=AGENT`，获取 `wallet + ethereum + usdt` 额度锁
+5. 若 `actorRole=AGENT`，执行 `USDT` 限额评估并创建额度预占
+6. 获取 `evm` 写锁
+7. 构建 USDT 转账交易
+8. 签名
+9. 广播
+10. 广播成功则写入 `txHash` 并更新为 `SUBMITTED`
+11. 广播失败则更新为 `FAILED` 并释放额度预占
 
-### 5.13 Owner 配置币种限额
+### 5.20 Ethereum USDC 转账
+
+步骤：
+
+1. 校验参数
+2. 加载当前钱包
+3. 解析 `to + toType`，得到最终 `Ethereum` 地址
+4. 若 `actorRole=AGENT`，获取 `wallet + ethereum + usdc` 额度锁
+5. 若 `actorRole=AGENT`，执行 `USDC` 限额评估并创建额度预占
+6. 获取 `evm` 写锁
+7. 构建 USDC 转账交易
+8. 签名
+9. 广播
+10. 广播成功则写入 `txHash` 并更新为 `SUBMITTED`
+11. 广播失败则更新为 `FAILED` 并释放额度预占
+
+### 5.21 Owner 配置币种限额
 
 步骤：
 
@@ -348,7 +530,7 @@
 5. 写入或更新限额配置
 6. 写审计
 
-### 5.14 Agent 转账触发限额
+### 5.22 Agent 转账触发限额
 
 步骤：
 
@@ -360,7 +542,7 @@
 6. 返回结构化 `limit` 信息
 7. 写审计与失败操作记录
 
-### 5.15 Agent 转账异步结算
+### 5.23 Agent 转账异步结算
 
 步骤：
 
@@ -373,7 +555,7 @@
 7. 若链上失败或确认超时，更新操作为 `FAILED`
 8. 与之关联的额度预占更新为 `RELEASED`
 
-### 5.16 查询 CKB 链上交易状态
+### 5.24 查询 CKB 链上交易状态
 
 步骤：
 
@@ -381,7 +563,7 @@
 2. 按 `txHash` 查询当前链上状态
 3. 返回 `NOT_FOUND`、`PENDING`、`CONFIRMED` 或 `FAILED`
 
-### 5.17 查询 Ethereum 链上交易状态
+### 5.25 查询 Ethereum 链上交易状态
 
 步骤：
 
@@ -393,12 +575,28 @@
 sequenceDiagram
     participant Agent
     participant Transfer as "Transfer Use Case"
+    participant Book as "AddressBookService"
     participant Limit as "AssetLimitService"
     participant Repo as "Reservation Repository"
     participant Chain as "Chain Adapter"
     participant Scheduler as "TransferSettlementScheduler"
 
-    Agent->>Transfer: transfer(asset, amount, to)
+    Agent->>Transfer: transfer(asset, amount, to, toType)
+    alt toType = contact_name
+        Transfer->>Book: resolve(name, chain)
+        alt contact missing
+            Book-->>Transfer: CONTACT_NOT_FOUND
+            Transfer-->>Agent: failed
+        else chain address missing
+            Book-->>Transfer: ADDRESS_NOT_FOUND_FOR_CHAIN
+            Transfer-->>Agent: failed
+        else resolved
+            Book-->>Transfer: resolved address
+        end
+    else toType = address
+        Transfer->>Transfer: validate raw address
+    end
+
     Transfer->>Limit: evaluateAndReserve(asset, amount, actor=AGENT)
     Limit->>Repo: sumActiveAndConsumedByWindow(asset, windows)
     Repo-->>Limit: usage snapshot
@@ -428,7 +626,7 @@ sequenceDiagram
     end
 ```
 
-### 5.18 Owner 导入恢复
+### 5.26 Owner 导入恢复
 
 步骤：
 
@@ -440,7 +638,7 @@ sequenceDiagram
 6. 替换当前钱包
 7. 写审计
 
-### 5.19 Owner 导出私钥
+### 5.27 Owner 导出私钥
 
 步骤：
 
@@ -458,6 +656,10 @@ sequenceDiagram
 - 私钥导入格式错误
 - `KEK` 不可用
 - RPC 不可达
+- 联系人名称不存在
+- 当前链下无联系人地址
+- 地址匹配查询输入为空
+- 地址匹配查询无法识别链格式
 - 余额不足
 - Agent 触发资产限额
 - 额度预占成功后进程崩溃
