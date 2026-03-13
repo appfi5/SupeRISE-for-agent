@@ -238,7 +238,8 @@ textarea {
 
 .flash,
 .status,
-.hint {
+.hint,
+.subtle {
   color: var(--muted);
   line-height: 1.5;
 }
@@ -264,6 +265,121 @@ textarea {
 
 .warning {
   background: var(--panel-strong);
+}
+
+.address-book-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.address-book-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-start;
+}
+
+.lede.compact {
+  margin: 8px 0 0;
+  font-size: 14px;
+}
+
+.address-book-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+}
+
+.address-book-column {
+  display: grid;
+  gap: 12px;
+}
+
+.contact-list {
+  display: grid;
+  gap: 10px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.contact-list-item {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.64);
+  padding: 14px;
+  text-align: left;
+  display: grid;
+  gap: 10px;
+}
+
+.contact-list-item.active {
+  border-color: rgba(10, 122, 103, 0.45);
+  background: rgba(231, 247, 242, 0.9);
+}
+
+.contact-list-title {
+  display: grid;
+  gap: 4px;
+}
+
+.contact-list-title span {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.chip-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chain-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(10, 122, 103, 0.12);
+  color: var(--accent-strong);
+  font-size: 12px;
+}
+
+.inline-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.lookup-box {
+  display: grid;
+  gap: 12px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.68);
+  border: 1px solid var(--line);
+}
+
+.lookup-box h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.lookup-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.lookup-result {
+  display: grid;
+  gap: 8px;
+}
+
+.empty-state {
+  padding: 18px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.62);
+  color: var(--muted);
 }
 
 .audit-list {
@@ -300,6 +416,15 @@ textarea {
 
   .hero.compact {
     flex-direction: column;
+  }
+
+  .address-book-header {
+    flex-direction: column;
+  }
+
+  .address-book-grid,
+  .lookup-row {
+    grid-template-columns: 1fr;
   }
 
   .shell {
