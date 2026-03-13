@@ -1,7 +1,23 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { z } from "zod";
 import {
+  type AddressBookCreateRequest,
+  type AddressBookUpdateRequest,
   apiEnvelopeSchema,
+  addressBookCreateRequestSchema,
+  addressBookCreateResponseSchema,
+  addressBookDeleteRequestSchema,
+  addressBookDeleteResponseSchema,
+  addressBookGetAllResponseSchema,
+  addressBookGetRequestSchema,
+  addressBookGetResponseSchema,
+  addressBookListResponseSchema,
+  addressBookLookupByAddressRequestSchema,
+  addressBookLookupByAddressResponseSchema,
+  addressBookSearchRequestSchema,
+  addressBookSearchResponseSchema,
+  addressBookUpdateRequestSchema,
+  addressBookUpdateResponseSchema,
   ethereumAddressSchema,
   ethereumBalanceEthSchema,
   ethereumBalanceUsdcSchema,
@@ -32,6 +48,7 @@ import {
   walletCurrentSchema,
 } from "@superise/app-contracts";
 import type {
+  AddressBookService,
   CurrentWalletQueryService,
   EthereumAddressQueryService,
   EthereumEthBalanceQueryService,
@@ -86,6 +103,8 @@ export class WalletToolRegistryService {
   constructor(
     @Inject(TOKENS.CURRENT_WALLET_QUERY_SERVICE)
     private readonly currentWalletQueryService: CurrentWalletQueryService,
+    @Inject(TOKENS.ADDRESS_BOOK_SERVICE)
+    private readonly addressBookService: AddressBookService,
     @Inject(TOKENS.NERVOS_ADDRESS_QUERY_SERVICE)
     private readonly nervosAddressQueryService: NervosAddressQueryService,
     @Inject(TOKENS.NERVOS_CKB_BALANCE_QUERY_SERVICE)
@@ -183,6 +202,158 @@ export class WalletToolRegistryService {
           this.operationStatusQueryService.execute(argumentsValue.operationId as string),
       },
       {
+        name: "address_book.list",
+        title: "List Address Book Contacts",
+        description:
+          "Return address-book contact summaries ordered by name. Each summary contains { name, note, chains, updatedAt }.",
+        arguments: [],
+        inputShape: {},
+        outputSchema: apiEnvelopeSchema(addressBookListResponseSchema),
+        annotations: createReadOnlyAnnotations(),
+        parseArguments: (argumentsValue) =>
+          this.parseArguments(EMPTY_TOOL_ARGUMENTS_SCHEMA, argumentsValue),
+        execute: async () => this.addressBookService.list(),
+      },
+      {
+        name: "address_book.search",
+        title: "Search Address Book Contacts",
+        description:
+          "Search address-book contacts by normalized name, case-insensitive. query must not be empty after trimming.",
+        arguments: [
+          createStringArgument("query", true, "Contact name query string."),
+        ],
+        inputShape: {
+          query: z.string().trim().min(1),
+        },
+        outputSchema: apiEnvelopeSchema(addressBookSearchResponseSchema),
+        annotations: createReadOnlyAnnotations(),
+        parseArguments: (argumentsValue) =>
+          this.parseArguments(addressBookSearchRequestSchema, argumentsValue),
+        execute: async (argumentsValue) =>
+          this.addressBookService.search(argumentsValue.query as string),
+      },
+      {
+        name: "address_book.lookup_by_address",
+        title: "Lookup Address Book Contacts By Address",
+        description:
+          "Return which contact names match an exact address in the shared address book. The result only reflects local address-book matches, not on-chain ownership.",
+        arguments: [
+          createStringArgument("address", true, "Exact address to match."),
+        ],
+        inputShape: {
+          address: z.string().trim().min(1),
+        },
+        outputSchema: apiEnvelopeSchema(addressBookLookupByAddressResponseSchema),
+        annotations: createReadOnlyAnnotations(),
+        parseArguments: (argumentsValue) =>
+          this.parseArguments(addressBookLookupByAddressRequestSchema, argumentsValue),
+        execute: async (argumentsValue) =>
+          this.addressBookService.lookupByAddress(argumentsValue.address as string),
+      },
+      {
+        name: "address_book.get",
+        title: "Get Address Book Contact",
+        description:
+          "Return the full multi-chain details for one address-book contact identified by its exact display name.",
+        arguments: [
+          createStringArgument("name", true, "Exact contact display name."),
+        ],
+        inputShape: {
+          name: z.string().trim().min(1),
+        },
+        outputSchema: apiEnvelopeSchema(addressBookGetResponseSchema),
+        annotations: createReadOnlyAnnotations(),
+        parseArguments: (argumentsValue) =>
+          this.parseArguments(addressBookGetRequestSchema, argumentsValue),
+        execute: async (argumentsValue) =>
+          this.addressBookService.get(argumentsValue.name as string),
+      },
+      {
+        name: "address_book.get_all",
+        title: "Get All Address Book Contacts",
+        description:
+          "Return the full details for all address-book contacts without pagination.",
+        arguments: [],
+        inputShape: {},
+        outputSchema: apiEnvelopeSchema(addressBookGetAllResponseSchema),
+        annotations: createReadOnlyAnnotations(),
+        parseArguments: (argumentsValue) =>
+          this.parseArguments(EMPTY_TOOL_ARGUMENTS_SCHEMA, argumentsValue),
+        execute: async () => this.addressBookService.getAll(),
+      },
+      {
+        name: "address_book.create",
+        title: "Create Address Book Contact",
+        description:
+          "Create a shared address-book contact. contact must contain name, optional note, and at least one valid chain address.",
+        arguments: [
+          createObjectArgument(
+            "contact",
+            true,
+            "Contact payload with name, optional note, and addresses.",
+          ),
+        ],
+        inputShape: {
+          contact: addressBookCreateRequestSchema.shape.contact,
+        },
+        outputSchema: apiEnvelopeSchema(addressBookCreateResponseSchema),
+        annotations: createTransferAnnotations(),
+        parseArguments: (argumentsValue) =>
+          this.parseArguments(addressBookCreateRequestSchema, argumentsValue),
+        execute: async (argumentsValue, context) =>
+          this.addressBookService.create(
+            context.actorRole,
+            argumentsValue as AddressBookCreateRequest,
+          ),
+      },
+      {
+        name: "address_book.update",
+        title: "Update Address Book Contact",
+        description:
+          "Replace one contact's final state by exact currentName. To remove a chain address, pass null explicitly in contact.addresses.",
+        arguments: [
+          createStringArgument("currentName", true, "Exact current contact name."),
+          createObjectArgument(
+            "contact",
+            true,
+            "Final contact payload with name, optional note, and addresses.",
+          ),
+        ],
+        inputShape: {
+          currentName: z.string().trim().min(1),
+          contact: addressBookUpdateRequestSchema.shape.contact,
+        },
+        outputSchema: apiEnvelopeSchema(addressBookUpdateResponseSchema),
+        annotations: createTransferAnnotations(),
+        parseArguments: (argumentsValue) =>
+          this.parseArguments(addressBookUpdateRequestSchema, argumentsValue),
+        execute: async (argumentsValue, context) =>
+          this.addressBookService.update(
+            context.actorRole,
+            argumentsValue as AddressBookUpdateRequest,
+          ),
+      },
+      {
+        name: "address_book.delete",
+        title: "Delete Address Book Contact",
+        description:
+          "Delete one shared address-book contact by its exact display name.",
+        arguments: [
+          createStringArgument("name", true, "Exact contact display name."),
+        ],
+        inputShape: {
+          name: z.string().trim().min(1),
+        },
+        outputSchema: apiEnvelopeSchema(addressBookDeleteResponseSchema),
+        annotations: createTransferAnnotations(),
+        parseArguments: (argumentsValue) =>
+          this.parseArguments(addressBookDeleteRequestSchema, argumentsValue),
+        execute: async (argumentsValue, context) =>
+          this.addressBookService.delete(context.actorRole, {
+            name: argumentsValue.name as string,
+          }),
+      },
+      {
         name: "nervos.address",
         title: "Get Nervos Address",
         description:
@@ -239,9 +410,18 @@ export class WalletToolRegistryService {
         name: "nervos.transfer.ckb",
         title: "Transfer CKB",
         description:
-          "Submit a Nervos CKB transfer from the current wallet. amount must be a positive integer string in Shannon, where 100000000 means 1 CKB. The result contains submission data { chain, asset, operationId, txHash, status }; use wallet.operation_status and nervos.tx_status to track later progress.",
+          "Submit a Nervos CKB transfer from the current wallet. amount must be a positive integer string in Shannon, where 100000000 means 1 CKB. Set toType=address for a raw address or toType=contact_name for an address-book contact name. The result contains { chain, asset, operationId, txHash, status, toType, resolvedAddress, contactName? }; use wallet.operation_status and nervos.tx_status to track later progress.",
         arguments: [
-          createStringArgument("to", true, "Recipient CKB address."),
+          createStringArgument(
+            "to",
+            true,
+            "Recipient raw Nervos address or contact name, depending on toType.",
+          ),
+          createStringArgument(
+            "toType",
+            false,
+            "Target type. Use address or contact_name; omitted means address.",
+          ),
           createStringArgument(
             "amount",
             true,
@@ -250,6 +430,7 @@ export class WalletToolRegistryService {
         ],
         inputShape: {
           to: z.string().min(1),
+          toType: z.enum(["address", "contact_name"]).default("address"),
           amount: z
             .string()
             .regex(
@@ -264,6 +445,7 @@ export class WalletToolRegistryService {
         execute: async (argumentsValue, context) =>
           this.nervosTransferService.execute(context.actorRole, {
             to: argumentsValue.to as string,
+            toType: argumentsValue.toType as "address" | "contact_name",
             amount: argumentsValue.amount as string,
           }),
       },
@@ -366,9 +548,18 @@ export class WalletToolRegistryService {
         name: "ethereum.transfer.eth",
         title: "Transfer ETH",
         description:
-          "Submit an Ethereum native ETH transfer from the current wallet. amount must be a positive integer string in wei, where 1000000000000000000 means 1 ETH. The result contains submission data { chain, asset, operationId, txHash, status }; use wallet.operation_status and ethereum.tx_status to track later progress.",
+          "Submit an Ethereum native ETH transfer from the current wallet. amount must be a positive integer string in wei, where 1000000000000000000 means 1 ETH. Set toType=address for a raw address or toType=contact_name for an address-book contact name. The result contains { chain, asset, operationId, txHash, status, toType, resolvedAddress, contactName? }; use wallet.operation_status and ethereum.tx_status to track later progress.",
         arguments: [
-          createStringArgument("to", true, "Recipient Ethereum address."),
+          createStringArgument(
+            "to",
+            true,
+            "Recipient raw Ethereum address or contact name, depending on toType.",
+          ),
+          createStringArgument(
+            "toType",
+            false,
+            "Target type. Use address or contact_name; omitted means address.",
+          ),
           createStringArgument(
             "amount",
             true,
@@ -377,6 +568,7 @@ export class WalletToolRegistryService {
         ],
         inputShape: {
           to: z.string().min(1),
+          toType: z.enum(["address", "contact_name"]).default("address"),
           amount: z
             .string()
             .regex(
@@ -391,6 +583,7 @@ export class WalletToolRegistryService {
         execute: async (argumentsValue, context) =>
           this.ethereumEthTransferService.execute(context.actorRole, {
             to: argumentsValue.to as string,
+            toType: argumentsValue.toType as "address" | "contact_name",
             amount: argumentsValue.amount as string,
           }),
       },
@@ -398,9 +591,18 @@ export class WalletToolRegistryService {
         name: "ethereum.transfer.usdt",
         title: "Transfer USDT",
         description:
-          "Submit an Ethereum ERC-20 USDT transfer from the current wallet. amount must be a positive integer string in the smallest USDT unit, where 1000000 means 1 USDT. The result contains submission data { chain, asset, operationId, txHash, status }; use wallet.operation_status and ethereum.tx_status to track later progress.",
+          "Submit an Ethereum ERC-20 USDT transfer from the current wallet. amount must be a positive integer string in the smallest USDT unit, where 1000000 means 1 USDT. Set toType=address for a raw address or toType=contact_name for an address-book contact name. The result contains { chain, asset, operationId, txHash, status, toType, resolvedAddress, contactName? }; use wallet.operation_status and ethereum.tx_status to track later progress.",
         arguments: [
-          createStringArgument("to", true, "Recipient Ethereum address."),
+          createStringArgument(
+            "to",
+            true,
+            "Recipient raw Ethereum address or contact name, depending on toType.",
+          ),
+          createStringArgument(
+            "toType",
+            false,
+            "Target type. Use address or contact_name; omitted means address.",
+          ),
           createStringArgument(
             "amount",
             true,
@@ -409,6 +611,7 @@ export class WalletToolRegistryService {
         ],
         inputShape: {
           to: z.string().min(1),
+          toType: z.enum(["address", "contact_name"]).default("address"),
           amount: z
             .string()
             .regex(
@@ -423,6 +626,7 @@ export class WalletToolRegistryService {
         execute: async (argumentsValue, context) =>
           this.ethereumUsdtTransferService.execute(context.actorRole, {
             to: argumentsValue.to as string,
+            toType: argumentsValue.toType as "address" | "contact_name",
             amount: argumentsValue.amount as string,
           }),
       },
@@ -430,9 +634,18 @@ export class WalletToolRegistryService {
         name: "ethereum.transfer.usdc",
         title: "Transfer USDC",
         description:
-          "Submit an Ethereum ERC-20 USDC transfer from the current wallet. amount must be a positive integer string in the smallest USDC unit, where 1000000 means 1 USDC. The result contains submission data { chain, asset, operationId, txHash, status }; use wallet.operation_status and ethereum.tx_status to track later progress.",
+          "Submit an Ethereum ERC-20 USDC transfer from the current wallet. amount must be a positive integer string in the smallest USDC unit, where 1000000 means 1 USDC. Set toType=address for a raw address or toType=contact_name for an address-book contact name. The result contains { chain, asset, operationId, txHash, status, toType, resolvedAddress, contactName? }; use wallet.operation_status and ethereum.tx_status to track later progress.",
         arguments: [
-          createStringArgument("to", true, "Recipient Ethereum address."),
+          createStringArgument(
+            "to",
+            true,
+            "Recipient raw Ethereum address or contact name, depending on toType.",
+          ),
+          createStringArgument(
+            "toType",
+            false,
+            "Target type. Use address or contact_name; omitted means address.",
+          ),
           createStringArgument(
             "amount",
             true,
@@ -441,6 +654,7 @@ export class WalletToolRegistryService {
         ],
         inputShape: {
           to: z.string().min(1),
+          toType: z.enum(["address", "contact_name"]).default("address"),
           amount: z
             .string()
             .regex(
@@ -455,6 +669,7 @@ export class WalletToolRegistryService {
         execute: async (argumentsValue, context) =>
           this.ethereumUsdcTransferService.execute(context.actorRole, {
             to: argumentsValue.to as string,
+            toType: argumentsValue.toType as "address" | "contact_name",
             amount: argumentsValue.amount as string,
           }),
       },
@@ -500,6 +715,19 @@ function createStringArgument(
   return {
     name,
     type: "string",
+    required,
+    description,
+  };
+}
+
+function createObjectArgument(
+  name: string,
+  required: boolean,
+  description: string,
+): WalletToolArgumentDto {
+  return {
+    name,
+    type: "object",
     required,
     description,
   };

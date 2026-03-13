@@ -93,8 +93,8 @@ export class WalletToolArgumentDoc {
   @ApiProperty()
   name!: string;
 
-  @ApiProperty({ enum: ["string"] })
-  type!: "string";
+  @ApiProperty({ enum: ["string", "object"] })
+  type!: "string" | "object";
 
   @ApiProperty()
   required!: boolean;

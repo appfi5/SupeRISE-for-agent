@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import {
+  AddressBookService,
   AssetLimitService,
   AuditLogQueryService,
   BootstrapWalletService,
@@ -72,6 +73,21 @@ import { TOKENS } from "../tokens";
       inject: [TOKENS.REPOSITORIES],
       useFactory: (repos: RepositoryBundle) =>
         new CurrentWalletQueryService(repos.wallets),
+    },
+    {
+      provide: TOKENS.ADDRESS_BOOK_SERVICE,
+      inject: [
+        TOKENS.REPOSITORIES,
+        TOKENS.UNIT_OF_WORK,
+        TOKENS.CKB_ADAPTER,
+        TOKENS.EVM_ADAPTER,
+      ],
+      useFactory: (
+        repos: RepositoryBundle,
+        unitOfWork: UnitOfWork,
+        ckb: CkbWalletAdapter,
+        evm: EvmWalletAdapter,
+      ) => new AddressBookService(repos, unitOfWork, ckb, evm),
     },
     {
       provide: TOKENS.OWNER_CREDENTIAL_STATUS_QUERY_SERVICE,
@@ -362,6 +378,7 @@ import { TOKENS } from "../tokens";
     TOKENS.CHAIN_LOCKER,
     TOKENS.BOOTSTRAP_WALLET_SERVICE,
     TOKENS.CURRENT_WALLET_QUERY_SERVICE,
+    TOKENS.ADDRESS_BOOK_SERVICE,
     TOKENS.OWNER_CREDENTIAL_STATUS_QUERY_SERVICE,
     TOKENS.NERVOS_ADDRESS_QUERY_SERVICE,
     TOKENS.NERVOS_CKB_BALANCE_QUERY_SERVICE,
