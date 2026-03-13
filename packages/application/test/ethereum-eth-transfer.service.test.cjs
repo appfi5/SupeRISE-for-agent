@@ -48,6 +48,27 @@ function createRepos() {
         transfers.push(operation);
       },
     },
+    addressBooks: {
+      async getByName() {
+        return null;
+      },
+      async getByNormalizedName() {
+        return null;
+      },
+      async listAll() {
+        return [];
+      },
+      async searchByNormalizedName() {
+        return [];
+      },
+      async listByNormalizedAddress() {
+        return [];
+      },
+      async save() {},
+      async deleteById() {
+        return false;
+      },
+    },
     signs: {
       async save() {},
     },
@@ -139,6 +160,9 @@ test("EthereumEthTransferService records a submitted ETH transfer", async () => 
     async deriveAddress() {
       return "0x123";
     },
+    async normalizeAddress(address) {
+      return address.toLowerCase();
+    },
     async getEthBalance() {
       return "0";
     },
@@ -177,6 +201,7 @@ test("EthereumEthTransferService records a submitted ETH transfer", async () => 
 
   const result = await service.execute("OWNER", {
     to: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+    toType: "address",
     amount: "1000000000000000000",
   });
 
@@ -193,6 +218,9 @@ test("EthereumEthTransferService maps failure paths to failed operations", async
   const evm = {
     async deriveAddress() {
       return "0x123";
+    },
+    async normalizeAddress(address) {
+      return address.toLowerCase();
     },
     async getEthBalance() {
       return "0";
@@ -234,6 +262,7 @@ test("EthereumEthTransferService maps failure paths to failed operations", async
     () =>
       service.execute("OWNER", {
         to: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+        toType: "address",
         amount: "1",
       }),
     (error) =>
@@ -245,4 +274,83 @@ test("EthereumEthTransferService maps failure paths to failed operations", async
   assert.equal(transfers.at(-1)?.asset, "ETH");
   assert.equal(audits.at(-1)?.action, "ethereum.transfer_eth");
   assert.equal(audits.at(-1)?.result, "FAILED");
+});
+
+test("EthereumEthTransferService resolves contact_name targets before transfer", async () => {
+  const { repos, transfers } = createRepos();
+  repos.addressBooks.getByName = async (name) =>
+    name === "Alice"
+      ? {
+          contactId: "contact_alice",
+          name: "Alice",
+          normalizedName: "alice",
+          note: null,
+          nervosAddress: null,
+          normalizedNervosAddress: null,
+          ethereumAddress: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+          normalizedEthereumAddress: "0x742d35cc6634c0532925a3b844bc454e4438f44e",
+          createdAt: "2026-03-13T00:00:00.000Z",
+          updatedAt: "2026-03-13T00:00:00.000Z",
+        }
+      : null;
+
+  let transferredTo = null;
+  const evm = {
+    async deriveAddress() {
+      return "0x123";
+    },
+    async normalizeAddress(address) {
+      return address.toLowerCase();
+    },
+    async getEthBalance() {
+      return "0";
+    },
+    async getUsdtBalance() {
+      return "0";
+    },
+    async getUsdcBalance() {
+      return "0";
+    },
+    async signMessage() {
+      return "0xsigned";
+    },
+    async transferEth(_privateKey, request) {
+      transferredTo = request.to;
+      return { txHash: "0xethhash" };
+    },
+    async transferUsdt() {
+      return { txHash: "0xusdthash" };
+    },
+    async transferUsdc() {
+      return { txHash: "0xusdchash" };
+    },
+    async getTxStatus(txHash) {
+      return { txHash, status: "PENDING" };
+    },
+    async checkHealth() {},
+  };
+
+  const service = new EthereumEthTransferService(
+    repos,
+    createUnitOfWork(repos),
+    locker,
+    assetLimits,
+    createVault(VALID_PRIVATE_KEY),
+    evm,
+  );
+
+  const result = await service.execute("OWNER", {
+    to: "Alice",
+    toType: "contact_name",
+    amount: "1000000000000000000",
+  });
+
+  assert.equal(transferredTo, "0x742d35cc6634c0532925a3b844bc454e4438f44e");
+  assert.equal(result.toType, "contact_name");
+  assert.equal(result.contactName, "Alice");
+  assert.equal(
+    result.resolvedAddress,
+    "0x742d35cc6634c0532925a3b844bc454e4438f44e",
+  );
+  assert.equal(transfers.at(-1)?.resolvedContactName, "Alice");
 });
