@@ -64,14 +64,7 @@ async function parseApiResponse<T>(
 
   if (!contentType.includes("application/json")) {
     if (!response.ok) {
-      return {
-        success: false,
-        data: null,
-        error: {
-          code: "HTTP_ERROR",
-          message: rawBody.trim(),
-        },
-      };
+      throw new ApiError(rawBody.trim() || response.statusText || "Request failed", response.status);
     }
 
     throw new ApiError("Server returned a non-JSON response", response.status);
