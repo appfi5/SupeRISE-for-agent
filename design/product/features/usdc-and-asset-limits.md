@@ -2,7 +2,7 @@
 
 状态：Accepted
 更新时间：2026-03-12
-已合入：[`prd.md`](/Users/render/RivTower/projects/app5/SupeRISE-for-agent/design/product/prd.md)
+已合入：[`prd.md`](../prd.md)
 
 ## 为什么有这份文档
 
@@ -82,4 +82,4 @@
 
 ## 与正式 PRD 的关系
 
-如果后续这组需求继续演进，应先更新本文件或新增 feature 文档，确认后再把最终结论回写到 [`prd.md`](/Users/render/RivTower/projects/app5/SupeRISE-for-agent/design/product/prd.md)。
+如果后续这组需求继续演进，应先更新本文件或新增 feature 文档，确认后再把最终结论回写到 [`prd.md`](../prd.md)。

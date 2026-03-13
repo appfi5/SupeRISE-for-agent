@@ -4,7 +4,7 @@
 
 维护原则：
 
-- [`prd.md`](/Users/render/RivTower/projects/app5/SupeRISE-for-agent/design/product/prd.md) 是当前生效需求的唯一真相源
+- [`prd.md`](./prd.md) 是当前生效需求的唯一真相源
 - 本文件记录“何时改了什么，以及为什么改”
 - 新需求先在 `features/` 下整理，确认后再回写 `prd.md`，并在这里追加一条变更记录
 
@@ -22,7 +22,7 @@
 
 变更：
 
-- 将 [`prd.md`](/Users/render/RivTower/projects/app5/SupeRISE-for-agent/design/product/prd.md) 定义为正式需求源
+- 将 [`prd.md`](./prd.md) 定义为正式需求源
 - 新增 `features/` 目录用于承接 feature 级需求整理
 - 新增本文件用于记录已确认变更
 
@@ -45,3 +45,27 @@
 - Agent 平时不感知限额，仅在触发时收到 `limit` 信息
 - Owner 操作不受该套限额约束
 - 限额按 server 本地时区重置
+
+## 2026-03-13
+
+### 增加地址簿能力
+
+状态：Accepted
+
+目的：
+
+- 让 Agent 能通过名称复用常用收款目标
+- 降低重复输入原始地址带来的使用负担和误操作风险
+- 让 Owner 在人工接管时也能沿用同一套联系人能力
+
+变更：
+
+- 新增地址簿能力，用于以名称管理常用收款目标
+- 同一个联系人名称可分别记录 Nervos 地址和 Ethereum 地址
+- 同一个联系人名称在同一条链下只允许记录一个地址
+- Agent 可新增、查看、修改和删除联系人
+- Agent 可查看联系人列表、单个联系人完整信息和全部联系人完整信息
+- 转账时支持直接使用联系人名称作为收款目标
+- 系统会按当前转账链自动解析联系人名称到正确地址
+- 当联系人名称不存在或当前链下未记录地址时，系统会明确返回失败
+- Owner Mode 提供与 Agent 对应的地址簿操作支持
