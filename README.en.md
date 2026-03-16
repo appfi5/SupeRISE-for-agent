@@ -19,6 +19,24 @@ The default Chinese version is [README.md](./README.md).
 - MCP integration (Chinese): [`docs/mcp.md`](./docs/mcp.md)
 - Deployment guide (Chinese): [`docs/deployment.md`](./docs/deployment.md)
 
+## Agent Skills
+
+If you use Codex, this repository ships two installable agent skills:
+
+- `superise-bootstrap`: pull the official Docker Hub image, check the runtime volume, start the service, and verify it
+- `superise-mcp-usage`: connect through MCP with the standard `initialize`, `tools/list`, and `tools/call` flow
+
+Install them with:
+
+```bash
+python3 "${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-installer/scripts/install-skill-from-github.py" \
+  --repo appfi5/SupeRISE-for-agent \
+  --path skills/superise-bootstrap \
+  --path skills/superise-mcp-usage
+```
+
+Restart Codex after installation so the new skills are loaded.
+
 ## Current Capabilities
 
 - `Agents` integrate through `MCP`; `Owners` manage the wallet and limits through the local management surface and local `HTTP API`
@@ -30,30 +48,18 @@ The default Chinese version is [README.md](./README.md).
 
 ## Ways To Run
 
-This README keeps only two recommended startup paths:
+This README keeps only two recommended startup paths and prioritizes the published Docker image.
 
-### 1. Clone The Code And Run It Yourself
+### 1. Use The Published Docker Image Directly
 
-Use this for local development, debugging, or code changes.
+Use this for zero-app-config startup. The official image name is `superise/agent-wallet`.
 
-```bash
-git clone https://github.com/appfi5/SupeRISE-for-agent.git
-cd SupeRISE-for-agent
-pnpm install
-cp apps/wallet-server/.env.example apps/wallet-server/.env
-pnpm dev
-```
+The image has two runtime profiles:
 
-If you want a production-style local start:
+- `quickstart`: the default profile; intended for fast local startup; auto-generates runtime secrets; fixed to the built-in `testnet` preset; requires `superise-agent-wallet-data:/app/runtime-data`
+- `managed`: the controlled deployment profile; requires explicit `DEPLOYMENT_PROFILE=managed`, an external `KEK`, and `OWNER_JWT_SECRET`; intended for controlled environments, mainnet, or custom chain config
 
-```bash
-pnpm build
-pnpm --filter @superise/wallet-server start
-```
-
-### 2. Use The Published Docker Image Directly
-
-Use this for zero-app-config quickstart. The official image name is `superise/agent-wallet`.
+#### `quickstart`
 
 Check or create the runtime volume first, then pull the latest image and start it:
 
@@ -74,6 +80,34 @@ Notes:
 - without `-v superise-agent-wallet-data:/app/runtime-data`, the official image fails fast on purpose
 - on the first quickstart boot, the logs print the initial Owner password once; rotate it immediately after the first login
 
+#### `managed`
+
+If you want to keep using the same image but run it in a controlled mode, switch explicitly to `managed` and provide external secrets. A minimal example is:
+
+```bash
+mkdir -p ./runtime-data ./secrets
+openssl rand -hex 32 > ./secrets/wallet.kek
+
+docker pull superise/agent-wallet:latest
+docker run -d \
+  --name superise-agent-wallet-managed \
+  --restart unless-stopped \
+  -p 18799:18799 \
+  -e DEPLOYMENT_PROFILE=managed \
+  -e OWNER_JWT_SECRET='replace-with-a-high-entropy-secret' \
+  -e WALLET_KEK_PATH=/run/secrets/wallet_kek \
+  -v "$PWD/runtime-data:/app/runtime-data" \
+  -v "$PWD/secrets/wallet.kek:/run/secrets/wallet_kek:ro" \
+  superise/agent-wallet:latest
+```
+
+Notes:
+
+- `managed` never falls back to `quickstart`
+- startup fails fast when `OWNER_JWT_SECRET` or `WALLET_KEK_PATH` / `WALLET_KEK` is missing
+- if you need mainnet or custom chain settings, add the required `CKB_*` / `EVM_*` environment variables and mount the JSON config files
+- for the repository-managed controlled deployment flow, prefer `pnpm docker:up`
+
 After startup:
 
 - Service URL: `http://127.0.0.1:18799/`
@@ -81,6 +115,25 @@ After startup:
 - Health check: `http://127.0.0.1:18799/health`
 
 The default Docker configuration binds only to local `127.0.0.1`. `/mcp` is unauthenticated and must not be exposed to the public Internet or to untrusted networks.
+
+### 2. Clone The Code And Run It Yourself
+
+Use this for local development, debugging, or code changes.
+
+```bash
+git clone https://github.com/appfi5/SupeRISE-for-agent.git
+cd SupeRISE-for-agent
+pnpm install
+cp apps/wallet-server/.env.example apps/wallet-server/.env
+pnpm dev
+```
+
+If you want a production-style local start:
+
+```bash
+pnpm build
+pnpm --filter @superise/wallet-server start
+```
 
 ### Controlled Deployment Note
 

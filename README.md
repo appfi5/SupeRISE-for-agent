@@ -19,6 +19,24 @@ SupeRISE Agent Wallet 是一个面向 Agent 的单钱包信用钱包服务。正
 - MCP 接入说明（中文）：[`docs/mcp.md`](./docs/mcp.md)
 - 部署说明（中文）：[`docs/deployment.md`](./docs/deployment.md)
 
+## Agent Skills
+
+如果你使用 Codex，这个仓库自带两个可安装的 agent skills：
+
+- `superise-bootstrap`：从 Docker Hub 拉取官方镜像、检查 volume、启动并验证本地服务
+- `superise-mcp-usage`：按标准 MCP 协议完成 `initialize`、`tools/list`、`tools/call` 等交互
+
+安装命令：
+
+```bash
+python3 "${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-installer/scripts/install-skill-from-github.py" \
+  --repo appfi5/SupeRISE-for-agent \
+  --path skills/superise-bootstrap \
+  --path skills/superise-mcp-usage
+```
+
+安装后重启 Codex 以加载新 skill。
+
 ## 当前能力
 
 - `Agent` 通过 `MCP` 接入；`Owner` 通过本地管理面和本地 `HTTP API` 管理钱包与限额
@@ -30,30 +48,18 @@ SupeRISE Agent Wallet 是一个面向 Agent 的单钱包信用钱包服务。正
 
 ## 使用方式
 
-项目 README 只保留两种推荐启动方式：
+项目 README 只保留两种推荐启动方式，并优先推荐直接使用已发布 Docker 镜像。
 
-### 1. 自己拉代码运行
-
-适合本地开发、调试和二次修改代码。
-
-```bash
-git clone https://github.com/appfi5/SupeRISE-for-agent.git
-cd SupeRISE-for-agent
-pnpm install
-cp apps/wallet-server/.env.example apps/wallet-server/.env
-pnpm dev
-```
-
-如果需要生产式本地启动：
-
-```bash
-pnpm build
-pnpm --filter @superise/wallet-server start
-```
-
-### 2. 直接使用已发布 Docker 镜像
+### 1. 直接使用已发布 Docker 镜像
 
 适合零应用配置快速启动。官方镜像名为 `superise/agent-wallet`。
+
+镜像有两个运行档位：
+
+- `quickstart`：默认档位；适合快速本地启动；自动生成 runtime secret；固定使用内置 `testnet` preset；必须显式挂载 `superise-agent-wallet-data:/app/runtime-data`
+- `managed`：受控部署档位；必须显式设置 `DEPLOYMENT_PROFILE=managed`；必须提供外部 `KEK` 与 `OWNER_JWT_SECRET`；适合受控环境、主网或自定义链配置
+
+#### `quickstart`
 
 先检查并创建运行时 volume，再拉最新镜像并启动：
 
@@ -74,6 +80,34 @@ docker run -d \
 - 未显式挂载 `-v superise-agent-wallet-data:/app/runtime-data` 时，官方镜像会直接启动失败
 - 首次 quickstart 启动会在日志中打印一次初始 Owner 密码，首次登录后应立即修改
 
+#### `managed`
+
+如果你希望继续使用同一镜像，但以受控方式运行，则需要显式切换到 `managed` 并提供外部 secret。一个最小示例如下：
+
+```bash
+mkdir -p ./runtime-data ./secrets
+openssl rand -hex 32 > ./secrets/wallet.kek
+
+docker pull superise/agent-wallet:latest
+docker run -d \
+  --name superise-agent-wallet-managed \
+  --restart unless-stopped \
+  -p 18799:18799 \
+  -e DEPLOYMENT_PROFILE=managed \
+  -e OWNER_JWT_SECRET='replace-with-a-high-entropy-secret' \
+  -e WALLET_KEK_PATH=/run/secrets/wallet_kek \
+  -v "$PWD/runtime-data:/app/runtime-data" \
+  -v "$PWD/secrets/wallet.kek:/run/secrets/wallet_kek:ro" \
+  superise/agent-wallet:latest
+```
+
+说明：
+
+- `managed` 不会自动回退到 `quickstart`
+- 缺失 `OWNER_JWT_SECRET` 或 `WALLET_KEK_PATH` / `WALLET_KEK` 时会直接启动失败
+- 如果需要主网或自定义链配置，再继续补充 `CKB_*` / `EVM_*` 环境变量和链配置挂载
+- 对于源码仓库内的一键受控部署，仍推荐使用 `pnpm docker:up`
+
 启动后可访问：
 
 - 服务地址：`http://127.0.0.1:18799/`
@@ -81,6 +115,25 @@ docker run -d \
 - 健康检查：`http://127.0.0.1:18799/health`
 
 默认 Docker 配置只绑定到本机 `127.0.0.1`。`/mcp` 无鉴权，禁止直接暴露到公网或不受信任网络。
+
+### 2. 自己拉代码运行
+
+适合本地开发、调试和二次修改代码。
+
+```bash
+git clone https://github.com/appfi5/SupeRISE-for-agent.git
+cd SupeRISE-for-agent
+pnpm install
+cp apps/wallet-server/.env.example apps/wallet-server/.env
+pnpm dev
+```
+
+如果需要生产式本地启动：
+
+```bash
+pnpm build
+pnpm --filter @superise/wallet-server start
+```
 
 ### 受控部署补充
 
