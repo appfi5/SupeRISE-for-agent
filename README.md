@@ -19,23 +19,23 @@ SupeRISE Agent Wallet 是一个面向 Agent 的单钱包信用钱包服务。正
 - MCP 接入说明（中文）：[`docs/mcp.md`](./docs/mcp.md)
 - 部署说明（中文）：[`docs/deployment.md`](./docs/deployment.md)
 
-## Agent Skills
+## Skills
 
-如果你使用 Codex，这个仓库自带两个可安装的 agent skills：
+这个仓库自带两个可安装的 skills：
 
 - `superise-bootstrap`：从 Docker Hub 拉取官方镜像、检查 volume、启动并验证本地服务
 - `superise-mcp-usage`：按标准 MCP 协议完成 `initialize`、`tools/list`、`tools/call` 等交互
 
-安装命令：
+可以直接使用 [`skills`](https://www.npmjs.com/package/skills) 从本仓库安装：
 
 ```bash
-python3 "${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-installer/scripts/install-skill-from-github.py" \
-  --repo appfi5/SupeRISE-for-agent \
-  --path skills/superise-bootstrap \
-  --path skills/superise-mcp-usage
+npx skills add https://github.com/appfi5/SupeRISE-for-agent --list
+npx skills add https://github.com/appfi5/SupeRISE-for-agent \
+  --skill superise-bootstrap \
+  --skill superise-mcp-usage
 ```
 
-安装后重启 Codex 以加载新 skill。
+如果需要安装到全局 skill 目录，可追加 `-g`。安装后重启你的客户端以加载新 skill。
 
 ## 当前能力
 

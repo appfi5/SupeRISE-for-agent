@@ -19,23 +19,23 @@ The default Chinese version is [README.md](./README.md).
 - MCP integration (Chinese): [`docs/mcp.md`](./docs/mcp.md)
 - Deployment guide (Chinese): [`docs/deployment.md`](./docs/deployment.md)
 
-## Agent Skills
+## Skills
 
-If you use Codex, this repository ships two installable agent skills:
+This repository ships two installable skills:
 
 - `superise-bootstrap`: pull the official Docker Hub image, check the runtime volume, start the service, and verify it
 - `superise-mcp-usage`: connect through MCP with the standard `initialize`, `tools/list`, and `tools/call` flow
 
-Install them with:
+Install them directly from this repository with [`skills`](https://www.npmjs.com/package/skills):
 
 ```bash
-python3 "${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-installer/scripts/install-skill-from-github.py" \
-  --repo appfi5/SupeRISE-for-agent \
-  --path skills/superise-bootstrap \
-  --path skills/superise-mcp-usage
+npx skills add https://github.com/appfi5/SupeRISE-for-agent --list
+npx skills add https://github.com/appfi5/SupeRISE-for-agent \
+  --skill superise-bootstrap \
+  --skill superise-mcp-usage
 ```
 
-Restart Codex after installation so the new skills are loaded.
+Add `-g` if you want to install into the global skill directory. Restart your client after installation so the new skills are loaded.
 
 ## Current Capabilities
 
