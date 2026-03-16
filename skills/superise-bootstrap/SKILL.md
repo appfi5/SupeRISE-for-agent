@@ -1,15 +1,15 @@
 ---
 name: superise-bootstrap
-description: Clone, install, start, verify, and minimally maintain a local Superise wallet deployment from the official GitHub repository. Use this when an agent only has this skill manual and must bootstrap Superise on a machine from scratch.
+description: Pull, start, verify, and minimally maintain a local Superise wallet deployment from the official Docker Hub image. Use this when an agent only has this skill manual and must bootstrap Superise on a machine from scratch.
 ---
 
 # Superise Bootstrap
 
-Use this skill when the task is to install and start Superise on a local machine from the official repository.
+Use this skill when the task is to install and start Superise on a local machine from the official Docker Hub image.
 
-Repository:
+Official image:
 
-- `https://github.com/appfi5/SupeRISE-for-agent`
+- `superise/agent-wallet:latest`
 
 ## Goal
 
@@ -25,41 +25,64 @@ Check prerequisites before cloning or starting anything.
 
 Required tools:
 
+- `docker`
+
+Preferred tools:
+
+- `curl`
 - `git`
 - `node`
 - `corepack` or `pnpm`
 
-Preferred tools:
-
-- `docker`
-- `docker compose`
-
 Useful checks:
 
 ```bash
+docker --version
+docker info
+curl --version
 git --version
 node --version
 corepack --version
 pnpm --version
-docker --version
-docker compose version
 ```
 
 Rules:
 
-- If `git` or `node` is missing, stop and report the missing prerequisite.
-- Prefer Docker when available.
+- If `docker` is missing, stop and report the missing prerequisite unless the user explicitly wants source bootstrap.
+- Prefer the official Docker Hub image over cloning the repository.
 - Do not invent OS package installation steps unless the user explicitly asks.
 
 ## Default Path
 
-Prefer Docker unless Docker is unavailable or the user explicitly wants source-based development.
+Prefer the official Docker Hub quickstart unless Docker is unavailable or the user explicitly wants source-based development.
+
+Preflight:
+
+1. Confirm the Docker daemon is healthy.
+2. Check whether the runtime volume already exists.
+3. Create the volume if it does not exist.
+4. Pull the latest official image.
+5. Start the container with the official quickstart command.
+
+Useful commands:
 
 ```bash
-git clone https://github.com/appfi5/SupeRISE-for-agent.git
-cd SupeRISE-for-agent
-pnpm docker:up
+docker info
+docker volume inspect superise-agent-wallet-data >/dev/null 2>&1 || docker volume create superise-agent-wallet-data
+docker pull superise/agent-wallet:latest
+docker run -d \
+  --name superise-agent-wallet \
+  --restart unless-stopped \
+  -p 18799:18799 \
+  -v superise-agent-wallet-data:/app/runtime-data \
+  superise/agent-wallet:latest
 ```
+
+Notes:
+
+- The named volume `superise-agent-wallet-data` is required for official quickstart.
+- Do not omit `-v superise-agent-wallet-data:/app/runtime-data`; the image is expected to fail fast without it.
+- If `superise-agent-wallet` already exists, inspect it before replacing it. Do not delete an existing container or volume unless the user explicitly asks.
 
 ## Source-Based Fallback
 
@@ -94,8 +117,10 @@ Useful checks:
 
 ```bash
 curl http://127.0.0.1:18799/health
-docker compose ps
-docker compose logs --tail=100 wallet-server
+curl -I http://127.0.0.1:18799/mcp
+docker ps --filter name=superise-agent-wallet
+docker logs --tail=100 superise-agent-wallet
+docker volume inspect superise-agent-wallet-data
 ```
 
 Default local endpoints:
@@ -111,12 +136,25 @@ Included local maintenance scope:
 - stop
 - restart
 - view logs
-- inspect runtime files
+- inspect runtime files and volume state
 - rotate `KEK`
 
 Useful commands:
 
 ```bash
+docker start superise-agent-wallet
+docker stop superise-agent-wallet
+docker restart superise-agent-wallet
+docker logs --tail=100 superise-agent-wallet
+docker exec superise-agent-wallet ls -la /app/runtime-data
+docker volume inspect superise-agent-wallet-data
+```
+
+If repository-based managed deployment is explicitly required, then and only then use:
+
+```bash
+git clone https://github.com/appfi5/SupeRISE-for-agent.git
+cd SupeRISE-for-agent
 pnpm docker:up
 pnpm docker:rotate-kek
 docker compose logs --tail=100 wallet-server
@@ -129,20 +167,22 @@ Check these first:
 
 - Docker daemon is not running
 - port `18799` is already in use
-- chain configuration paths are missing or invalid
-- generated runtime files were not created
-- configured RPC endpoints are unreachable
+- the named volume `superise-agent-wallet-data` is missing or mounted to the wrong container
+- the container is using an old image tag
+- quickstart runtime files are incomplete because the volume was partially damaged
+- configured RPC endpoints are unreachable after startup
 
 Preferred recovery order:
 
 1. inspect logs
-2. inspect generated env/config files
-3. rerun the supported startup path
+2. inspect the container and volume state
+3. confirm the image tag and runtime command
+4. rerun the supported startup path without deleting the existing volume unless the user explicitly approves data loss
 
 ## Safety Rules
 
 - `/mcp` is unauthenticated wallet access.
 - Keep the service bound to localhost or a trusted private network only.
 - Do not expose `/mcp` directly to the public Internet.
-- Do not delete runtime data, SQLite files, secrets, or generated env files unless the user explicitly asks.
+- Do not delete runtime data, SQLite files, secrets, containers, or the `superise-agent-wallet-data` volume unless the user explicitly asks.
 - Do not rotate `KEK` unless the task requires it.
