@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { randomBytes } from "node:crypto";
 import type {
@@ -106,10 +106,13 @@ export class AesGcmVaultService implements VaultPort {
 
   private resolveKek(): { kek: Buffer; metadata: KekkedMetadata } {
     if (this.config.walletKekPath && existsSync(this.config.walletKekPath)) {
+      const provider = this.config.walletKekPath.startsWith("/run/secrets/")
+        ? "docker-secret"
+        : "file-path";
       return {
         kek: normalizeKek(readFileSync(this.config.walletKekPath, "utf8").trim()),
         metadata: {
-          provider: "file-path",
+          provider,
           reference: this.config.walletKekPath,
         },
       };
@@ -131,10 +134,32 @@ export class AesGcmVaultService implements VaultPort {
       };
     }
 
+    if (this.config.deploymentProfile === "quickstart") {
+      const runtimeKekPath = resolve(this.config.runtimeSecretDir, "wallet.kek");
+      if (!existsSync(runtimeKekPath)) {
+        writeFileSync(runtimeKekPath, randomBytes(32).toString("hex"), {
+          encoding: "utf8",
+          mode: 0o600,
+        });
+        chmodSync(runtimeKekPath, 0o600);
+      }
+      return {
+        kek: normalizeKek(readFileSync(runtimeKekPath, "utf8").trim()),
+        metadata: {
+          provider: "runtime-auto-file",
+          reference: runtimeKekPath,
+        },
+      };
+    }
+
     if (this.config.nodeEnv !== "production") {
       const devKekPath = resolve(this.config.dataDir, "wallet.kek.dev");
       if (!existsSync(devKekPath)) {
-        writeFileSync(devKekPath, randomBytes(32).toString("hex"), "utf8");
+        writeFileSync(devKekPath, randomBytes(32).toString("hex"), {
+          encoding: "utf8",
+          mode: 0o600,
+        });
+        chmodSync(devKekPath, 0o600);
       }
       return {
         kek: normalizeKek(readFileSync(devKekPath, "utf8").trim()),
@@ -147,7 +172,7 @@ export class AesGcmVaultService implements VaultPort {
 
     throw new WalletDomainError(
       "VAULT_ERROR",
-      "KEK is required. Set WALLET_KEK_PATH or WALLET_KEK.",
+      "KEK is required. Set WALLET_KEK_PATH or WALLET_KEK, or use DEPLOYMENT_PROFILE=quickstart.",
     );
   }
 }

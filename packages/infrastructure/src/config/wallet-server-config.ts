@@ -1,18 +1,28 @@
 import { randomBytes } from "node:crypto";
 import { dirname, resolve } from "node:path";
-import { mkdirSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { z } from "zod";
 import {
   loadChainConfig,
   type WalletServerChainConfig,
 } from "./chain-config";
 
+export type DeploymentProfile = "quickstart" | "managed";
+
 export type WalletServerConfig = {
   nodeEnv: string;
+  deploymentProfile: DeploymentProfile;
   enableApiDocs: boolean;
   host: string;
   port: number;
   dataDir: string;
+  runtimeSecretDir: string;
   sqlitePath: string;
   walletKekPath?: string;
   walletKek?: string;
@@ -30,6 +40,7 @@ export type WalletServerConfig = {
 
 const configSchema = z.object({
   NODE_ENV: z.string().default("development"),
+  DEPLOYMENT_PROFILE: z.enum(["quickstart", "managed"]).default("quickstart"),
   ENABLE_API_DOCS: z
     .preprocess((value) => {
       if (typeof value === "string") {
@@ -42,6 +53,7 @@ const configSchema = z.object({
   HOST: z.string().default("127.0.0.1"),
   PORT: z.coerce.number().int().positive().default(18799),
   DATA_DIR: z.string().default("./data"),
+  RUNTIME_SECRET_DIR: z.string().optional(),
   SQLITE_PATH: z.string().optional(),
   WALLET_KEK_PATH: z.string().optional(),
   WALLET_KEK: z.string().optional(),
@@ -54,7 +66,7 @@ const configSchema = z.object({
       return value;
     }, z.boolean())
     .default(false),
-  OWNER_NOTICE_PATH: z.string().default("./data/owner-credential.txt"),
+  OWNER_NOTICE_PATH: z.string().optional(),
   OWNER_JWT_SECRET: z.string().optional(),
   OWNER_JWT_TTL: z.coerce.number().int().positive().optional(),
   TRANSFER_SETTLEMENT_INTERVAL_MS: z.coerce.number().int().positive().default(15000),
@@ -69,21 +81,34 @@ export function loadWalletServerConfig(
   const parsed = configSchema.parse(env);
   const chain = loadChainConfig(env, cwd);
   const dataDir = resolve(cwd, parsed.DATA_DIR);
+  const runtimeSecretDir = resolve(cwd, parsed.RUNTIME_SECRET_DIR ?? `${parsed.DATA_DIR}/secrets`);
   const sqlitePath = resolve(cwd, parsed.SQLITE_PATH ?? `${parsed.DATA_DIR}/wallet.sqlite`);
-  const ownerNoticePath = resolve(cwd, parsed.OWNER_NOTICE_PATH);
+  const ownerNoticePath = resolve(
+    cwd,
+    parsed.OWNER_NOTICE_PATH ?? `${parsed.DATA_DIR}/owner-credential.txt`,
+  );
 
   mkdirSync(dataDir, { recursive: true });
+  mkdirSync(runtimeSecretDir, { recursive: true });
   mkdirSync(dirname(sqlitePath), { recursive: true });
   mkdirSync(dirname(ownerNoticePath), { recursive: true });
 
-  const ownerJwtSecret = resolveOwnerJwtSecret(parsed.NODE_ENV, parsed.OWNER_JWT_SECRET);
+  validateDeploymentProfileConstraints(parsed.DEPLOYMENT_PROFILE, parsed, chain.chainConfig);
+
+  const ownerJwtSecret = resolveOwnerJwtSecret(
+    parsed.DEPLOYMENT_PROFILE,
+    runtimeSecretDir,
+    parsed.OWNER_JWT_SECRET,
+  );
 
   return {
     nodeEnv: parsed.NODE_ENV,
+    deploymentProfile: parsed.DEPLOYMENT_PROFILE,
     enableApiDocs: parsed.ENABLE_API_DOCS,
     host: parsed.HOST,
     port: parsed.PORT,
     dataDir,
+    runtimeSecretDir,
     sqlitePath,
     walletKekPath: parsed.WALLET_KEK_PATH ? resolve(cwd, parsed.WALLET_KEK_PATH) : undefined,
     walletKek: parsed.WALLET_KEK,
@@ -100,18 +125,78 @@ export function loadWalletServerConfig(
   };
 }
 
-function resolveOwnerJwtSecret(nodeEnv: string, value: string | undefined): string {
-  if (!value) {
-    if (nodeEnv === "production") {
-      throw new Error("OWNER_JWT_SECRET is required in production");
+function validateDeploymentProfileConstraints(
+  profile: DeploymentProfile,
+  parsed: z.infer<typeof configSchema>,
+  chainConfig: WalletServerChainConfig,
+): void {
+  if (profile === "managed") {
+    if (!parsed.WALLET_KEK_PATH && !parsed.WALLET_KEK) {
+      throw new Error(
+        "WALLET_KEK_PATH or WALLET_KEK is required when DEPLOYMENT_PROFILE=managed",
+      );
     }
-
-    return randomBytes(32).toString("hex");
+    if (!parsed.OWNER_JWT_SECRET) {
+      throw new Error("OWNER_JWT_SECRET is required when DEPLOYMENT_PROFILE=managed");
+    }
+    return;
   }
 
-  if (nodeEnv === "production" && Buffer.byteLength(value, "utf8") < 32) {
-    throw new Error("OWNER_JWT_SECRET must be at least 32 bytes in production");
+  if (parsed.WALLET_KEK_PATH || parsed.WALLET_KEK) {
+    throw new Error(
+      "quickstart does not accept external KEK configuration. Set DEPLOYMENT_PROFILE=managed.",
+    );
+  }
+  if (parsed.OWNER_JWT_SECRET) {
+    throw new Error(
+      "quickstart does not accept OWNER_JWT_SECRET. Set DEPLOYMENT_PROFILE=managed.",
+    );
+  }
+  assertQuickstartChainConfig(chainConfig);
+}
+
+function assertQuickstartChainConfig(chainConfig: WalletServerChainConfig): void {
+  if (chainConfig.ckb.mode !== "preset" || chainConfig.ckb.preset !== "testnet") {
+    throw new Error(
+      "quickstart only supports the built-in CKB testnet preset. Set DEPLOYMENT_PROFILE=managed for mainnet or custom chain config.",
+    );
+  }
+  if (chainConfig.evm.mode !== "preset" || chainConfig.evm.preset !== "testnet") {
+    throw new Error(
+      "quickstart only supports the built-in EVM testnet preset. Set DEPLOYMENT_PROFILE=managed for mainnet or custom chain config.",
+    );
+  }
+}
+
+function resolveOwnerJwtSecret(
+  profile: DeploymentProfile,
+  runtimeSecretDir: string,
+  value: string | undefined,
+): string {
+  if (profile === "managed") {
+    if (!value) {
+      throw new Error("OWNER_JWT_SECRET is required when DEPLOYMENT_PROFILE=managed");
+    }
+    assertOwnerJwtSecretStrength(value);
+    return value;
   }
 
-  return value;
+  const secretPath = resolve(runtimeSecretDir, "owner-jwt.secret");
+  if (!existsSync(secretPath)) {
+    writeFileSync(secretPath, randomBytes(32).toString("hex"), {
+      encoding: "utf8",
+      mode: 0o600,
+    });
+    chmodSync(secretPath, 0o600);
+  }
+
+  const secret = readFileSync(secretPath, "utf8").trim();
+  assertOwnerJwtSecretStrength(secret);
+  return secret;
+}
+
+function assertOwnerJwtSecretStrength(value: string): void {
+  if (Buffer.byteLength(value, "utf8") < 32) {
+    throw new Error("OWNER_JWT_SECRET must be at least 32 bytes");
+  }
 }
