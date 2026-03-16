@@ -28,44 +28,51 @@ SupeRISE Agent Wallet 是一个面向 Agent 的单钱包信用钱包服务。正
 - Agent 转账按资产执行独立的日 / 周 / 月限额；Owner 转账不受该限额约束
 - `wallet.operation_status` 表示 server 本地编排状态；链上状态需要分别使用 `nervos.tx_status` 与 `ethereum.tx_status`
 
-## 常用命令
+## 使用方式
+
+项目 README 只保留两种推荐启动方式：
+
+### 1. 自己拉代码运行
+
+适合本地开发、调试和二次修改代码。
 
 ```bash
+git clone https://github.com/appfi5/SupeRISE-for-agent.git
+cd SupeRISE-for-agent
 pnpm install
-pnpm build
 cp apps/wallet-server/.env.example apps/wallet-server/.env
 pnpm dev
+```
+
+如果需要生产式本地启动：
+
+```bash
+pnpm build
 pnpm --filter @superise/wallet-server start
 ```
 
-## Docker
+### 2. 直接使用已发布 Docker 镜像
 
-当前 Docker 采用“单镜像双档位”：
+适合零应用配置快速启动。官方镜像名为 `superise/agent-wallet`。
 
-- `quickstart`：官方镜像默认档位，支持零应用配置启动，但必须显式挂载运行时数据卷
-- `managed`：受控部署档位，仓库内的 `docker-compose` / `pnpm docker:up` 走这一档
-
-直接体验官方镜像时，quickstart 官方最小命令是：
+先检查并创建运行时 volume，再拉最新镜像并启动：
 
 ```bash
-docker run -p 18799:18799 -v superise-agent-wallet-data:/app/runtime-data <official-image>
+docker volume inspect superise-agent-wallet-data >/dev/null 2>&1 || docker volume create superise-agent-wallet-data
+docker pull superise/agent-wallet:latest
+docker run -d \
+  --name superise-agent-wallet \
+  --restart unless-stopped \
+  -p 18799:18799 \
+  -v superise-agent-wallet-data:/app/runtime-data \
+  superise/agent-wallet:latest
 ```
 
-在 `quickstart` 档位下，容器会把数据库、`wallet.kek`、`owner-jwt.secret` 和 Owner 凭证文件写到外挂卷 `/app/runtime-data`，并只在首次启动时把初始 Owner 密码打印到日志一次。
-如果未显式挂载 `superise-agent-wallet-data:/app/runtime-data`，官方镜像会直接启动失败，而不是偷偷写进容器可写层。
+说明：
 
-仓库内也提供一键 managed 部署：
-
-```bash
-pnpm docker:up
-```
-
-启动脚本会在首次运行时：
-
-- 从 `deploy/docker/.env.example` 生成 `deploy/docker/.env`
-- 生成 `deploy/docker/secrets/wallet_kek.txt` 作为受控 `KEK` 来源
-- 将运行时数据持久化到 `deploy/docker/runtime-data`
-- 以 `managed` 档位构建并启动 `wallet-server` 容器
+- `superise-agent-wallet-data` 是 quickstart 必需的持久化卷
+- 未显式挂载 `-v superise-agent-wallet-data:/app/runtime-data` 时，官方镜像会直接启动失败
+- 首次 quickstart 启动会在日志中打印一次初始 Owner 密码，首次登录后应立即修改
 
 启动后可访问：
 
@@ -75,13 +82,14 @@ pnpm docker:up
 
 默认 Docker 配置只绑定到本机 `127.0.0.1`。`/mcp` 无鉴权，禁止直接暴露到公网或不受信任网络。
 
-Docker 部署下也提供一键 `KEK` 轮换：
+### 受控部署补充
+
+如果你是从源码仓库做本地受控部署，仍然可以使用仓库内的 managed 脚本：
 
 ```bash
+pnpm docker:up
 pnpm docker:rotate-kek
 ```
-
-该命令会停止服务、用新的 `KEK` 重包当前 `DEK`、备份旧密钥来源，然后重新启动服务。
 
 ## 镜像发布
 

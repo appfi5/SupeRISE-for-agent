@@ -28,44 +28,51 @@ The default Chinese version is [README.md](./README.md).
 - Agent transfers are enforced with independent daily / weekly / monthly limits per asset; Owner transfers are exempt
 - `wallet.operation_status` reports server-side orchestration status, while on-chain progress must be checked through `nervos.tx_status` and `ethereum.tx_status`
 
-## Common Commands
+## Ways To Run
+
+This README keeps only two recommended startup paths:
+
+### 1. Clone The Code And Run It Yourself
+
+Use this for local development, debugging, or code changes.
 
 ```bash
+git clone https://github.com/appfi5/SupeRISE-for-agent.git
+cd SupeRISE-for-agent
 pnpm install
-pnpm build
 cp apps/wallet-server/.env.example apps/wallet-server/.env
 pnpm dev
+```
+
+If you want a production-style local start:
+
+```bash
+pnpm build
 pnpm --filter @superise/wallet-server start
 ```
 
-## Docker
+### 2. Use The Published Docker Image Directly
 
-Docker now follows a single-image, two-profile model:
+Use this for zero-app-config quickstart. The official image name is `superise/agent-wallet`.
 
-- `quickstart`: the default profile of the official image, intended for zero-app-config startup with an explicit runtime data volume
-- `managed`: the controlled deployment profile used by the repository `docker-compose` flow
-
-The official quickstart minimum command is:
+Check or create the runtime volume first, then pull the latest image and start it:
 
 ```bash
-docker run -p 18799:18799 -v superise-agent-wallet-data:/app/runtime-data <official-image>
+docker volume inspect superise-agent-wallet-data >/dev/null 2>&1 || docker volume create superise-agent-wallet-data
+docker pull superise/agent-wallet:latest
+docker run -d \
+  --name superise-agent-wallet \
+  --restart unless-stopped \
+  -p 18799:18799 \
+  -v superise-agent-wallet-data:/app/runtime-data \
+  superise/agent-wallet:latest
 ```
 
-In `quickstart`, the container persists the database, `wallet.kek`, `owner-jwt.secret`, and the Owner credential notice under the mounted `/app/runtime-data` volume, and prints the initial Owner password to logs only once on the first boot.
-If `superise-agent-wallet-data:/app/runtime-data` is not mounted explicitly, the official image now fails fast instead of writing state into the container writable layer.
+Notes:
 
-The repository still provides one-command managed deployment:
-
-```bash
-pnpm docker:up
-```
-
-On the first run, the helper script will:
-
-- create `deploy/docker/.env` from `deploy/docker/.env.example`
-- generate `deploy/docker/secrets/wallet_kek.txt` as the controlled `KEK` source
-- persist runtime data under `deploy/docker/runtime-data`
-- build and start the `wallet-server` container in `managed` mode
+- `superise-agent-wallet-data` is the required persistent volume for quickstart
+- without `-v superise-agent-wallet-data:/app/runtime-data`, the official image fails fast on purpose
+- on the first quickstart boot, the logs print the initial Owner password once; rotate it immediately after the first login
 
 After startup:
 
@@ -75,13 +82,14 @@ After startup:
 
 The default Docker configuration binds only to local `127.0.0.1`. `/mcp` is unauthenticated and must not be exposed to the public Internet or to untrusted networks.
 
-Docker deployment also provides one-command `KEK` rotation:
+### Controlled Deployment Note
+
+If you are doing a controlled local deployment from the source repository, you can still use the repository-managed flow:
 
 ```bash
+pnpm docker:up
 pnpm docker:rotate-kek
 ```
-
-This command stops the service, re-wraps the current `DEK` with a new `KEK`, backs up the previous key source, and starts the service again.
 
 ## Image Publishing
 
