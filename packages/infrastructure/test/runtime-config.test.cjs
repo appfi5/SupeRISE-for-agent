@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { mkdtempSync, writeFileSync } = require("node:fs");
+const { existsSync, mkdtempSync, readFileSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const {
@@ -57,10 +57,13 @@ test("loadWalletServerConfig defaults both chains to the built-in testnet preset
   const cwd = mkdtempSync(join(tmpdir(), "superise-config-default-"));
   const config = loadWalletServerConfig({}, cwd);
 
+  assert.equal(config.deploymentProfile, "quickstart");
   assert.equal(config.chainConfig.ckb.mode, "preset");
   assert.equal(config.chainConfig.ckb.preset, "testnet");
   assert.equal(config.chainConfig.evm.mode, "preset");
   assert.equal(config.chainConfig.evm.chainId, 11155111);
+  assert.equal(config.runtimeSecretDir, join(cwd, "data/secrets"));
+  assert.ok(existsSync(join(cwd, "data/secrets/owner-jwt.secret")));
   assert.equal(
     config.chainConfig.evm.tokens.erc20.usdc.contractAddress,
     "0xa704C2f31628ec73A12704fa726a1806613a30ae",
@@ -70,14 +73,19 @@ test("loadWalletServerConfig defaults both chains to the built-in testnet preset
 test("loadWalletServerConfig loads mixed per-chain preset/custom configuration", () => {
   const cwd = mkdtempSync(join(tmpdir(), "superise-config-custom-"));
   const evmConfigPath = join(cwd, "evm.custom.json");
+  const kekPath = join(cwd, "wallet.kek");
 
   writeFileSync(
     evmConfigPath,
     JSON.stringify(EVM_CUSTOM_CONFIG),
   );
+  writeFileSync(kekPath, "11".repeat(32));
 
   const config = loadWalletServerConfig(
     {
+      DEPLOYMENT_PROFILE: "managed",
+      OWNER_JWT_SECRET: "x".repeat(32),
+      WALLET_KEK_PATH: "./wallet.kek",
       CKB_CHAIN_MODE: "preset",
       CKB_CHAIN_PRESET: "mainnet",
       EVM_CHAIN_MODE: "custom",
@@ -97,12 +105,17 @@ test("loadWalletServerConfig loads full custom configuration from two JSON files
   const cwd = mkdtempSync(join(tmpdir(), "superise-config-dual-custom-"));
   const ckbConfigPath = join(cwd, "ckb.custom.json");
   const evmConfigPath = join(cwd, "evm.custom.json");
+  const kekPath = join(cwd, "wallet.kek");
 
   writeFileSync(ckbConfigPath, JSON.stringify(CKB_CUSTOM_CONFIG));
   writeFileSync(evmConfigPath, JSON.stringify(EVM_CUSTOM_CONFIG));
+  writeFileSync(kekPath, "11".repeat(32));
 
   const config = loadWalletServerConfig(
     {
+      DEPLOYMENT_PROFILE: "managed",
+      OWNER_JWT_SECRET: "x".repeat(32),
+      WALLET_KEK_PATH: "./wallet.kek",
       CKB_CHAIN_MODE: "custom",
       CKB_CHAIN_CONFIG_PATH: "./ckb.custom.json",
       EVM_CHAIN_MODE: "custom",
@@ -160,47 +173,139 @@ test("loadWalletServerConfig fails when preset mode also provides a custom EVM J
   );
 });
 
-test("loadWalletServerConfig auto-generates OWNER_JWT_SECRET outside production", () => {
-  const cwd = mkdtempSync(join(tmpdir(), "superise-config-dev-secret-"));
+test("loadWalletServerConfig quickstart persists OWNER_JWT_SECRET in runtime secret dir", () => {
+  const cwd = mkdtempSync(join(tmpdir(), "superise-config-quickstart-secret-"));
   const config = loadWalletServerConfig(
     {
-      NODE_ENV: "development",
+      DEPLOYMENT_PROFILE: "quickstart",
     },
     cwd,
   );
 
   assert.ok(typeof config.ownerJwtSecret === "string");
   assert.equal(config.ownerJwtSecret.length, 64);
-});
-
-test("loadWalletServerConfig requires explicit OWNER_JWT_SECRET in production", () => {
-  const cwd = mkdtempSync(join(tmpdir(), "superise-config-prod-secret-"));
-
-  assert.throws(
-    () =>
-      loadWalletServerConfig(
-        {
-          NODE_ENV: "production",
-        },
-        cwd,
-      ),
-    /OWNER_JWT_SECRET is required in production/i,
+  assert.equal(
+    readFileSync(join(cwd, "data/secrets/owner-jwt.secret"), "utf8").trim(),
+    config.ownerJwtSecret,
   );
 });
 
-test("loadWalletServerConfig rejects weak OWNER_JWT_SECRET in production", () => {
-  const cwd = mkdtempSync(join(tmpdir(), "superise-config-prod-secret-weak-"));
+test("loadWalletServerConfig quickstart reuses the same persisted OWNER_JWT_SECRET", () => {
+  const cwd = mkdtempSync(join(tmpdir(), "superise-config-quickstart-reuse-"));
+  const first = loadWalletServerConfig(
+    {
+      DEPLOYMENT_PROFILE: "quickstart",
+    },
+    cwd,
+  );
+  const second = loadWalletServerConfig(
+    {
+      DEPLOYMENT_PROFILE: "quickstart",
+    },
+    cwd,
+  );
+
+  assert.equal(first.ownerJwtSecret, second.ownerJwtSecret);
+});
+
+test("loadWalletServerConfig quickstart rejects external OWNER_JWT_SECRET", () => {
+  const cwd = mkdtempSync(join(tmpdir(), "superise-config-quickstart-owner-secret-"));
 
   assert.throws(
     () =>
       loadWalletServerConfig(
         {
-          NODE_ENV: "production",
+          DEPLOYMENT_PROFILE: "quickstart",
+          OWNER_JWT_SECRET: "x".repeat(32),
+        },
+        cwd,
+      ),
+    /quickstart does not accept OWNER_JWT_SECRET/i,
+  );
+});
+
+test("loadWalletServerConfig quickstart rejects external KEK configuration", () => {
+  const cwd = mkdtempSync(join(tmpdir(), "superise-config-quickstart-kek-"));
+
+  assert.throws(
+    () =>
+      loadWalletServerConfig(
+        {
+          DEPLOYMENT_PROFILE: "quickstart",
+          WALLET_KEK_PATH: "./wallet.kek",
+        },
+        cwd,
+      ),
+    /quickstart does not accept external KEK/i,
+  );
+});
+
+test("loadWalletServerConfig quickstart rejects mainnet presets", () => {
+  const cwd = mkdtempSync(join(tmpdir(), "superise-config-quickstart-mainnet-"));
+
+  assert.throws(
+    () =>
+      loadWalletServerConfig(
+        {
+          DEPLOYMENT_PROFILE: "quickstart",
+          CKB_CHAIN_PRESET: "mainnet",
+        },
+        cwd,
+      ),
+    /quickstart only supports the built-in CKB testnet preset/i,
+  );
+});
+
+test("loadWalletServerConfig managed requires explicit OWNER_JWT_SECRET", () => {
+  const cwd = mkdtempSync(join(tmpdir(), "superise-config-managed-secret-"));
+  const kekPath = join(cwd, "wallet.kek");
+  writeFileSync(kekPath, "11".repeat(32));
+
+  assert.throws(
+    () =>
+      loadWalletServerConfig(
+        {
+          DEPLOYMENT_PROFILE: "managed",
+          WALLET_KEK_PATH: "./wallet.kek",
+        },
+        cwd,
+      ),
+    /OWNER_JWT_SECRET is required when DEPLOYMENT_PROFILE=managed/i,
+  );
+});
+
+test("loadWalletServerConfig managed requires explicit KEK configuration", () => {
+  const cwd = mkdtempSync(join(tmpdir(), "superise-config-managed-kek-"));
+
+  assert.throws(
+    () =>
+      loadWalletServerConfig(
+        {
+          DEPLOYMENT_PROFILE: "managed",
+          OWNER_JWT_SECRET: "x".repeat(32),
+        },
+        cwd,
+      ),
+    /WALLET_KEK_PATH or WALLET_KEK is required when DEPLOYMENT_PROFILE=managed/i,
+  );
+});
+
+test("loadWalletServerConfig managed rejects weak OWNER_JWT_SECRET", () => {
+  const cwd = mkdtempSync(join(tmpdir(), "superise-config-managed-weak-secret-"));
+  const kekPath = join(cwd, "wallet.kek");
+  writeFileSync(kekPath, "11".repeat(32));
+
+  assert.throws(
+    () =>
+      loadWalletServerConfig(
+        {
+          DEPLOYMENT_PROFILE: "managed",
+          WALLET_KEK_PATH: "./wallet.kek",
           OWNER_JWT_SECRET: "too-short",
         },
         cwd,
       ),
-    /OWNER_JWT_SECRET must be at least 32 bytes in production/i,
+    /OWNER_JWT_SECRET must be at least 32 bytes/i,
   );
 });
 

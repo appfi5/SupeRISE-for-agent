@@ -84,23 +84,45 @@
 
 ### 6.1 默认原则
 
-- 应用不负责生成正式 `KEK`
-- 应用只负责读取外部提供的 `KEK`
-- 未读取到 `KEK` 时默认启动失败
+- 官方只发布一个运行镜像，`quickstart` / `managed` 通过 `DEPLOYMENT_PROFILE` 区分
+- 模式选择必须显式，不得根据是否挂载 secret 或文件自动推断
+- 正式受控部署下，应用不负责生成正式 `KEK`
+- 正式受控部署下，应用只负责读取外部提供的 `KEK`
+- 但官方镜像必须额外支持 `quickstart` 零配置启动档位
 
 ### 6.2 支持的 provider
 
 1. `docker-secret`
 2. `file-path`
 3. `env`
+4. `runtime-auto-file`
 
 优先级：
 
 1. `WALLET_KEK_PATH`
 2. `WALLET_KEK`
-3. 仅限开发模式的自动生成
+3. `quickstart` 模式下的 `runtime-auto-file`
+4. 仅限开发模式的自动生成
 
-### 6.3 为什么默认不用 env
+### 6.3 `quickstart` 零配置模式的正式例外
+
+为支持用户直接执行 `docker run <image>`，官方镜像必须提供 `quickstart` 启动档位。
+
+在该档位下：
+
+- 若未提供外部 `KEK`，应用允许首次启动时自动生成 `KEK`
+- 自动生成的 `KEK` 必须写入运行时数据目录，而不是镜像层
+- 同时必须自动生成并持久化 Owner JWT secret
+- 所有自动生成的运行时 secret 都必须放在独立的本地 secret 目录
+
+正式要求：
+
+- `quickstart` 只允许作为本地零配置体验模式
+- 不得被表述为正式受控部署模式
+- 若同时提供 `managed` 专用的外部 secret 或配置，系统不得隐式切换到 `managed`
+- `quickstart` 与 `managed` 共用同一镜像，切换必须通过显式设置 `DEPLOYMENT_PROFILE=managed`
+
+### 6.4 为什么默认不用 env
 
 因为环境变量泄漏面更大：
 
@@ -113,22 +135,48 @@
 - `env` 只作为兼容模式
 - 非默认正式方案
 
-## 7. docker 与非 docker 策略
+## 7. 安全档位
 
-### 7.1 docker-compose
+### 7.1 `quickstart` 零配置档位
+
+适用：
+
+- 官方镜像本地体验
+- 单机演示
+- 用户直接执行 `docker run`
+
+要求：
+
+- 默认链环境必须落在 `testnet` preset
+- 自动生成的钱包、`KEK`、Owner JWT secret 和默认 Owner 凭证都必须写入运行时目录
+- 首次启动时必须把 Owner 凭证文件路径打印到日志
+- 首次启动时允许把初始 Owner 凭证打印到日志一次，便于用户直接从 `docker logs` 取得
+- 后续启动不得重复打印同一凭证明文
+
+边界：
+
+- 不承诺根密钥由部署侧掌握
+- 不承诺抵御宿主机或 Docker 运行时完全失陷
+- 不作为正式生产部署口径
+
+### 7.2 `managed` 受控部署档位
+
+适用：
+
+- `docker-compose`
+- `systemd`
+- `pm2`
+- 正式可运维环境
 
 正式默认：
 
-- 使用 `docker secret`
-- 容器内读取 `/run/secrets/wallet_kek`
-
-### 7.2 非 docker
-
-正式默认：
-
-- 使用 `WALLET_KEK_PATH`
-- 指向受控文件
-- 文件权限仅服务用户可读
+- 必须显式设置 `DEPLOYMENT_PROFILE=managed`
+- `docker` 下使用 `docker secret`
+- 非 `docker` 下使用 `WALLET_KEK_PATH`
+- Owner JWT secret 由部署侧显式提供
+- 不允许依赖自动生成的运行时 secret
+- 缺失外部 `KEK`、Owner JWT secret 或必要链配置时必须 fail-fast
+- 不得因缺失配置自动退回 `quickstart`
 
 ### 7.3 开发模式
 
@@ -141,23 +189,44 @@
 - 仅本地开发
 - 必须明确标记为非生产模式
 
+### 7.4 `quickstart` 到 `managed` 的接管迁移边界
+
+系统必须允许后续把同一份运行时数据从 `quickstart` 接管到 `managed`。
+
+正式边界：
+
+- 两种档位共用同一镜像与同一数据格式
+- 接管迁移必须由运维显式触发，不允许运行中自动切换
+- 迁移的核心动作是把现有钱包所依赖的 `KEK` 纳入外部受控提供，或使用新的外部 `KEK` 重新包装 `DEK`
+- 切换完成后，系统必须以 `DEPLOYMENT_PROFILE=managed` 重新启动
+
 ## 8. 控制权说明
 
-### 8.1 使用 docker secret 时
+### 8.1 使用 `runtime-auto-file` 时
+
+核心秘钥掌握在：
+
+- 运行时数据目录的拥有者
+- 宿主机管理员
+- 能读取容器 runtime volume 的人员
+
+这只适用于 `quickstart` 档位。
+
+### 8.2 使用 docker secret 时
 
 核心秘钥掌握在：
 
 - 部署者
 - 宿主机管理员
 
-### 8.2 使用受控文件路径时
+### 8.3 使用受控文件路径时
 
 核心秘钥掌握在：
 
 - 系统管理员
 - 具备文件读取权限的部署人员
 
-### 8.3 使用 env 时
+### 8.4 使用 env 时
 
 核心秘钥掌握在：
 
@@ -166,7 +235,22 @@
 
 因此 `env` 不作为正式默认。
 
-## 9. 安全禁止事项
+## 9. 运行时 secret 目录要求
+
+为支持零配置镜像，系统必须把自动生成的敏感材料收口到统一目录，例如：
+
+- `/app/runtime-data/secrets/wallet.kek`
+- `/app/runtime-data/secrets/owner-jwt.secret`
+- `/app/runtime-data/owner-credential.txt`
+
+要求：
+
+- 目录必须位于运行时 volume，不得位于镜像只读层
+- 文件权限必须收敛到仅服务用户可读
+- 镜像构建时不得内置任何默认 secret 文件
+- `quickstart` 和 `managed` 只共享目录约定，不共享 secret 来源
+
+## 10. 安全禁止事项
 
 明确禁止：
 
@@ -182,7 +266,7 @@
 - Owner 密码是登录凭证，不是根密钥
 - 凭证轮换不应触发钱包重加密逻辑
 
-## 10. 访问令牌与权限安全
+## 11. 访问令牌与权限安全
 
 Owner 登录建议：
 
@@ -196,7 +280,7 @@ Owner 登录建议：
 - 二次确认
 - 审计记录
 
-## 11. `KEK` 轮换支持边界
+## 12. `KEK` 轮换支持边界
 
 本期不提供常规 UI / HTTP API 的 `KEK` 轮换入口，但核心层必须支持：
 
@@ -212,8 +296,8 @@ Owner 登录建议：
 - 部署 / 运维侧通过维护脚本或运维流程触发
 - 不作为普通 Owner 能力暴露
 
-## 12. 安全结论
+## 13. 安全结论
 
 本期安全架构的核心原则是：
 
-`私钥由系统使用，但根密钥由部署侧掌握。`
+`受控部署下私钥由系统使用、根密钥由部署侧掌握；零配置 quickstart 下私钥与根密钥都受运行时数据目录控制。`

@@ -142,7 +142,12 @@ export type SystemConfigSnapshot = {
   id: string;
   ownerCredentialNoticePath: string;
   vaultMode: "LOCAL_DEK_KEK";
-  kekProvider: "docker-secret" | "file-path" | "env" | "development-auto";
+  kekProvider:
+    | "docker-secret"
+    | "file-path"
+    | "env"
+    | "runtime-auto-file"
+    | "development-auto";
   kekReference: string;
   chainRpcConfig: Record<string, JsonValue>;
   createdAt: string;

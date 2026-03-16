@@ -35,7 +35,12 @@ export type RewrappedDekMaterial = Pick<
 >;
 
 export type KekkedMetadata = {
-  provider: "docker-secret" | "file-path" | "env" | "development-auto";
+  provider:
+    | "docker-secret"
+    | "file-path"
+    | "env"
+    | "runtime-auto-file"
+    | "development-auto";
   reference: string;
 };
 

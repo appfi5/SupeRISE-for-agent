@@ -17,6 +17,7 @@ const VALID_KEK_PROVIDERS = new Set<KekkedMetadata["provider"]>([
   "docker-secret",
   "file-path",
   "env",
+  "runtime-auto-file",
   "development-auto",
 ]);
 

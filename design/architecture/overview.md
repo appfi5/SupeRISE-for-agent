@@ -1,7 +1,7 @@
 # Agent 信用钱包架构设计总览
 
 > 状态：Proposed
-> 更新时间：2026-03-12
+> 更新时间：2026-03-16
 > 关联文档：`design/product/prd.md`
 > 实现约束：Node.js + TypeScript
 
@@ -20,9 +20,11 @@
 - 数据访问采用 `Kysely + better-sqlite3`
 - ETH 集成采用 `viem`
 - CKB 集成采用 `@ckb-ccc/shell`
-- 密钥管理采用 `DEK + KEK` 双层设计，`KEK` 由部署侧提供
+- 密钥管理采用 `DEK + KEK` 双层设计；`managed` 由部署侧提供 `KEK`，`quickstart` 允许首次启动自举并写入运行时目录
 - 当前支持资产为 `CKB`、`ETH`、`USDT`、`USDC`
 - 当前支持地址簿能力：按名称管理 `Nervos` / `Ethereum` 收款目标，并支持按精确地址反查已知联系人名称
+- 官方只发布一个运行镜像，`quickstart` / `managed` 是运行档位，不是不同镜像
+- 官方镜像必须支持 `quickstart` 零配置启动档位，允许用户直接 `docker run` 完成首次启动
 - server 侧提供按币种独立的日、周、月限额能力，仅对 Agent 生效
 - Agent 转账采用“额度预占 + 异步结算”模型
 - `CKB` 与 `Ethereum` 都提供链上 `tx status` 查询能力
@@ -47,6 +49,7 @@
 - [ADR 0001 币种限额执行模型](./adr/0001-asset-limit-enforcement.md)
 - [ADR 0002 转账结算与链上状态跟踪](./adr/0002-transfer-settlement-and-tx-status.md)
 - [ADR 0003 地址簿与转账目标解析模型](./adr/0003-address-book-and-transfer-target-resolution.md)
+- [ADR 0004 零配置容器启动与双部署档位](./adr/0004-zero-config-container-quickstart.md)
 
 ## 3. 使用方式
 

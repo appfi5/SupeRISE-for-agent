@@ -141,9 +141,11 @@ UI 要求：
 
 必须遵守：
 
+- Docker 分发采用单一正式运行镜像，`quickstart` / `managed` 只是运行档位。
 - 私钥不明文落盘。
 - 数据库不保存 `KEK`。
-- `KEK` 由部署侧提供，应用只读取。
+- `managed` 模式下 `KEK` 由部署侧提供，应用只读取。
+- `quickstart` 模式下允许应用首次启动时自动生成并持久化 `KEK` 与 Owner JWT secret。
 - 导出私钥只能由 Owner 触发，且必须审计。
 - 导入私钥必须明确提示“替换当前钱包”。
 - 高风险操作必须带 actor 语义并写入审计。
@@ -153,6 +155,7 @@ UI 要求：
 - 在日志中打印私钥、`DEK`、`KEK`、完整签名原文。
 - 在示例配置中放入真实 `KEK`。
 - 在版本库提交 SQLite 钱包数据库。
+- 在镜像层内置真实钱包数据库、真实 `KEK`、真实 Owner 凭证或真实 JWT secret。
 
 ## 8. 仓库卫生要求
 
@@ -266,7 +269,26 @@ UI 要求：
 - USDC 合约代码存在
 - USDC `decimals()` 返回值为 `6`
 
-## 10. 代码评审闸门
+## 10. 零配置启动实现要求
+
+零配置启动能力必须遵守：
+
+- Docker Hub 只发布一个正式运行镜像，不拆成两套长期分叉镜像
+- 官方镜像必须支持 `DEPLOYMENT_PROFILE=quickstart|managed`
+- 官方镜像默认部署档位必须是 `quickstart`
+- `quickstart` 默认链环境必须是 `testnet` preset
+- `quickstart` 必须支持用户直接执行 `docker run <image>` 完成首次启动
+- 档位只能通过 `DEPLOYMENT_PROFILE` 显式决定，不得自动推断
+- quickstart 自动生成的 runtime secrets 必须写入运行时 volume，不得写入镜像层
+- Dockerfile 必须声明运行时 volume
+- 首次 quickstart 启动必须把 Owner 凭证文件路径写入日志
+- 首次 quickstart 启动允许把初始 Owner 凭证明文打印到日志一次
+- 后续启动不得重复打印同一凭证明文
+- `managed` 模式不得依赖 quickstart 自动生成的 runtime secrets
+- `managed` 模式缺失外部 `KEK`、Owner JWT secret 或必要配置时必须 fail-fast
+- `managed` 不得自动回退到 `quickstart`
+
+## 11. 代码评审闸门
 
 以下任一项不满足，评审不得通过：
 
@@ -275,6 +297,16 @@ UI 要求：
 - 新增了后端聚合接口。
 - 仍然把链环境写死为旧 `NETWORK=testnet|mainnet` 双态模型。
 - `custom` 模式没有通过 JSON 文件提供完整链配置。
+- 把 `quickstart` / `managed` 做成两套长期分叉镜像，而不是同一镜像双档位。
+- 官方镜像不能在零配置前提下完成启动。
+- 官方镜像默认部署档位不是 `quickstart`。
+- quickstart 默认链环境落在主网。
+- 依据 external secret 或挂载文件自动推断进入 `managed`。
+- quickstart 的 `KEK`、Owner JWT secret 或初始凭证被写入镜像层。
+- `managed` 缺失必需 secret 时仍继续启动，或自动退回 `quickstart`。
+- Dockerfile 未声明运行时 volume。
+- 首次启动不输出 Owner 凭证文件路径，导致用户无法完成接管。
+- 同一初始凭证明文在每次重启都重复打印。
 - `USDT` 依赖用户手工提供 ABI 或 decimals 才能工作。
 - `USDC` 依赖用户手工提供 ABI 或 decimals 才能工作。
 - 限额判断被放到了 UI、Agent 或 controller 层。
@@ -296,7 +328,7 @@ UI 要求：
 - 测试只覆盖 happy path，没有失败路径。
 - 文档与实际工具名不一致。
 
-## 11. 测试闸门
+## 12. 测试闸门
 
 每项能力至少应覆盖以下测试层次：
 
@@ -317,6 +349,8 @@ UI 要求：
 - 同地址多联系人测试
 - 地址簿按链解析测试
 - 按精确地址查询匹配联系人测试
+- quickstart 首次启动测试
+- quickstart 重启保持同一 runtime secrets 测试
 
 最少失败路径：
 
@@ -336,6 +370,8 @@ UI 要求：
 - 地址簿重名创建
 - 同一地址被多个联系人记录
 - 更新联系人后地址全被清空
+- quickstart 运行时目录不可写
+- quickstart 首次启动未能生成运行时 secret
 - 链节点不可用
 - `custom` 链配置 JSON 缺项
 - CKB `genesisHash` 不匹配
@@ -350,7 +386,7 @@ UI 要求：
 - 导入私钥格式错误
 - 导出权限不足
 
-## 12. 开发者自检清单
+## 13. 开发者自检清单
 
 提交前必须逐项自检：
 
@@ -363,6 +399,10 @@ UI 要求：
 - 我是否把按精确地址查询单独做成了地址簿工具，而不是塞进名称搜索。
 - 我是否把联系人名称解析放在了应用层，而不是 UI 或链适配层。
 - 我是否把地址簿反查结果收敛为“匹配联系人名称”，而不是扩展成归属判断。
+- 我是否让官方镜像在不提供额外配置时也能完成 quickstart 启动。
+- 我是否把 Docker 分发保持为单一正式运行镜像，而不是拆成两套长期分叉镜像。
+- 我是否避免把 runtime secret、数据库或默认凭证烘焙进镜像。
+- 我是否让 `managed` 只通过显式 `DEPLOYMENT_PROFILE=managed` 启用，而不是自动推断。
 - 我是否按 `CHAIN_ENV=custom|testnet|mainnet` 实现了链配置，而不是继续沿用旧 `NETWORK` 或按链拆开的旧口径。
 - 我是否把 `custom` 配置放进了独立 JSON，而不是把整套链参数塞进 env。
 - 我是否把限额判断留在 server 应用层，而不是散落到 UI 或 Agent。
