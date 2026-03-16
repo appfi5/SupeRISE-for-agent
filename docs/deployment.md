@@ -48,6 +48,7 @@ docker run -p 18799:18799 <official-image>
 - Git tag 触发镜像发布
 - 若 Git tag 以 `v` 开头，则 Docker tag 会去掉前缀 `v`
 - 若 Git tag 不以 `v` 开头，则 Docker tag 直接使用原 tag
+- 发布镜像为多架构 manifest，当前覆盖 `linux/amd64` 与 `linux/arm64`
 
 示例：
 
