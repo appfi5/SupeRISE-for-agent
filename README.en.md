@@ -89,6 +89,7 @@ GitHub tags automatically trigger Docker Hub image build and push. The repositor
 - Git tag `v0.2.0` -> Docker tag `0.2.0`
 - Git tag `v0.2.0-rc.1` -> Docker tag `0.2.0-rc.1`
 - Git tag `test-address-book-1` -> Docker tag `test-address-book-1`
+- Published images are multi-platform manifests that currently cover `linux/amd64` and `linux/arm64`
 
 `latest` is updated only when both conditions are true:
 

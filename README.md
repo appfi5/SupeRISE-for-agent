@@ -89,6 +89,7 @@ GitHub tag 会自动触发 Docker Hub 镜像构建与推送，仓库当前镜像
 - Git tag `v0.2.0` -> Docker tag `0.2.0`
 - Git tag `v0.2.0-rc.1` -> Docker tag `0.2.0-rc.1`
 - Git tag `test-address-book-1` -> Docker tag `test-address-book-1`
+- 发布镜像为多架构 manifest，当前覆盖 `linux/amd64` 与 `linux/arm64`
 
 `latest` 只会在以下条件同时满足时更新：
 

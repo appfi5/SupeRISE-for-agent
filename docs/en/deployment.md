@@ -46,6 +46,7 @@ Rules:
 - Git tags trigger image publishing
 - when a Git tag starts with `v`, the Docker tag drops the `v` prefix
 - when a Git tag does not start with `v`, the Docker tag uses the raw tag as-is
+- published images are multi-platform manifests that currently cover `linux/amd64` and `linux/arm64`
 
 Examples:
 
