@@ -82,6 +82,19 @@ pnpm docker:rotate-kek
 
 This command stops the service, re-wraps the current `DEK` with a new `KEK`, backs up the previous key source, and starts the service again.
 
+## Image Publishing
+
+GitHub tags automatically trigger Docker Hub image build and push. The repository image name is `superise/agent-wallet`.
+
+- Git tag `v0.2.0` -> Docker tag `0.2.0`
+- Git tag `v0.2.0-rc.1` -> Docker tag `0.2.0-rc.1`
+- Git tag `test-address-book-1` -> Docker tag `test-address-book-1`
+
+`latest` is updated only when both conditions are true:
+
+- the Git tag matches a stable release `vX.Y.Z`
+- the tagged commit comes from `main`
+
 ## Configuration
 
 Chain configuration is resolved independently for `CKB` and `EVM`, so preset and custom modes can be mixed per chain.

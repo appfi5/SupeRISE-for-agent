@@ -36,6 +36,28 @@ Notes:
 - without `-p`, the container still initializes, but the host cannot reach the service directly
 - the initial Owner password is printed only once on the first boot
 
+### GitHub Tag Image Publishing
+
+The repository uses GitHub Actions to build and push Docker Hub images on tag push.
+
+Rules:
+
+- the image repository is fixed to `superise/agent-wallet`
+- Git tags trigger image publishing
+- when a Git tag starts with `v`, the Docker tag drops the `v` prefix
+- when a Git tag does not start with `v`, the Docker tag uses the raw tag as-is
+
+Examples:
+
+- `v0.2.0` -> `superise/agent-wallet:0.2.0`
+- `v0.2.0-rc.1` -> `superise/agent-wallet:0.2.0-rc.1`
+- `test-address-book-1` -> `superise/agent-wallet:test-address-book-1`
+
+`latest` is updated only when both conditions are true:
+
+- the Git tag matches a stable release `vX.Y.Z`
+- the tagged commit comes from `main`
+
 ### `docker-compose` managed
 
 This is the repository-provided controlled deployment mode.

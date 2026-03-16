@@ -38,6 +38,28 @@ docker run -p 18799:18799 <official-image>
 - 若不提供 `-p`，容器仍可完成初始化，但宿主机无法直接访问服务
 - 初始 Owner 密码只会在首次启动日志中打印一次
 
+### 2.1.1 GitHub tag 镜像发布
+
+仓库通过 GitHub Actions 在 tag push 时自动构建并推送 Docker Hub 镜像。
+
+正式规则：
+
+- 镜像仓库名固定为 `superise/agent-wallet`
+- Git tag 触发镜像发布
+- 若 Git tag 以 `v` 开头，则 Docker tag 会去掉前缀 `v`
+- 若 Git tag 不以 `v` 开头，则 Docker tag 直接使用原 tag
+
+示例：
+
+- `v0.2.0` -> `superise/agent-wallet:0.2.0`
+- `v0.2.0-rc.1` -> `superise/agent-wallet:0.2.0-rc.1`
+- `test-address-book-1` -> `superise/agent-wallet:test-address-book-1`
+
+`latest` 只会在以下条件同时满足时更新：
+
+- Git tag 匹配稳定版 `vX.Y.Z`
+- 该 tag 指向的提交来自 `main`
+
 ### 2.2 `docker-compose` managed
 
 这是仓库内推荐的标准受控部署模式。

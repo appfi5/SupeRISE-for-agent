@@ -82,6 +82,19 @@ pnpm docker:rotate-kek
 
 该命令会停止服务、用新的 `KEK` 重包当前 `DEK`、备份旧密钥来源，然后重新启动服务。
 
+## 镜像发布
+
+GitHub tag 会自动触发 Docker Hub 镜像构建与推送，仓库当前镜像名为 `superise/agent-wallet`。
+
+- Git tag `v0.2.0` -> Docker tag `0.2.0`
+- Git tag `v0.2.0-rc.1` -> Docker tag `0.2.0-rc.1`
+- Git tag `test-address-book-1` -> Docker tag `test-address-book-1`
+
+`latest` 只会在以下条件同时满足时更新：
+
+- Git tag 形如稳定版 `vX.Y.Z`
+- 该 tag 指向的提交来自 `main`
+
 ## 配置
 
 链配置按 `CKB` 与 `EVM` 独立装配，可自由组合 preset 与 custom。
