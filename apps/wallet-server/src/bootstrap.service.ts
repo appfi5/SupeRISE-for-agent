@@ -1,6 +1,7 @@
 import {
   Inject,
   Injectable,
+  Logger,
   OnApplicationBootstrap,
   OnApplicationShutdown,
 } from "@nestjs/common";
@@ -17,6 +18,7 @@ import { TOKENS } from "./tokens";
 export class BootstrapService
   implements OnApplicationBootstrap, OnApplicationShutdown
 {
+  private readonly logger = new Logger(BootstrapService.name);
   private settlementTimer: NodeJS.Timeout | null = null;
 
   constructor(
@@ -78,13 +80,26 @@ export class BootstrapService
             networkName: this.config.chainConfig.evm.networkName,
             tokens: this.config.chainConfig.evm.tokens,
           };
-    await this.bootstrapOwnerCredentialService.ensureCredential({
+    const ownerCredential = await this.bootstrapOwnerCredentialService.ensureCredential({
       ownerCredentialNoticePath: this.config.ownerNoticePath,
       chainRpcConfig: {
         ckb: ckbConfig,
         evm: evmConfig,
       },
     });
+    if (
+      this.config.deploymentProfile === "quickstart" &&
+      ownerCredential.created &&
+      ownerCredential.initialPassword
+    ) {
+      this.logger.warn(
+        `Quickstart initial Owner credential notice written to ${ownerCredential.noticePath}`,
+      );
+      this.logger.warn(
+        `Quickstart initial Owner password (shown once): ${ownerCredential.initialPassword}`,
+      );
+      this.logger.warn("Rotate the initial Owner password after the first login.");
+    }
     this.settlementTimer = setInterval(() => {
       void this.transferSettlementService.execute().catch(() => undefined);
     }, this.config.transferSettlementIntervalMs);

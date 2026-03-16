@@ -72,7 +72,9 @@ export class BootstrapOwnerCredentialService {
     private readonly vault: VaultPort,
   ) {}
 
-  async ensureCredential(input: RuntimeSnapshotInput): Promise<void> {
+  async ensureCredential(
+    input: RuntimeSnapshotInput,
+  ): Promise<{ created: boolean; noticePath: string; initialPassword?: string }> {
     const existing = await this.repos.ownerCredentials.getCurrent();
     const currentSnapshot = await this.repos.systemConfig.getCurrent();
 
@@ -104,7 +106,11 @@ export class BootstrapOwnerCredentialService {
         );
       });
 
-      return;
+      return {
+        created: true,
+        noticePath,
+        initialPassword: password,
+      };
     }
 
     if (!currentSnapshot) {
@@ -119,5 +125,10 @@ export class BootstrapOwnerCredentialService {
         updatedAt: nowIso(),
       });
     }
+
+    return {
+      created: false,
+      noticePath: currentSnapshot?.ownerCredentialNoticePath ?? input.ownerCredentialNoticePath,
+    };
   }
 }
