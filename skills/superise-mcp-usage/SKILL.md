@@ -42,7 +42,7 @@ Recommended options:
 
 Use live MCP metadata from the running service whenever possible.
 
-## Required MCP Flow
+## Recommended MCP Flow
 
 Use this sequence:
 
@@ -69,11 +69,17 @@ Prefer live metadata over cached assumptions.
 
 Use manual HTTP only when standard MCP tooling is unavailable.
 
-Required headers:
+Base headers:
 
 ```http
 Accept: application/json, text/event-stream
 Content-Type: application/json
+```
+
+After a successful `initialize`, include:
+
+```http
+MCP-Protocol-Version: 2025-06-18
 ```
 
 Initialize example:

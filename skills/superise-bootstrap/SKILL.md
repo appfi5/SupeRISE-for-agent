@@ -91,8 +91,10 @@ docker port superise-agent-wallet 18799
 docker logs --tail=100 superise-agent-wallet
 docker volume inspect superise-agent-wallet-data
 docker exec superise-agent-wallet node -e "fetch('http://127.0.0.1:18799/health').then(async (res) => { process.stdout.write(await res.text()); process.exit(res.ok ? 0 : 1); }).catch((error) => { console.error(error); process.exit(1); })"
-docker exec superise-agent-wallet node -e "fetch('http://127.0.0.1:18799/mcp', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} }) }).then(async (res) => { console.log(res.status); process.exit(res.status < 500 ? 0 : 1); }).catch((error) => { console.error(error); process.exit(1); })"
+docker exec superise-agent-wallet node -e "fetch('http://127.0.0.1:18799/mcp', { method: 'POST', headers: { accept: 'application/json, text/event-stream', 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'bootstrap-smoke', version: '1.0.0' } } }) }).then(async (res) => { process.stdout.write(await res.text()); process.exit(res.ok ? 0 : 1); }).catch((error) => { console.error(error); process.exit(1); })"
 ```
+
+For full MCP inspection and tool usage after bootstrap, switch to the `superise-mcp-usage` skill and follow the full `initialize -> notifications/initialized -> tools/list -> tools/call` flow.
 
 Default local endpoints:
 
