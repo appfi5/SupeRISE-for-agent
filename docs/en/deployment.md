@@ -6,15 +6,45 @@ The default Chinese version is available at [docs/deployment.md](../deployment.m
 
 ## Supported Deployment Modes
 
-### docker-compose
+### `docker run` quickstart
 
-This is the recommended standard deployment mode.
+This is the default profile of the official image.
 
 Characteristics:
 
-- one-command startup
-- consistent runtime environment
-- `KEK` can be injected through a `docker secret`
+- direct `docker run` on the same official image
+- zero-config first boot
+- runtime secrets are generated on the first start
+- both chains stay on the built-in `testnet` preset
+
+Minimal accessible example:
+
+```bash
+docker run -p 18799:18799 <official-image>
+```
+
+After the first boot, `/app/runtime-data` contains:
+
+- the SQLite database
+- `/app/runtime-data/secrets/wallet.kek`
+- `/app/runtime-data/secrets/owner-jwt.secret`
+- `/app/runtime-data/owner-credential.txt`
+
+Notes:
+
+- quickstart guarantees zero-config startup, not zero-argument host accessibility
+- without `-p`, the container still initializes, but the host cannot reach the service directly
+- the initial Owner password is printed only once on the first boot
+
+### `docker-compose` managed
+
+This is the repository-provided controlled deployment mode.
+
+Characteristics:
+
+- still the same image, but explicitly fixed to `DEPLOYMENT_PROFILE=managed`
+- `KEK` is provided through `docker secret`
+- Owner JWT secret is provided explicitly by deployment config
 
 Files provided in the repository:
 
@@ -41,6 +71,7 @@ After startup, you can check:
 Notes:
 
 - `docker-compose` starts with `NODE_ENV=production`
+- `docker-compose` explicitly fixes `DEPLOYMENT_PROFILE=managed` in the compose file
 - `docker-compose` binds only to the local loopback address by default through `PUBLISH_HOST=127.0.0.1`
 - `ENABLE_API_DOCS` defaults to `false`
 - `/docs` and `/docs-json` are disabled by default in deployment
@@ -57,18 +88,22 @@ Supported:
 
 Requirement:
 
+- set `DEPLOYMENT_PROFILE=managed` explicitly whenever possible
 - `WALLET_KEK_PATH` must be provided, or `WALLET_KEK` must be explicitly allowed
+- `OWNER_JWT_SECRET` must be provided explicitly
 
 ## Core Configuration
 
 Recommended configuration items:
 
 - `NODE_ENV`
+- `DEPLOYMENT_PROFILE`
 - `ENABLE_API_DOCS`
 - `PUBLISH_HOST`
 - `HOST`
 - `PORT`
 - `DATA_DIR`
+- `RUNTIME_SECRET_DIR`
 - `SQLITE_PATH`
 - `WALLET_KEK_PATH`
 - `WALLET_KEK`
@@ -85,6 +120,9 @@ Recommended configuration items:
 
 Additional notes:
 
+- `DEPLOYMENT_PROFILE=quickstart` rejects external `WALLET_KEK_PATH`, `WALLET_KEK`, and `OWNER_JWT_SECRET`
+- `DEPLOYMENT_PROFILE=quickstart` only allows the built-in `testnet` preset on both chains
+- `DEPLOYMENT_PROFILE=managed` fails fast when an external `KEK` or `OWNER_JWT_SECRET` is missing
 - Swagger is enabled if and only if `ENABLE_API_DOCS=true`
 - when the variable is missing, it is treated as `false`
 - `PUBLISH_HOST` controls which host address Docker publishes the port on, with `127.0.0.1` as the default
@@ -148,21 +186,24 @@ Additional notes:
 ## Startup Flow
 
 1. load base env configuration
-2. resolve `MODE/PRESET/CONFIG_PATH` independently for `CKB` and `EVM`
-3. for every chain in `custom` mode, load and validate its JSON file
-4. load `KEK`
-5. initialize SQLite and run migrations
-6. run startup self-checks for database, CKB, EVM, and the configured `USDT` / `USDC` contracts
-7. ensure wallet
-8. ensure the Owner local-management credential notice
-9. start MCP and HTTP services
-10. start background transfer-settlement polling
+2. resolve `DEPLOYMENT_PROFILE`
+3. resolve `MODE/PRESET/CONFIG_PATH` independently for `CKB` and `EVM`
+4. load and validate custom JSON files when a chain uses `custom`
+5. read or generate runtime secrets according to `DEPLOYMENT_PROFILE`
+6. initialize SQLite and run migrations
+7. run startup self-checks for database, CKB, EVM, and the configured `USDT` / `USDC` contracts
+8. ensure wallet
+9. ensure the Owner local-management credential notice
+10. print the one-time Owner quickstart notice when this is the first quickstart boot
+11. start MCP and HTTP services
+12. start background transfer-settlement polling
 
 ## Health Checks
 
 Startup checks include:
 
-- `KEK` availability
+- `managed` `KEK` availability
+- `quickstart` runtime-secret directory writability plus secret generation / loading
 - SQLite availability
 - CKB RPC availability
 - EVM RPC availability
@@ -193,12 +234,28 @@ If you want to provide the next `KEK` file directly:
 sh scripts/docker-rotate-kek.sh /absolute/path/to/next-wallet-kek.txt
 ```
 
+## Quickstart-To-Managed Handoff
+
+Recommended steps:
+
+1. stop the current quickstart container while preserving the same runtime volume
+2. choose the takeover strategy: reuse `/app/runtime-data/secrets/wallet.kek`, or prepare a new external `KEK`
+3. if you need a new external `KEK`, re-wrap the current `DEK` with [rewrap-kek.cjs](../../apps/wallet-server/scripts/rewrap-kek.cjs) first
+4. prepare the managed external `KEK` and `OWNER_JWT_SECRET`
+5. restart the same image with the same data directory and `DEPLOYMENT_PROFILE=managed`
+
+Principles:
+
+- this is an explicit operational migration, not an automatic in-app switch
+- if takeover fails, keep the original quickstart runtime data intact and avoid half-switched state
+
 ## Backup And Restore
 
 You must back up:
 
 - SQLite database
-- `KEK` source
+- the managed `KEK` source
+- the quickstart runtime-secret directory
 
 When `CKB_CHAIN_MODE=custom`, you must also back up the JSON file referenced by `CKB_CHAIN_CONFIG_PATH`.
 

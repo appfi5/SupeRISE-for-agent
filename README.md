@@ -40,7 +40,20 @@ pnpm --filter @superise/wallet-server start
 
 ## Docker
 
-支持一键本地部署：
+当前 Docker 采用“单镜像双档位”：
+
+- `quickstart`：官方镜像默认档位，支持直接 `docker run`
+- `managed`：受控部署档位，仓库内的 `docker-compose` / `pnpm docker:up` 走这一档
+
+直接体验官方镜像时，可用最简命令：
+
+```bash
+docker run -p 18799:18799 <official-image>
+```
+
+在 `quickstart` 档位下，容器会把数据库、`wallet.kek`、`owner-jwt.secret` 和 Owner 凭证文件写到 `/app/runtime-data`，并只在首次启动时把初始 Owner 密码打印到日志一次。
+
+仓库内也提供一键 managed 部署：
 
 ```bash
 pnpm docker:up
@@ -49,9 +62,9 @@ pnpm docker:up
 启动脚本会在首次运行时：
 
 - 从 `deploy/docker/.env.example` 生成 `deploy/docker/.env`
-- 生成 `deploy/docker/secrets/wallet_kek.txt`
+- 生成 `deploy/docker/secrets/wallet_kek.txt` 作为受控 `KEK` 来源
 - 将运行时数据持久化到 `deploy/docker/runtime-data`
-- 构建并启动 `wallet-server` 容器
+- 以 `managed` 档位构建并启动 `wallet-server` 容器
 
 启动后可访问：
 
@@ -73,6 +86,8 @@ pnpm docker:rotate-kek
 
 链配置按 `CKB` 与 `EVM` 独立装配，可自由组合 preset 与 custom。
 
+- `DEPLOYMENT_PROFILE=quickstart|managed`
+- `RUNTIME_SECRET_DIR`
 - `CKB_CHAIN_MODE=preset|custom`
 - `CKB_CHAIN_PRESET=testnet|mainnet`
 - `CKB_CHAIN_CONFIG_PATH`
@@ -82,6 +97,8 @@ pnpm docker:rotate-kek
 
 规则：
 
+- `quickstart` 默认用于零配置启动，只允许两条链都落在内置 `testnet` preset
+- `managed` 用于受控部署，要求外部提供 `KEK` 与 `OWNER_JWT_SECRET`
 - `preset` 使用内置 `testnet/mainnet` 配置
 - `custom` 通过各自的 JSON 文件加载完整链配置
 - `CKB custom` 需要 `rpcUrl`、`indexerUrl`、`genesisHash`、`addressPrefix`、`scripts`

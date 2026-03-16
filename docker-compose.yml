@@ -9,6 +9,7 @@ services:
       - ./deploy/docker/.env
     environment:
       NODE_ENV: production
+      DEPLOYMENT_PROFILE: managed
       HOST: 0.0.0.0
       WALLET_KEK_PATH: /run/secrets/wallet_kek
       ALLOW_PLAINTEXT_KEK_ENV: "false"

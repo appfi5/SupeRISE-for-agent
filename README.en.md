@@ -40,7 +40,20 @@ pnpm --filter @superise/wallet-server start
 
 ## Docker
 
-One-command local deployment is available:
+Docker now follows a single-image, two-profile model:
+
+- `quickstart`: the default profile of the official image, intended for direct `docker run`
+- `managed`: the controlled deployment profile used by the repository `docker-compose` flow
+
+The minimal official-image experience is:
+
+```bash
+docker run -p 18799:18799 <official-image>
+```
+
+In `quickstart`, the container persists the database, `wallet.kek`, `owner-jwt.secret`, and the Owner credential notice under `/app/runtime-data`, and prints the initial Owner password to logs only once on the first boot.
+
+The repository still provides one-command managed deployment:
 
 ```bash
 pnpm docker:up
@@ -49,9 +62,9 @@ pnpm docker:up
 On the first run, the helper script will:
 
 - create `deploy/docker/.env` from `deploy/docker/.env.example`
-- generate `deploy/docker/secrets/wallet_kek.txt`
+- generate `deploy/docker/secrets/wallet_kek.txt` as the controlled `KEK` source
 - persist runtime data under `deploy/docker/runtime-data`
-- build and start the `wallet-server` container
+- build and start the `wallet-server` container in `managed` mode
 
 After startup:
 
@@ -73,6 +86,8 @@ This command stops the service, re-wraps the current `DEK` with a new `KEK`, bac
 
 Chain configuration is resolved independently for `CKB` and `EVM`, so preset and custom modes can be mixed per chain.
 
+- `DEPLOYMENT_PROFILE=quickstart|managed`
+- `RUNTIME_SECRET_DIR`
 - `CKB_CHAIN_MODE=preset|custom`
 - `CKB_CHAIN_PRESET=testnet|mainnet`
 - `CKB_CHAIN_CONFIG_PATH`
@@ -82,6 +97,8 @@ Chain configuration is resolved independently for `CKB` and `EVM`, so preset and
 
 Rules:
 
+- `quickstart` is for zero-config startup and only allows the built-in `testnet` preset on both chains
+- `managed` is for controlled deployment and requires an external `KEK` plus `OWNER_JWT_SECRET`
 - `preset` uses the built-in `testnet/mainnet` profiles
 - `custom` loads a dedicated JSON file per chain
 - `CKB custom` requires `rpcUrl`, `indexerUrl`, `genesisHash`, `addressPrefix`, and `scripts`

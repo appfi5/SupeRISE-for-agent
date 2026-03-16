@@ -8,15 +8,45 @@
 
 ## 2. 支持的部署模式
 
-### 2.1 docker-compose
+### 2.1 `docker run` quickstart
 
-这是推荐的标准部署模式。
+官方镜像默认支持这一档位。
 
 特点：
 
-- 一键启动
-- 环境一致
+- 同一镜像直接 `docker run`
+- 默认零配置启动
+- 首次启动自动生成 runtime secret
+- 默认链环境固定为内置 `testnet` preset
+
+最简可访问示例：
+
+```bash
+docker run -p 18799:18799 <official-image>
+```
+
+首次启动后，运行时目录 `/app/runtime-data` 下会包含：
+
+- SQLite 数据库
+- `/app/runtime-data/secrets/wallet.kek`
+- `/app/runtime-data/secrets/owner-jwt.secret`
+- `/app/runtime-data/owner-credential.txt`
+
+说明：
+
+- Quickstart 只保证零配置启动，不保证零参数即可从宿主机访问
+- 若不提供 `-p`，容器仍可完成初始化，但宿主机无法直接访问服务
+- 初始 Owner 密码只会在首次启动日志中打印一次
+
+### 2.2 `docker-compose` managed
+
+这是仓库内推荐的标准受控部署模式。
+
+特点：
+
+- 单一镜像，但显式固定为 `DEPLOYMENT_PROFILE=managed`
 - `KEK` 可通过 `docker secret` 注入
+- Owner JWT secret 由部署环境显式提供
 
 当前仓库内提供：
 
@@ -43,13 +73,14 @@ pnpm docker:up
 说明：
 
 - `docker-compose` 默认以 `NODE_ENV=production` 启动
+- `docker-compose` 在 compose 文件中显式固定 `DEPLOYMENT_PROFILE=managed`
 - `docker-compose` 默认通过 `PUBLISH_HOST=127.0.0.1` 只绑定本机回环地址
 - `ENABLE_API_DOCS` 默认为 `false`
 - 因此部署默认不暴露 `/docs` 和 `/docs-json`
 - `deploy/docker/chain-config` 会只读挂载到容器内的 `/app/chain-config`
 - `/mcp` 无鉴权，禁止把该端口直接暴露到公网或不受信任网络
 
-### 2.2 非 docker
+### 2.3 非 docker
 
 支持：
 
@@ -59,18 +90,22 @@ pnpm docker:up
 
 要求：
 
+- 建议显式设置 `DEPLOYMENT_PROFILE=managed`
 - 必须提供 `WALLET_KEK_PATH` 或显式允许的 `WALLET_KEK`
+- 必须显式提供 `OWNER_JWT_SECRET`
 
 ## 3. 核心配置项
 
 建议配置项清单：
 
 - `NODE_ENV`
+- `DEPLOYMENT_PROFILE`
 - `ENABLE_API_DOCS`
 - `PUBLISH_HOST`
 - `HOST`
 - `PORT`
 - `DATA_DIR`
+- `RUNTIME_SECRET_DIR`
 - `SQLITE_PATH`
 - `WALLET_KEK_PATH`
 - `WALLET_KEK`
@@ -87,6 +122,9 @@ pnpm docker:up
 
 补充说明：
 
+- `DEPLOYMENT_PROFILE=quickstart` 时，不接受外部 `WALLET_KEK_PATH`、`WALLET_KEK` 或 `OWNER_JWT_SECRET`
+- `DEPLOYMENT_PROFILE=quickstart` 只允许两条链都落在内置 `testnet` preset
+- `DEPLOYMENT_PROFILE=managed` 时，缺失外部 `KEK` 或 `OWNER_JWT_SECRET` 会直接启动失败
 - 当且仅当 `ENABLE_API_DOCS=true` 时启用 Swagger 文档
 - 未设置该变量时按 `false` 处理
 - `PUBLISH_HOST` 控制 Docker 将端口发布到哪个宿主机地址，默认值为 `127.0.0.1`
@@ -155,7 +193,8 @@ pnpm docker:up
 
 1. `WALLET_KEK_PATH`
 2. `WALLET_KEK`
-3. 开发模式自动生成
+3. quickstart 运行时自动生成文件
+4. 开发模式自动生成
 
 ### 4.2 数据目录
 
@@ -169,22 +208,25 @@ pnpm docker:up
 固定启动步骤：
 
 1. 读取环境配置
-2. 分别解析 `CKB` 与 `EVM` 的 `MODE/PRESET/CONFIG_PATH`
-3. 如某条链为 `custom`，读取并校验对应 JSON 文件
-4. 读取 `KEK`
-5. 初始化数据库与数据目录
-6. 执行 migration
-7. 执行启动阶段自检（`KEK` / 数据库 / CKB / EVM / `USDT` 合约 / `USDC` 合约）
-8. 检查 / 生成钱包
-9. 检查 / 生成 Owner 本地管理凭证提示
-10. 启动 MCP 与 HTTP 服务
-11. 启动后台转账结算轮询
+2. 解析 `DEPLOYMENT_PROFILE`
+3. 分别解析 `CKB` 与 `EVM` 的 `MODE/PRESET/CONFIG_PATH`
+4. 如某条链为 `custom`，读取并校验对应 JSON 文件
+5. 按部署档位读取或生成 runtime secret
+6. 初始化数据库与数据目录
+7. 执行 migration
+8. 执行启动阶段自检（`KEK` / 数据库 / CKB / EVM / `USDT` 合约 / `USDC` 合约）
+9. 检查 / 生成钱包
+10. 检查 / 生成 Owner 本地管理凭证提示
+11. 若为 quickstart 首次启动，打印一次性 Owner 凭证提示
+12. 启动 MCP 与 HTTP 服务
+13. 启动后台转账结算轮询
 
 ## 6. 健康检查
 
 启动前自检至少包含：
 
-- `KEK` 可用
+- `managed` 下 `KEK` 可用
+- `quickstart` 下 runtime secret 目录可写，且所需 secret 可生成 / 读取
 - SQLite 可读写
 - CKB RPC 可达
 - ETH RPC 可达
@@ -236,7 +278,8 @@ pnpm docker:up
 ### 8.1 必须备份的内容
 
 - SQLite 数据库
-- `KEK` 来源文件或 `docker secret` 源
+- `managed` 下的 `KEK` 来源文件或 `docker secret` 源
+- `quickstart` 下的 runtime secret 目录
 
 当 `CKB_CHAIN_MODE=custom` 时还必须备份：
 
@@ -253,7 +296,8 @@ pnpm docker:up
 恢复系统时必须同时恢复：
 
 - 数据库
-- `KEK`
+- `managed` 下的 `KEK`
+- `quickstart` 下的 runtime secret 目录
 
 当 `CKB_CHAIN_MODE=custom` 时还必须恢复：
 
@@ -294,6 +338,21 @@ pnpm docker:up
 ```bash
 sh scripts/docker-rotate-kek.sh /absolute/path/to/next-wallet-kek.txt
 ```
+
+### 9.2 从 quickstart 接管到 managed
+
+推荐步骤：
+
+1. 停止当前 quickstart 容器，并保留同一份 runtime volume
+2. 选择接管策略：复用原有 `/app/runtime-data/secrets/wallet.kek`，或准备新的外部 `KEK`
+3. 如需切换到新的外部 `KEK`，先用 [rewrap-kek.cjs](../apps/wallet-server/scripts/rewrap-kek.cjs) 重包现有 `DEK`
+4. 为 managed 部署准备外部 `KEK` 与 `OWNER_JWT_SECRET`
+5. 使用同一镜像、同一数据目录，以 `DEPLOYMENT_PROFILE=managed` 重新启动
+
+原则：
+
+- 这是一条显式运维流程，不会由应用自动切换
+- 切换失败时应保留原 quickstart 运行时数据，避免半切换状态
 
 ## 10. 运维结论
 
