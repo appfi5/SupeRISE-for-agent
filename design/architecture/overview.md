@@ -24,7 +24,7 @@
 - 当前支持资产为 `CKB`、`ETH`、`USDT`、`USDC`
 - 当前支持地址簿能力：按名称管理 `Nervos` / `Ethereum` 收款目标，并支持按精确地址反查已知联系人名称
 - 官方只发布一个运行镜像，`quickstart` / `managed` 是运行档位，不是不同镜像
-- 官方镜像必须支持 `quickstart` 零配置启动档位，允许用户直接 `docker run` 完成首次启动
+- 官方镜像必须支持 `quickstart` 零应用配置启动档位，但必须显式挂载 `superise-agent-wallet-data:/app/runtime-data`
 - server 侧提供按币种独立的日、周、月限额能力，仅对 Agent 生效
 - Agent 转账采用“额度预占 + 异步结算”模型
 - `CKB` 与 `Ethereum` 都提供链上 `tx status` 查询能力
