@@ -394,15 +394,18 @@
 
 ### 10.3 必须交付
 
+- 单一官方运行镜像 + `quickstart|managed` 双档位模型
 - `DEPLOYMENT_PROFILE=quickstart|managed` 部署档位
 - `CHAIN_ENV=custom|testnet|mainnet` 模式化配置
 - `CHAIN_CONFIG_PATH` 驱动的 custom 链配置加载
 - `TZ` 驱动的 server 本地时区口径
 - 转账结算轮询与确认阈值配置
 - 官方镜像默认 `quickstart` 档位
+- `managed` 显式启用与 fail-fast 规范
 - `/app/runtime-data` 运行时 volume 约定
 - quickstart 运行时 secret 自动生成与持久化规范
 - quickstart 首次启动 Owner 凭证输出规范
+- quickstart 到 managed 的接管迁移规范
 - 非 Docker 路径下的 `WALLET_KEK_PATH` 启动规范
 - Docker secret 路径下的 `KEK` 读取规范
 - 默认 Owner 凭证通知规范
@@ -414,9 +417,12 @@
 ### 10.4 开发要求
 
 - 官方镜像必须支持 `docker run <image>` 零配置启动。
+- 官方只发布一个正式运行镜像，`quickstart` 与 `managed` 通过 `DEPLOYMENT_PROFILE` 区分。
 - 官方镜像默认落在 `quickstart` 档位，而不是 `managed`。
 - `quickstart` 默认只能落在 `testnet` preset，不允许默认主网。
 - `quickstart` 下自动生成的 `KEK` 和 Owner JWT secret 必须写入运行时 volume，不得写入镜像层。
+- 不得依据 external secret 或挂载文件自动推断进入 `managed`。
+- `managed` 缺失外部 `KEK`、Owner JWT secret 或必要链配置时必须 fail-fast。
 - Dockerfile 必须声明运行时 volume，保证无挂载参数时仍有可写运行时目录。
 - 首次 quickstart 启动必须把 Owner 凭证文件路径写入日志，并允许把初始凭证明文打印到日志一次。
 - 后续重启不得重复打印同一凭证明文。
@@ -436,8 +442,10 @@
 - `docker run -p 18799:18799 <image>` 能让用户完成首次登录和后续操作。
 - quickstart 首次启动后，运行时目录中可见数据库、`wallet.kek`、Owner JWT secret 和 Owner 凭证文件。
 - 重启同一容器后，钱包、Owner 凭证和 JWT secret 保持不变。
+- 同一镜像能够分别以 `quickstart` 与 `managed` 两种档位启动。
 - 开发者可按设计文档在 Docker 和非 Docker 两种模式下完成部署。
 - 丢失数据库或迁移设备时，恢复流程有明确步骤。
+- 从 `quickstart` 接管到 `managed` 的迁移边界有明确步骤。
 - `managed` 模式下 `KEK` 控制权归属在部署侧而不在应用自身。
 
 ## 11. 阶段 8：测试与交付验收

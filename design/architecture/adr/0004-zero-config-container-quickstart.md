@@ -31,14 +31,24 @@ Accepted
 
 ## 决策
 
-### 1. 正式拆分为两个部署档位
+### 1. 官方只发布一个正式运行镜像
+
+Docker Hub 分发层只发布一个正式运行镜像。
+
+正式要求：
+
+- `quickstart` 与 `managed` 是同一镜像的两种运行档位
+- 运行档位通过 `DEPLOYMENT_PROFILE` 显式决定
+- 不得根据挂载的 secret、文件路径或链配置自动推断档位
+
+### 2. 正式拆分为两个部署档位
 
 系统正式支持两种部署档位：
 
 - `quickstart`
 - `managed`
 
-### 2. `quickstart` 是官方镜像默认档位
+### 3. `quickstart` 是官方镜像默认档位
 
 `quickstart` 的目标是支持官方镜像直接启动。
 
@@ -50,7 +60,7 @@ Accepted
 - 不要求用户提供外部 `KEK`
 - 不要求用户提供外部 Owner JWT secret
 
-### 3. `quickstart` 允许自动生成运行时 secret
+### 4. `quickstart` 允许自动生成运行时 secret
 
 在 `quickstart` 档位下，系统允许在首次启动时自动生成并持久化：
 
@@ -65,7 +75,7 @@ Accepted
 - 不允许写入镜像层
 - 不允许在版本库中提供默认值
 
-### 4. `managed` 是正式受控部署档位
+### 5. `managed` 是正式受控部署档位
 
 在 `managed` 档位下：
 
@@ -74,7 +84,15 @@ Accepted
 - 应优先用于 `docker-compose` 与非 docker 正式部署
 - 不依赖 quickstart 自动生成的 runtime secret
 
-### 5. 官方镜像必须声明运行时 volume
+### 6. `managed` 必须显式启用且 fail-fast
+
+正式要求：
+
+- 必须显式设置 `DEPLOYMENT_PROFILE=managed`
+- 缺失外部 `KEK`、Owner JWT secret 或必要链配置时必须直接启动失败
+- 不得自动退回 `quickstart`
+
+### 7. 官方镜像必须声明运行时 volume
 
 为保证用户在不挂载额外 volume 时也能完成启动，官方镜像必须声明运行时 volume，例如：
 
@@ -86,7 +104,7 @@ Accepted
 - 自动生成的运行时 secret
 - 默认 Owner 凭证文件
 
-### 6. 零配置启动与零参数可访问是两个不同目标
+### 8. 零配置启动与零参数可访问是两个不同目标
 
 正式边界：
 
@@ -98,7 +116,7 @@ Accepted
 - 系统必须支持“零配置启动”
 - 但不把“零参数即可从宿主机访问”定义为应用架构目标
 
-### 7. 首次启动允许输出一次性凭证提示
+### 9. 首次启动允许输出一次性凭证提示
 
 为避免零配置场景下用户拿不到 Owner 登录凭证，`quickstart` 首次启动时允许：
 
@@ -110,11 +128,21 @@ Accepted
 - 只允许首次启动输出
 - 后续重启不得重复打印同一凭证明文
 
+### 10. 支持后续从 `quickstart` 接管到 `managed`
+
+正式要求：
+
+- 两种档位共用同一镜像、同一数据库格式与同一钱包密文格式
+- 接管迁移必须由运维显式触发
+- 迁移的核心动作是把现有 `KEK` 接管为外部受控 secret，或使用新的外部 `KEK` 重包装现有 `DEK`
+- 切换完成后，系统必须以 `DEPLOYMENT_PROFILE=managed` 重新启动
+
 ## 结果
 
 这项决策带来的结果是：
 
 - 官方镜像可真正支持零配置首次启动
+- Docker Hub 使用者只需要理解一个镜像，而不是两套镜像
 - 正式部署仍保留受控密钥边界
 - quickstart 与 managed 的安全假设不会相互污染
 - 开发和评审可以明确知道哪些自动生成行为只属于 quickstart
@@ -134,3 +162,4 @@ Accepted
 - runtime secret 目录约定
 - quickstart 首次启动 secret 自举逻辑
 - quickstart 一次性凭证输出逻辑
+- quickstart 接管到 managed 的迁移流程

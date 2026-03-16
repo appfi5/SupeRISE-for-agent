@@ -84,6 +84,8 @@
 
 ### 6.1 默认原则
 
+- 官方只发布一个运行镜像，`quickstart` / `managed` 通过 `DEPLOYMENT_PROFILE` 区分
+- 模式选择必须显式，不得根据是否挂载 secret 或文件自动推断
 - 正式受控部署下，应用不负责生成正式 `KEK`
 - 正式受控部署下，应用只负责读取外部提供的 `KEK`
 - 但官方镜像必须额外支持 `quickstart` 零配置启动档位
@@ -117,7 +119,8 @@
 
 - `quickstart` 只允许作为本地零配置体验模式
 - 不得被表述为正式受控部署模式
-- 一旦提供外部 `KEK`，必须优先切换到受控提供模式
+- 若同时提供 `managed` 专用的外部 secret 或配置，系统不得隐式切换到 `managed`
+- `quickstart` 与 `managed` 共用同一镜像，切换必须通过显式设置 `DEPLOYMENT_PROFILE=managed`
 
 ### 6.4 为什么默认不用 env
 
@@ -167,10 +170,13 @@
 
 正式默认：
 
+- 必须显式设置 `DEPLOYMENT_PROFILE=managed`
 - `docker` 下使用 `docker secret`
 - 非 `docker` 下使用 `WALLET_KEK_PATH`
 - Owner JWT secret 由部署侧显式提供
 - 不允许依赖自动生成的运行时 secret
+- 缺失外部 `KEK`、Owner JWT secret 或必要链配置时必须 fail-fast
+- 不得因缺失配置自动退回 `quickstart`
 
 ### 7.3 开发模式
 
@@ -182,6 +188,17 @@
 
 - 仅本地开发
 - 必须明确标记为非生产模式
+
+### 7.4 `quickstart` 到 `managed` 的接管迁移边界
+
+系统必须允许后续把同一份运行时数据从 `quickstart` 接管到 `managed`。
+
+正式边界：
+
+- 两种档位共用同一镜像与同一数据格式
+- 接管迁移必须由运维显式触发，不允许运行中自动切换
+- 迁移的核心动作是把现有钱包所依赖的 `KEK` 纳入外部受控提供，或使用新的外部 `KEK` 重新包装 `DEK`
+- 切换完成后，系统必须以 `DEPLOYMENT_PROFILE=managed` 重新启动
 
 ## 8. 控制权说明
 

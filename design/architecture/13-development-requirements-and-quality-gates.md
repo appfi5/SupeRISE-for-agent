@@ -141,6 +141,7 @@ UI 要求：
 
 必须遵守：
 
+- Docker 分发采用单一正式运行镜像，`quickstart` / `managed` 只是运行档位。
 - 私钥不明文落盘。
 - 数据库不保存 `KEK`。
 - `managed` 模式下 `KEK` 由部署侧提供，应用只读取。
@@ -272,16 +273,20 @@ UI 要求：
 
 零配置启动能力必须遵守：
 
+- Docker Hub 只发布一个正式运行镜像，不拆成两套长期分叉镜像
 - 官方镜像必须支持 `DEPLOYMENT_PROFILE=quickstart|managed`
 - 官方镜像默认部署档位必须是 `quickstart`
 - `quickstart` 默认链环境必须是 `testnet` preset
 - `quickstart` 必须支持用户直接执行 `docker run <image>` 完成首次启动
+- 档位只能通过 `DEPLOYMENT_PROFILE` 显式决定，不得自动推断
 - quickstart 自动生成的 runtime secrets 必须写入运行时 volume，不得写入镜像层
 - Dockerfile 必须声明运行时 volume
 - 首次 quickstart 启动必须把 Owner 凭证文件路径写入日志
 - 首次 quickstart 启动允许把初始 Owner 凭证明文打印到日志一次
 - 后续启动不得重复打印同一凭证明文
 - `managed` 模式不得依赖 quickstart 自动生成的 runtime secrets
+- `managed` 模式缺失外部 `KEK`、Owner JWT secret 或必要配置时必须 fail-fast
+- `managed` 不得自动回退到 `quickstart`
 
 ## 11. 代码评审闸门
 
@@ -292,10 +297,13 @@ UI 要求：
 - 新增了后端聚合接口。
 - 仍然把链环境写死为旧 `NETWORK=testnet|mainnet` 双态模型。
 - `custom` 模式没有通过 JSON 文件提供完整链配置。
+- 把 `quickstart` / `managed` 做成两套长期分叉镜像，而不是同一镜像双档位。
 - 官方镜像不能在零配置前提下完成启动。
 - 官方镜像默认部署档位不是 `quickstart`。
 - quickstart 默认链环境落在主网。
+- 依据 external secret 或挂载文件自动推断进入 `managed`。
 - quickstart 的 `KEK`、Owner JWT secret 或初始凭证被写入镜像层。
+- `managed` 缺失必需 secret 时仍继续启动，或自动退回 `quickstart`。
 - Dockerfile 未声明运行时 volume。
 - 首次启动不输出 Owner 凭证文件路径，导致用户无法完成接管。
 - 同一初始凭证明文在每次重启都重复打印。
@@ -392,7 +400,9 @@ UI 要求：
 - 我是否把联系人名称解析放在了应用层，而不是 UI 或链适配层。
 - 我是否把地址簿反查结果收敛为“匹配联系人名称”，而不是扩展成归属判断。
 - 我是否让官方镜像在不提供额外配置时也能完成 quickstart 启动。
+- 我是否把 Docker 分发保持为单一正式运行镜像，而不是拆成两套长期分叉镜像。
 - 我是否避免把 runtime secret、数据库或默认凭证烘焙进镜像。
+- 我是否让 `managed` 只通过显式 `DEPLOYMENT_PROFILE=managed` 启用，而不是自动推断。
 - 我是否按 `CHAIN_ENV=custom|testnet|mainnet` 实现了链配置，而不是继续沿用旧 `NETWORK` 或按链拆开的旧口径。
 - 我是否把 `custom` 配置放进了独立 JSON，而不是把整套链参数塞进 env。
 - 我是否把限额判断留在 server 应用层，而不是散落到 UI 或 Agent。

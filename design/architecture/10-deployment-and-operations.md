@@ -6,6 +6,13 @@
 
 ## 2. 支持的部署模式
 
+正式要求：
+
+- Docker Hub 只发布一个正式运行镜像
+- `quickstart` 与 `managed` 是同一镜像的两种运行档位，不是两套镜像
+- 档位必须通过 `DEPLOYMENT_PROFILE` 显式决定
+- 不得根据是否提供 external secret、挂载文件或链配置自动推断档位
+
 ### 2.1 `docker run` quickstart
 
 必须支持作为官方镜像默认体验模式。
@@ -100,6 +107,7 @@
 正式要求：
 
 - `DEPLOYMENT_PROFILE=quickstart`
+- 未显式提供 `DEPLOYMENT_PROFILE` 时，官方镜像默认进入 `quickstart`
 - 默认监听 `0.0.0.0:18799`
 - 默认数据目录为 `/app/runtime-data`
 - 默认链配置必须落在 `testnet` preset
@@ -115,6 +123,7 @@
 - 运行时 secrets 与数据库同处本地运行时 volume
 - 这是一种本地便利模式，不是正式受控部署模式
 - 默认不得连接主网
+- 若同时提供 `managed` 必需的外部 secret 或配置，必须直接启动失败并提示切换到 `managed`
 
 ### 4.2 `managed`
 
@@ -127,6 +136,8 @@
 - Owner JWT secret 由外部提供
 - 允许 `testnet`、`mainnet`、`custom` 三种链配置模式
 - 不依赖自动生成的运行时 secrets
+- 缺失外部 `KEK`、Owner JWT secret 或所选模式必需配置时必须 fail-fast
+- 不得自动退回 `quickstart`
 
 ### 4.3 Docker 网络边界
 
@@ -140,6 +151,20 @@
 
 - 最简可访问：`docker run -p 18799:18799 <image>`
 - 纯零参数：仅保证容器内服务完成初始化
+
+### 4.4 档位切换与接管迁移
+
+正式要求：
+
+- `quickstart` 与 `managed` 必须能够复用同一份数据库格式与钱包密文格式
+- 后续从 `quickstart` 切换到 `managed` 时，必须复用同一正式运行镜像
+- 接管迁移必须由运维显式执行，不允许应用自行根据环境变化切换档位
+
+迁移边界：
+
+- 需要把 `quickstart` 运行时目录中的 `KEK` 接管为外部 secret，或以新的外部 `KEK` 重包裹现有 `DEK`
+- 切换完成后必须显式以 `DEPLOYMENT_PROFILE=managed` 重新启动
+- 迁移失败时不得半切到 `managed` 后再回落到 `quickstart`
 
 ## 5. 链配置模式
 
