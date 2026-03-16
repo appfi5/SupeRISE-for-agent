@@ -6,9 +6,26 @@
 
 ## 2. 支持的部署模式
 
-### 2.1 docker-compose
+### 2.1 `docker run` quickstart
 
-推荐作为标准部署模式。
+必须支持作为官方镜像默认体验模式。
+
+要求：
+
+- 用户可以直接执行 `docker run <image>` 完成首次启动
+- 不要求用户预先提供 `.env`、`KEK`、链配置 JSON 或默认 Owner 凭证
+- 镜像内默认使用 `quickstart` 部署档位
+- 镜像必须声明运行时 volume，例如 `/app/runtime-data`
+- 首次启动时自动生成运行时 secrets、当前钱包和默认 Owner 凭证
+
+边界：
+
+- 该模式解决的是“零配置启动”，不是“零参数即可从宿主机访问”
+- 若用户不提供 `-p`，容器仍然可以启动，但宿主机无法直接访问 HTTP / MCP 端口
+
+### 2.2 docker-compose
+
+推荐作为标准受控部署模式。
 
 要求：
 
@@ -17,7 +34,7 @@
 - SQLite 数据持久化到独立 volume
 - `custom` 模式下的链配置 JSON 通过受控挂载文件提供
 
-### 2.2 非 docker
+### 2.3 非 docker
 
 支持：
 
@@ -37,6 +54,7 @@
 
 ### 3.1 服务配置
 
+- `DEPLOYMENT_PROFILE`
 - `HOST`
 - `PORT`
 - `NODE_ENV`
@@ -52,6 +70,7 @@
 - `WALLET_KEK_PATH`
 - `WALLET_KEK`
 - `ALLOW_PLAINTEXT_KEK_ENV`
+- `RUNTIME_SECRET_DIR`
 
 ### 3.4 链配置
 
@@ -72,7 +91,57 @@
 - `EVM_MIN_CONFIRMATIONS`
 - `CKB_MIN_CONFIRMATIONS`
 
-## 4. 链配置模式
+## 4. 部署档位
+
+### 4.1 `quickstart`
+
+这是官方镜像必须支持的零配置启动档位。
+
+正式要求：
+
+- `DEPLOYMENT_PROFILE=quickstart`
+- 默认监听 `0.0.0.0:18799`
+- 默认数据目录为 `/app/runtime-data`
+- 默认链配置必须落在 `testnet` preset
+- 未提供外部 `KEK` 时，自动生成并持久化 `wallet.kek`
+- 未提供 Owner JWT secret 时，自动生成并持久化 `owner-jwt.secret`
+- 未存在钱包时自动创建钱包
+- 未存在 Owner 凭证时自动创建默认 Owner 凭证
+- 首次启动时将 Owner 凭证文件路径写入日志
+- 首次启动时允许把 Owner 初始凭证明文打印到日志一次
+
+安全边界：
+
+- 运行时 secrets 与数据库同处本地运行时 volume
+- 这是一种本地便利模式，不是正式受控部署模式
+- 默认不得连接主网
+
+### 4.2 `managed`
+
+这是正式受控部署档位。
+
+正式要求：
+
+- `DEPLOYMENT_PROFILE=managed`
+- `KEK` 由外部提供
+- Owner JWT secret 由外部提供
+- 允许 `testnet`、`mainnet`、`custom` 三种链配置模式
+- 不依赖自动生成的运行时 secrets
+
+### 4.3 Docker 网络边界
+
+必须在文档中明确：
+
+- `docker run <image>` 可以实现零配置启动
+- 但如果未提供 `-p`，宿主机无法直接访问服务
+- 因此“零配置启动”与“零参数可访问”不是同一个目标
+
+推荐命令口径：
+
+- 最简可访问：`docker run -p 18799:18799 <image>`
+- 纯零参数：仅保证容器内服务完成初始化
+
+## 5. 链配置模式
 
 链配置采用 `env + JSON 文件` 的混合模式。
 
@@ -82,7 +151,7 @@
 - `CHAIN_ENV=testnet|mainnet` 时使用系统内置 preset
 - `CHAIN_ENV=custom` 时必须提供 `CHAIN_CONFIG_PATH`
 
-### 4.1 preset 模式
+### 5.1 preset 模式
 
 适用于：
 
@@ -95,7 +164,7 @@
 - 不允许通过散落 env 修改链身份
 - 配置目标是开箱可用，而不是可随意拼装
 
-### 4.2 custom 模式
+### 5.2 custom 模式
 
 适用于：
 
@@ -137,7 +206,7 @@
 }
 ```
 
-### 4.3 custom 模式字段要求
+### 5.3 custom 模式字段要求
 
 必须字段：
 
@@ -153,7 +222,7 @@
 
 - `evm.networkName`
 
-### 4.4 稳定币配置口径
+### 5.4 稳定币配置口径
 
 本期 `USDT` 与 `USDC` 都只支持 ERC-20 标准余额查询和转账。
 
@@ -175,7 +244,7 @@
 - 启动时校验 `USDT.decimals()` 返回值为 `6`
 - 启动时校验 `USDC.decimals()` 返回值为 `6`
 
-### 4.5 模式冲突处理
+### 5.5 模式冲突处理
 
 必须遵守：
 
@@ -183,7 +252,7 @@
 - `CHAIN_ENV=custom` 时缺失 `CHAIN_CONFIG_PATH` 必须启动失败
 - `CHAIN_ENV=testnet|mainnet` 时如果同时提供 custom 文件，应直接启动失败，避免歧义
 
-### 4.6 转账结算配置规则
+### 5.6 转账结算配置规则
 
 正式要求：
 
@@ -200,7 +269,7 @@
 - `testnet`、`mainnet`、`custom` 三种模式都必须运行结算任务
 - 结算任务是正式运行时职责，不是开发辅助工具
 
-## 5. 限额时区口径
+## 6. 限额时区口径
 
 按产品要求，限额按 server 本地时区重置。
 
@@ -216,32 +285,35 @@
 - 应用启动日志必须打印解析后的本地时区
 - 多环境之间不得默认依赖宿主机隐式时区
 
-## 6. 启动顺序
+## 7. 启动顺序
 
 固定启动顺序：
 
 1. 读取基础配置
-2. 解析 `CHAIN_ENV`
-3. 如为 `custom`，读取并校验链配置 JSON
-4. 解析本地时区
-5. 初始化日志
-6. 读取 `KEK`
-7. 初始化 SQLite 与 migration
-8. 检查链 RPC 可用性
-9. 检查或创建当前钱包
-10. 检查或创建默认 Owner 凭证
-11. 启动转账结算调度器
-12. 启动 MCP
-13. 启动 Owner HTTP API
-14. 提供静态 UI
+2. 解析 `DEPLOYMENT_PROFILE`
+3. 解析 `CHAIN_ENV`
+4. 如为 `custom`，读取并校验链配置 JSON
+5. 解析本地时区
+6. 初始化日志
+7. 根据部署档位解析或生成 runtime secrets
+8. 初始化 SQLite 与 migration
+9. 检查链 RPC 可用性
+10. 检查或创建当前钱包
+11. 检查或创建默认 Owner 凭证
+12. 若为首次 quickstart 启动，输出一次性 Owner 凭证提示
+13. 启动转账结算调度器
+14. 启动 MCP
+15. 启动 Owner HTTP API
+16. 提供静态 UI
 
-## 7. 健康检查
+## 8. 健康检查
 
-### 7.1 启动阶段自检
+### 8.1 启动阶段自检
 
 必须检查：
 
-- `KEK` 可读且格式正确
+- `managed` 模式下 `KEK` 可读且格式正确
+- `quickstart` 模式下运行时 secret 目录可写且可生成所需 secret
 - SQLite 可初始化
 - CKB RPC 可达
 - ETH RPC 可达
@@ -258,7 +330,7 @@
 - `USDC` 合约代码存在
 - `USDC` 合约 `decimals()` 返回值为 `6`
 
-### 7.2 运行中检查
+### 8.2 运行中检查
 
 至少提供：
 
@@ -268,23 +340,25 @@
 - 最近一次结算轮询时间检查
 - 链上状态查询能力检查
 
-## 8. 备份与恢复
+## 9. 备份与恢复
 
-### 8.1 必须备份的内容
+### 9.1 必须备份的内容
 
 - SQLite 数据库
-- `KEK` 来源文件或 docker secret 源
+- `managed` 模式下的 `KEK` 来源文件或 docker secret 源
+- `quickstart` 模式下的运行时 secret 目录
 
 当 `CHAIN_ENV=custom` 时还必须备份：
 
 - `CHAIN_CONFIG_PATH` 指向的 JSON 配置文件
 
-### 8.2 恢复要求
+### 9.2 恢复要求
 
 恢复时必须同时恢复：
 
 - 数据库
-- `KEK`
+- `managed` 模式下的 `KEK`
+- `quickstart` 模式下的运行时 secret 目录
 
 当 `CHAIN_ENV=custom` 时还必须恢复：
 
@@ -292,10 +366,11 @@
 
 否则无法解密钱包私钥或恢复正确链环境。
 
-## 9. 运维边界
+## 10. 运维边界
 
 运维文档应指导以下事项：
 
+- 如何选择 `DEPLOYMENT_PROFILE`
 - 如何提供 `KEK`
 - 如何选择 `CHAIN_ENV`
 - 如何在 `custom` 模式下挂载链配置 JSON
@@ -310,8 +385,8 @@
 - 描述当前代码是否已经实现某项能力
 - 记录临时开发差异
 
-## 10. 部署结论
+## 11. 部署结论
 
 本期部署设计的目标是：
 
-`让单机钱包服务在受控密钥、受控链配置和受控时区口径前提下稳定启动、可诊断、可恢复。`
+`让官方镜像既能以 quickstart 档位零配置启动，也能以 managed 档位进入受控部署。`
