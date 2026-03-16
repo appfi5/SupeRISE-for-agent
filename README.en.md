@@ -42,16 +42,17 @@ pnpm --filter @superise/wallet-server start
 
 Docker now follows a single-image, two-profile model:
 
-- `quickstart`: the default profile of the official image, intended for direct `docker run`
+- `quickstart`: the default profile of the official image, intended for zero-app-config startup with an explicit runtime data volume
 - `managed`: the controlled deployment profile used by the repository `docker-compose` flow
 
-The minimal official-image experience is:
+The official quickstart minimum command is:
 
 ```bash
-docker run -p 18799:18799 <official-image>
+docker run -p 18799:18799 -v superise-agent-wallet-data:/app/runtime-data <official-image>
 ```
 
-In `quickstart`, the container persists the database, `wallet.kek`, `owner-jwt.secret`, and the Owner credential notice under `/app/runtime-data`, and prints the initial Owner password to logs only once on the first boot.
+In `quickstart`, the container persists the database, `wallet.kek`, `owner-jwt.secret`, and the Owner credential notice under the mounted `/app/runtime-data` volume, and prints the initial Owner password to logs only once on the first boot.
+If `superise-agent-wallet-data:/app/runtime-data` is not mounted explicitly, the official image now fails fast instead of writing state into the container writable layer.
 
 The repository still provides one-command managed deployment:
 
@@ -111,7 +112,7 @@ Chain configuration is resolved independently for `CKB` and `EVM`, so preset and
 
 Rules:
 
-- `quickstart` is for zero-config startup and only allows the built-in `testnet` preset on both chains
+- `quickstart` is for zero-app-config startup and only allows the built-in `testnet` preset on both chains
 - `managed` is for controlled deployment and requires an external `KEK` plus `OWNER_JWT_SECRET`
 - `preset` uses the built-in `testnet/mainnet` profiles
 - `custom` loads a dedicated JSON file per chain

@@ -14,6 +14,10 @@ import {
 } from "./chain-config";
 
 export type DeploymentProfile = "quickstart" | "managed";
+export type WalletServerConfigLoadOptions = {
+  quickstartMountInfoPath?: string;
+  requireQuickstartRuntimeMount?: boolean;
+};
 
 export type WalletServerConfig = {
   nodeEnv: string;
@@ -74,9 +78,14 @@ const configSchema = z.object({
   TRANSFER_SUBMITTED_TIMEOUT_MS: z.coerce.number().int().positive().default(1800000),
 });
 
+const OFFICIAL_QUICKSTART_DATA_DIR = "/app/runtime-data";
+const OFFICIAL_QUICKSTART_VOLUME_NAME = "superise-agent-wallet-data";
+const DEFAULT_MOUNT_INFO_PATH = "/proc/self/mountinfo";
+
 export function loadWalletServerConfig(
   env: NodeJS.ProcessEnv = process.env,
   cwd = process.cwd(),
+  options: WalletServerConfigLoadOptions = {},
 ): WalletServerConfig {
   const parsed = configSchema.parse(env);
   const chain = loadChainConfig(env, cwd);
@@ -88,12 +97,22 @@ export function loadWalletServerConfig(
     parsed.OWNER_NOTICE_PATH ?? `${parsed.DATA_DIR}/owner-credential.txt`,
   );
 
+  validateDeploymentProfileConstraints(parsed.DEPLOYMENT_PROFILE, parsed, chain.chainConfig);
+  validateQuickstartRuntimeStorage({
+    profile: parsed.DEPLOYMENT_PROFILE,
+    dataDir,
+    runtimeSecretDir,
+    sqlitePath,
+    ownerNoticePath,
+    mountInfoPath: options.quickstartMountInfoPath ?? DEFAULT_MOUNT_INFO_PATH,
+    requireMountedDataDir:
+      options.requireQuickstartRuntimeMount ?? dataDir === OFFICIAL_QUICKSTART_DATA_DIR,
+  });
+
   mkdirSync(dataDir, { recursive: true });
   mkdirSync(runtimeSecretDir, { recursive: true });
   mkdirSync(dirname(sqlitePath), { recursive: true });
   mkdirSync(dirname(ownerNoticePath), { recursive: true });
-
-  validateDeploymentProfileConstraints(parsed.DEPLOYMENT_PROFILE, parsed, chain.chainConfig);
 
   const ownerJwtSecret = resolveOwnerJwtSecret(
     parsed.DEPLOYMENT_PROFILE,
@@ -199,4 +218,107 @@ function assertOwnerJwtSecretStrength(value: string): void {
   if (Buffer.byteLength(value, "utf8") < 32) {
     throw new Error("OWNER_JWT_SECRET must be at least 32 bytes");
   }
+}
+
+type QuickstartRuntimeValidationInput = {
+  profile: DeploymentProfile;
+  dataDir: string;
+  runtimeSecretDir: string;
+  sqlitePath: string;
+  ownerNoticePath: string;
+  mountInfoPath: string;
+  requireMountedDataDir: boolean;
+};
+
+function validateQuickstartRuntimeStorage(
+  input: QuickstartRuntimeValidationInput,
+): void {
+  if (input.profile !== "quickstart") {
+    return;
+  }
+
+  if (input.requireMountedDataDir) {
+    assertMountedDataDir(input.dataDir, input.mountInfoPath);
+  }
+
+  assertQuickstartRuntimeState(input.runtimeSecretDir, input.sqlitePath, input.ownerNoticePath);
+}
+
+function assertMountedDataDir(dataDir: string, mountInfoPath: string): void {
+  let mountInfo: string;
+  try {
+    mountInfo = readFileSync(mountInfoPath, "utf8");
+  } catch (error) {
+    throw new Error(
+      `quickstart could not verify whether ${dataDir} is an explicit persistent volume mount: ${String(
+        error,
+      )}. Start the official image with: ${formatQuickstartDockerRunCommand()}`,
+    );
+  }
+
+  const mountedPaths = mountInfo
+    .split("\n")
+    .filter((line) => line.length > 0)
+    .map((line) => line.split(" ")[4])
+    .filter((path): path is string => typeof path === "string")
+    .map(decodeMountInfoPath);
+
+  if (mountedPaths.includes(dataDir)) {
+    return;
+  }
+
+  throw new Error(
+    `quickstart requires an explicit persistent volume mounted at ${dataDir}. Start the official image with: ${formatQuickstartDockerRunCommand()}`,
+  );
+}
+
+function assertQuickstartRuntimeState(
+  runtimeSecretDir: string,
+  sqlitePath: string,
+  ownerNoticePath: string,
+): void {
+  const criticalFiles = [
+    {
+      label: "wallet.kek",
+      path: resolve(runtimeSecretDir, "wallet.kek"),
+    },
+    {
+      label: "owner-jwt.secret",
+      path: resolve(runtimeSecretDir, "owner-jwt.secret"),
+    },
+    {
+      label: "wallet.sqlite",
+      path: sqlitePath,
+    },
+    {
+      label: "owner-credential.txt",
+      path: ownerNoticePath,
+    },
+  ];
+  const existing = criticalFiles.filter((file) => existsSync(file.path));
+
+  if (existing.length === 0 || existing.length === criticalFiles.length) {
+    return;
+  }
+
+  const missing = criticalFiles.filter((file) => !existsSync(file.path));
+  throw new Error(
+    `quickstart runtime data is incomplete. Present files: ${existing
+      .map((file) => file.label)
+      .join(", ")}. Missing files: ${missing
+      .map((file) => file.label)
+      .join(", ")}. Restore the original ${OFFICIAL_QUICKSTART_VOLUME_NAME} data or remove the incomplete runtime directory before restarting quickstart.`,
+  );
+}
+
+function decodeMountInfoPath(value: string): string {
+  return value
+    .replaceAll("\\040", " ")
+    .replaceAll("\\011", "\t")
+    .replaceAll("\\012", "\n")
+    .replaceAll("\\134", "\\");
+}
+
+function formatQuickstartDockerRunCommand(): string {
+  return `docker run -p 18799:18799 -v ${OFFICIAL_QUICKSTART_VOLUME_NAME}:${OFFICIAL_QUICKSTART_DATA_DIR} <image>`;
 }

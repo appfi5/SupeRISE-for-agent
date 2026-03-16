@@ -1,6 +1,11 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { existsSync, readFileSync } = require("node:fs");
+const {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const { mkdtempSync } = require("node:fs");
@@ -8,6 +13,25 @@ const {
   AesGcmVaultService,
   loadWalletServerConfig,
 } = require("../dist/index.cjs");
+
+function hydrateQuickstartRuntimeState(cwd) {
+  const dataDir = join(cwd, "data");
+  const secretDir = join(dataDir, "secrets");
+  mkdirSync(secretDir, { recursive: true });
+
+  if (!existsSync(join(secretDir, "wallet.kek"))) {
+    writeFileSync(join(secretDir, "wallet.kek"), "11".repeat(32));
+  }
+  if (!existsSync(join(secretDir, "owner-jwt.secret"))) {
+    writeFileSync(join(secretDir, "owner-jwt.secret"), "x".repeat(32));
+  }
+  if (!existsSync(join(dataDir, "wallet.sqlite"))) {
+    writeFileSync(join(dataDir, "wallet.sqlite"), "");
+  }
+  if (!existsSync(join(dataDir, "owner-credential.txt"))) {
+    writeFileSync(join(dataDir, "owner-credential.txt"), "owner notice");
+  }
+}
 
 test("AesGcmVaultService quickstart generates and reuses runtime KEK file", async () => {
   const cwd = mkdtempSync(join(tmpdir(), "superise-vault-quickstart-"));
@@ -27,6 +51,7 @@ test("AesGcmVaultService quickstart generates and reuses runtime KEK file", asyn
   assert.ok(existsSync(runtimeKekPath));
 
   const firstKek = readFileSync(runtimeKekPath, "utf8").trim();
+  hydrateQuickstartRuntimeState(cwd);
 
   const secondConfig = loadWalletServerConfig(
     {

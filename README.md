@@ -42,16 +42,17 @@ pnpm --filter @superise/wallet-server start
 
 当前 Docker 采用“单镜像双档位”：
 
-- `quickstart`：官方镜像默认档位，支持直接 `docker run`
+- `quickstart`：官方镜像默认档位，支持零应用配置启动，但必须显式挂载运行时数据卷
 - `managed`：受控部署档位，仓库内的 `docker-compose` / `pnpm docker:up` 走这一档
 
-直接体验官方镜像时，可用最简命令：
+直接体验官方镜像时，quickstart 官方最小命令是：
 
 ```bash
-docker run -p 18799:18799 <official-image>
+docker run -p 18799:18799 -v superise-agent-wallet-data:/app/runtime-data <official-image>
 ```
 
-在 `quickstart` 档位下，容器会把数据库、`wallet.kek`、`owner-jwt.secret` 和 Owner 凭证文件写到 `/app/runtime-data`，并只在首次启动时把初始 Owner 密码打印到日志一次。
+在 `quickstart` 档位下，容器会把数据库、`wallet.kek`、`owner-jwt.secret` 和 Owner 凭证文件写到外挂卷 `/app/runtime-data`，并只在首次启动时把初始 Owner 密码打印到日志一次。
+如果未显式挂载 `superise-agent-wallet-data:/app/runtime-data`，官方镜像会直接启动失败，而不是偷偷写进容器可写层。
 
 仓库内也提供一键 managed 部署：
 
@@ -111,7 +112,7 @@ GitHub tag 会自动触发 Docker Hub 镜像构建与推送，仓库当前镜像
 
 规则：
 
-- `quickstart` 默认用于零配置启动，只允许两条链都落在内置 `testnet` preset
+- `quickstart` 默认用于零应用配置启动，只允许两条链都落在内置 `testnet` preset
 - `managed` 用于受控部署，要求外部提供 `KEK` 与 `OWNER_JWT_SECRET`
 - `preset` 使用内置 `testnet/mainnet` 配置
 - `custom` 通过各自的 JSON 文件加载完整链配置

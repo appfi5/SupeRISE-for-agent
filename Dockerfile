@@ -36,6 +36,5 @@ WORKDIR /app
 COPY --from=build /app /app
 
 EXPOSE 18799
-VOLUME ["/app/runtime-data"]
 
 CMD ["node", "apps/wallet-server/dist/main.js"]
