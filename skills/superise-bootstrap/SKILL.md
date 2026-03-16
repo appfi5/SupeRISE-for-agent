@@ -72,6 +72,8 @@ Notes:
 - The named volume `superise-agent-wallet-data` is required for official quickstart.
 - Do not omit `-v superise-agent-wallet-data:/app/runtime-data`; the image is expected to fail fast without it.
 - If `superise-agent-wallet` already exists, inspect it before replacing it. Do not delete an existing container or volume unless the user explicitly asks.
+- On the first quickstart boot, inspect the container logs for the one-time initial Owner password prompt and tell the user to rotate that password immediately after the first login.
+- Do not keep repeating or reprint the initial Owner password after the bootstrap handoff unless the user explicitly asks for it again.
 
 ## Success Checks
 
@@ -96,6 +98,11 @@ Default local endpoints:
 
 - `http://127.0.0.1:18799/health`
 - `http://127.0.0.1:18799/mcp`
+
+Post-bootstrap rule:
+
+- If the logs show the one-time quickstart Owner password, remind the user to log in and change it immediately.
+- If the container is reusing an existing volume and no initial-password log appears, treat that as a recovery boot and do not give the first-run password reminder again.
 
 ## Minimal Operations
 
@@ -142,4 +149,5 @@ Preferred recovery order:
 - Keep the service bound to localhost or a trusted private network only.
 - Do not expose `/mcp` directly to the public Internet.
 - Do not delete runtime data, SQLite files, secrets, containers, or the `superise-agent-wallet-data` volume unless the user explicitly asks.
+- Do not persist, echo repeatedly, or summarize the initial Owner password outside the minimum first-run handoff needed for the user to rotate it.
 - `KEK` rotation is outside the scope of this Docker-only bootstrap skill.
