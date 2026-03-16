@@ -19,16 +19,19 @@
 
 要求：
 
-- 用户可以直接执行 `docker run <image>` 完成首次启动
+- quickstart 属于零应用配置启动，不属于零 Docker 参数启动
+- 用户必须显式挂载运行时数据卷后才能完成首次启动
 - 不要求用户预先提供 `.env`、`KEK`、链配置 JSON 或默认 Owner 凭证
 - 镜像内默认使用 `quickstart` 部署档位
-- 镜像必须声明运行时 volume，例如 `/app/runtime-data`
+- quickstart 官方卷名约定为 `superise-agent-wallet-data`
+- 运行时目录固定为 `/app/runtime-data`
 - 首次启动时自动生成运行时 secrets、当前钱包和默认 Owner 凭证
 
 边界：
 
-- 该模式解决的是“零配置启动”，不是“零参数即可从宿主机访问”
-- 若用户不提供 `-p`，容器仍然可以启动，但宿主机无法直接访问 HTTP / MCP 端口
+- 该模式解决的是“零应用配置启动”，不是“零参数即可从宿主机访问”
+- 若用户未显式挂载运行时数据卷，系统必须直接启动失败
+- 若用户不提供 `-p`，宿主机无法直接访问 HTTP / MCP 端口
 
 ### 2.2 docker-compose
 
@@ -102,7 +105,7 @@
 
 ### 4.1 `quickstart`
 
-这是官方镜像必须支持的零配置启动档位。
+这是官方镜像必须支持的零应用配置启动档位。
 
 正式要求：
 
@@ -110,6 +113,7 @@
 - 未显式提供 `DEPLOYMENT_PROFILE` 时，官方镜像默认进入 `quickstart`
 - 默认监听 `0.0.0.0:18799`
 - 默认数据目录为 `/app/runtime-data`
+- quickstart 官方命令必须使用 `-v superise-agent-wallet-data:/app/runtime-data`
 - 默认链配置必须落在 `testnet` preset
 - 未提供外部 `KEK` 时，自动生成并持久化 `wallet.kek`
 - 未提供 Owner JWT secret 时，自动生成并持久化 `owner-jwt.secret`
@@ -117,6 +121,8 @@
 - 未存在 Owner 凭证时自动创建默认 Owner 凭证
 - 首次启动时将 Owner 凭证文件路径写入日志
 - 首次启动时允许把 Owner 初始凭证明文打印到日志一次
+- 启动前必须校验 `/app/runtime-data` 是显式外挂的持久化存储目录
+- 若未检测到外挂目录，必须 fail-fast 并输出正确启动命令
 
 安全边界：
 
@@ -124,6 +130,7 @@
 - 这是一种本地便利模式，不是正式受控部署模式
 - 默认不得连接主网
 - 若同时提供 `managed` 必需的外部 secret 或配置，必须直接启动失败并提示切换到 `managed`
+- runtime 数据只能挂载到钱包服务容器，不得挂载到 Agent 运行容器
 
 ### 4.2 `managed`
 
@@ -143,16 +150,26 @@
 
 必须在文档中明确：
 
-- `docker run <image>` 可以实现零配置启动
+- `docker run -p 18799:18799 -v superise-agent-wallet-data:/app/runtime-data <image>` 是 quickstart 官方最小命令
 - 但如果未提供 `-p`，宿主机无法直接访问服务
-- 因此“零配置启动”与“零参数可访问”不是同一个目标
+- 因此“零应用配置启动”与“零参数可访问”不是同一个目标
 
 推荐命令口径：
 
-- 最简可访问：`docker run -p 18799:18799 <image>`
-- 纯零参数：仅保证容器内服务完成初始化
+- quickstart：`docker run -p 18799:18799 -v superise-agent-wallet-data:/app/runtime-data <image>`
+- managed：按受控部署提供 secret、配置与数据挂载
 
-### 4.4 档位切换与接管迁移
+### 4.4 运行时数据卷要求
+
+正式要求：
+
+- quickstart 只支持显式外挂的持久化卷，不支持容器可写层
+- 官方 quickstart 文档统一使用 named volume `superise-agent-wallet-data`
+- Dockerfile 不得依赖 `VOLUME /app/runtime-data` 作为正式持久化方案，避免匿名 volume 掩盖未挂载问题
+- 删除容器后，只要重新挂回同一 `superise-agent-wallet-data`，系统必须恢复原状态
+- 若运行时目录只存在部分关键文件，系统必须 fail-fast，不得偷偷补生成
+
+### 4.5 档位切换与接管迁移
 
 正式要求：
 
@@ -320,16 +337,17 @@
 4. 如为 `custom`，读取并校验链配置 JSON
 5. 解析本地时区
 6. 初始化日志
-7. 根据部署档位解析或生成 runtime secrets
-8. 初始化 SQLite 与 migration
-9. 检查链 RPC 可用性
-10. 检查或创建当前钱包
-11. 检查或创建默认 Owner 凭证
-12. 若为首次 quickstart 启动，输出一次性 Owner 凭证提示
-13. 启动转账结算调度器
-14. 启动 MCP
-15. 启动 Owner HTTP API
-16. 提供静态 UI
+7. 若为 `quickstart`，校验 `/app/runtime-data` 为显式外挂持久化目录
+8. 根据部署档位解析或生成 runtime secrets
+9. 初始化 SQLite 与 migration
+10. 检查链 RPC 可用性
+11. 检查或创建当前钱包
+12. 检查或创建默认 Owner 凭证
+13. 若为首次 quickstart 启动，输出一次性 Owner 凭证提示
+14. 启动转账结算调度器
+15. 启动 MCP
+16. 启动 Owner HTTP API
+17. 提供静态 UI
 
 ## 8. 健康检查
 
@@ -338,7 +356,9 @@
 必须检查：
 
 - `managed` 模式下 `KEK` 可读且格式正确
+- `quickstart` 模式下 `/app/runtime-data` 已显式挂载
 - `quickstart` 模式下运行时 secret 目录可写且可生成所需 secret
+- `quickstart` 模式下运行时目录不存在部分损坏状态
 - SQLite 可初始化
 - CKB RPC 可达
 - ETH RPC 可达
@@ -372,6 +392,15 @@
 - SQLite 数据库
 - `managed` 模式下的 `KEK` 来源文件或 docker secret 源
 - `quickstart` 模式下的运行时 secret 目录
+
+### 9.2 quickstart 恢复口径
+
+正式要求：
+
+- 删除 quickstart 容器但保留 `superise-agent-wallet-data` 时，重新挂回该卷必须恢复原钱包与原运行时 secret
+- 删除容器后不得因为重新启动而生成新钱包覆盖旧状态
+- 若 `superise-agent-wallet-data` 整体丢失，则 quickstart 本地状态不可恢复
+- 若 `superise-agent-wallet-data` 仅剩部分关键文件，系统必须 fail-fast 并提示人工处理
 
 当 `CHAIN_ENV=custom` 时还必须备份：
 
@@ -414,4 +443,4 @@
 
 本期部署设计的目标是：
 
-`让官方镜像既能以 quickstart 档位零配置启动，也能以 managed 档位进入受控部署。`
+`让官方镜像既能以 quickstart 档位在显式挂载 superise-agent-wallet-data 的前提下零应用配置启动，也能以 managed 档位进入受控部署。`

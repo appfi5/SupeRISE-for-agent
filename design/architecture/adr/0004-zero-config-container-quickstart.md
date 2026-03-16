@@ -13,7 +13,7 @@ Accepted
 产品需要支持一种“傻瓜式一键启动”场景：
 
 - 由团队本地构建并分发官方镜像
-- 使用者只需执行 `docker run <image>` 或最少量参数命令即可完成首次启动
+- 使用者只需执行最少量参数命令即可完成首次启动
 - 使用者不应被要求预先准备 `.env`
 - 使用者不应被要求预先准备 `KEK`
 - 使用者不应被要求预先准备链配置 JSON
@@ -55,7 +55,7 @@ Docker Hub 分发层只发布一个正式运行镜像。
 正式要求：
 
 - 官方镜像默认使用 `quickstart`
-- 用户可直接执行 `docker run <image>` 完成首次启动
+- quickstart 官方最小命令为 `docker run -p 18799:18799 -v superise-agent-wallet-data:/app/runtime-data <image>`
 - 默认链环境固定为 `testnet` preset
 - 不要求用户提供外部 `KEK`
 - 不要求用户提供外部 Owner JWT secret
@@ -74,6 +74,7 @@ Docker Hub 分发层只发布一个正式运行镜像。
 - 只允许写入运行时数据目录
 - 不允许写入镜像层
 - 不允许在版本库中提供默认值
+- 必须写入显式外挂的持久化卷
 
 ### 5. `managed` 是正式受控部署档位
 
@@ -92,9 +93,9 @@ Docker Hub 分发层只发布一个正式运行镜像。
 - 缺失外部 `KEK`、Owner JWT secret 或必要链配置时必须直接启动失败
 - 不得自动退回 `quickstart`
 
-### 7. 官方镜像必须声明运行时 volume
+### 7. quickstart 必须使用显式外挂运行时数据卷
 
-为保证用户在不挂载额外 volume 时也能完成启动，官方镜像必须声明运行时 volume，例如：
+为保证 quickstart 数据不会随着容器意外删除而丢失，系统必须使用显式外挂的运行时数据卷，例如：
 
 - `/app/runtime-data`
 
@@ -104,16 +105,23 @@ Docker Hub 分发层只发布一个正式运行镜像。
 - 自动生成的运行时 secret
 - 默认 Owner 凭证文件
 
+正式要求：
+
+- quickstart 官方卷名统一为 `superise-agent-wallet-data`
+- quickstart 启动前必须确认 `/app/runtime-data` 为外部挂载的持久化存储
+- Dockerfile 不得依赖 `VOLUME /app/runtime-data` 作为正式持久化方案，避免匿名 volume 掩盖未挂载问题
+
 ### 8. 零配置启动与零参数可访问是两个不同目标
 
 正式边界：
 
-- `docker run <image>` 只保证容器完成初始化与服务启动
+- quickstart 解决的是“零应用配置启动”，不是“零 Docker 参数启动”
 - 若未提供 `-p`，宿主机默认无法访问容器端口
+- 若未提供显式数据卷挂载，系统必须直接启动失败
 
 因此：
 
-- 系统必须支持“零配置启动”
+- 系统必须支持“零应用配置启动”
 - 但不把“零参数即可从宿主机访问”定义为应用架构目标
 
 ### 9. 首次启动允许输出一次性凭证提示
@@ -136,12 +144,21 @@ Docker Hub 分发层只发布一个正式运行镜像。
 - 接管迁移必须由运维显式触发
 - 迁移的核心动作是把现有 `KEK` 接管为外部受控 secret，或使用新的外部 `KEK` 重包装现有 `DEK`
 - 切换完成后，系统必须以 `DEPLOYMENT_PROFILE=managed` 重新启动
+- 删除 quickstart 容器后，只要重新挂回同一 `superise-agent-wallet-data`，系统就必须恢复原状态
+
+### 11. quickstart 数据不得直接暴露给 Agent
+
+正式要求：
+
+- `superise-agent-wallet-data` 只允许挂载到钱包服务容器
+- Agent 可见面只包括 MCP 工具返回值，不包括运行时文件、日志或挂载目录内容
+- 挂载数据中的 `KEK`、JWT secret、SQLite 文件都不得通过 MCP 或 Owner API 直接暴露
 
 ## 结果
 
 这项决策带来的结果是：
 
-- 官方镜像可真正支持零配置首次启动
+- 官方镜像可在显式挂卷前提下支持零应用配置首次启动
 - Docker Hub 使用者只需要理解一个镜像，而不是两套镜像
 - 正式部署仍保留受控密钥边界
 - quickstart 与 managed 的安全假设不会相互污染
@@ -163,3 +180,4 @@ Docker Hub 分发层只发布一个正式运行镜像。
 - quickstart 首次启动 secret 自举逻辑
 - quickstart 一次性凭证输出逻辑
 - quickstart 接管到 managed 的迁移流程
+- quickstart 外挂数据卷校验与恢复逻辑

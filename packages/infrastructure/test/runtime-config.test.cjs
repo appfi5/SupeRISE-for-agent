@@ -1,6 +1,12 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { existsSync, mkdtempSync, readFileSync, writeFileSync } = require("node:fs");
+const {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  writeFileSync,
+} = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const {
@@ -52,6 +58,32 @@ const EVM_CUSTOM_CONFIG = {
     },
   },
 };
+
+function hydrateQuickstartRuntimeState(cwd) {
+  const dataDir = join(cwd, "data");
+  const secretDir = join(dataDir, "secrets");
+  mkdirSync(secretDir, { recursive: true });
+
+  if (!existsSync(join(secretDir, "wallet.kek"))) {
+    writeFileSync(join(secretDir, "wallet.kek"), "11".repeat(32));
+  }
+  if (!existsSync(join(secretDir, "owner-jwt.secret"))) {
+    writeFileSync(join(secretDir, "owner-jwt.secret"), "x".repeat(32));
+  }
+  if (!existsSync(join(dataDir, "wallet.sqlite"))) {
+    writeFileSync(join(dataDir, "wallet.sqlite"), "");
+  }
+  if (!existsSync(join(dataDir, "owner-credential.txt"))) {
+    writeFileSync(join(dataDir, "owner-credential.txt"), "owner notice");
+  }
+}
+
+function writeMountInfo(filePath, mountPoint) {
+  writeFileSync(
+    filePath,
+    `27 20 0:22 / ${mountPoint} rw,relatime - tmpfs tmpfs rw\n`,
+  );
+}
 
 test("loadWalletServerConfig defaults both chains to the built-in testnet preset", () => {
   const cwd = mkdtempSync(join(tmpdir(), "superise-config-default-"));
@@ -198,6 +230,7 @@ test("loadWalletServerConfig quickstart reuses the same persisted OWNER_JWT_SECR
     },
     cwd,
   );
+  hydrateQuickstartRuntimeState(cwd);
   const second = loadWalletServerConfig(
     {
       DEPLOYMENT_PROFILE: "quickstart",
@@ -206,6 +239,67 @@ test("loadWalletServerConfig quickstart reuses the same persisted OWNER_JWT_SECR
   );
 
   assert.equal(first.ownerJwtSecret, second.ownerJwtSecret);
+});
+
+test("loadWalletServerConfig quickstart requires an explicit mounted runtime data directory when requested", () => {
+  const cwd = mkdtempSync(join(tmpdir(), "superise-config-quickstart-mounted-"));
+  const mountInfoPath = join(cwd, "mountinfo");
+  const dataDir = join(cwd, "runtime-data");
+  writeMountInfo(mountInfoPath, dataDir);
+
+  const config = loadWalletServerConfig(
+    {
+      DEPLOYMENT_PROFILE: "quickstart",
+      DATA_DIR: "./runtime-data",
+    },
+    cwd,
+    {
+      quickstartMountInfoPath: mountInfoPath,
+      requireQuickstartRuntimeMount: true,
+    },
+  );
+
+  assert.equal(config.dataDir, dataDir);
+  assert.ok(existsSync(join(dataDir, "secrets/owner-jwt.secret")));
+});
+
+test("loadWalletServerConfig quickstart rejects a missing explicit mounted runtime data directory", () => {
+  const cwd = mkdtempSync(join(tmpdir(), "superise-config-quickstart-unmounted-"));
+  const mountInfoPath = join(cwd, "mountinfo");
+  writeMountInfo(mountInfoPath, join(cwd, "some-other-data"));
+
+  assert.throws(
+    () =>
+      loadWalletServerConfig(
+        {
+          DEPLOYMENT_PROFILE: "quickstart",
+          DATA_DIR: "./runtime-data",
+        },
+        cwd,
+        {
+          quickstartMountInfoPath: mountInfoPath,
+          requireQuickstartRuntimeMount: true,
+        },
+      ),
+    /quickstart requires an explicit persistent volume mounted/i,
+  );
+});
+
+test("loadWalletServerConfig quickstart rejects incomplete runtime data", () => {
+  const cwd = mkdtempSync(join(tmpdir(), "superise-config-quickstart-partial-"));
+  mkdirSync(join(cwd, "data/secrets"), { recursive: true });
+  writeFileSync(join(cwd, "data/secrets/owner-jwt.secret"), "x".repeat(32));
+
+  assert.throws(
+    () =>
+      loadWalletServerConfig(
+        {
+          DEPLOYMENT_PROFILE: "quickstart",
+        },
+        cwd,
+      ),
+    /quickstart runtime data is incomplete/i,
+  );
 });
 
 test("loadWalletServerConfig quickstart rejects external OWNER_JWT_SECRET", () => {

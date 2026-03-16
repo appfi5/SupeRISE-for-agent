@@ -15,14 +15,14 @@
 特点：
 
 - 同一镜像直接 `docker run`
-- 默认零配置启动
+- 默认零应用配置启动
 - 首次启动自动生成 runtime secret
 - 默认链环境固定为内置 `testnet` preset
 
 最简可访问示例：
 
 ```bash
-docker run -p 18799:18799 <official-image>
+docker run -p 18799:18799 -v superise-agent-wallet-data:/app/runtime-data <official-image>
 ```
 
 首次启动后，运行时目录 `/app/runtime-data` 下会包含：
@@ -34,7 +34,8 @@ docker run -p 18799:18799 <official-image>
 
 说明：
 
-- Quickstart 只保证零配置启动，不保证零参数即可从宿主机访问
+- Quickstart 只保证零应用配置启动，不保证零参数即可从宿主机访问
+- 若未显式挂载 `superise-agent-wallet-data:/app/runtime-data`，系统会直接启动失败
 - 若不提供 `-p`，容器仍可完成初始化，但宿主机无法直接访问服务
 - 初始 Owner 密码只会在首次启动日志中打印一次
 

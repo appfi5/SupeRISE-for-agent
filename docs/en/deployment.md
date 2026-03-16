@@ -13,14 +13,14 @@ This is the default profile of the official image.
 Characteristics:
 
 - direct `docker run` on the same official image
-- zero-config first boot
+- zero-app-config first boot
 - runtime secrets are generated on the first start
 - both chains stay on the built-in `testnet` preset
 
 Minimal accessible example:
 
 ```bash
-docker run -p 18799:18799 <official-image>
+docker run -p 18799:18799 -v superise-agent-wallet-data:/app/runtime-data <official-image>
 ```
 
 After the first boot, `/app/runtime-data` contains:
@@ -32,7 +32,8 @@ After the first boot, `/app/runtime-data` contains:
 
 Notes:
 
-- quickstart guarantees zero-config startup, not zero-argument host accessibility
+- quickstart guarantees zero-app-config startup, not zero-argument host accessibility
+- without an explicit `superise-agent-wallet-data:/app/runtime-data` mount, startup fails fast
 - without `-p`, the container still initializes, but the host cannot reach the service directly
 - the initial Owner password is printed only once on the first boot
 

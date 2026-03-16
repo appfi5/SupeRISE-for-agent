@@ -19,6 +19,24 @@ The default Chinese version is [README.md](./README.md).
 - MCP integration (Chinese): [`docs/mcp.md`](./docs/mcp.md)
 - Deployment guide (Chinese): [`docs/deployment.md`](./docs/deployment.md)
 
+## Skills
+
+This repository ships two installable skills:
+
+- `superise-bootstrap`: pull the official Docker Hub image, check the runtime volume, start the service, and verify it
+- `superise-mcp-usage`: connect through MCP with the standard `initialize`, `tools/list`, and `tools/call` flow
+
+Install them directly from this repository with [`skills`](https://www.npmjs.com/package/skills):
+
+```bash
+npx skills add https://github.com/appfi5/SupeRISE-for-agent --list
+npx skills add https://github.com/appfi5/SupeRISE-for-agent \
+  --skill superise-bootstrap \
+  --skill superise-mcp-usage
+```
+
+Add `-g` if you want to install into the global skill directory. Restart your client after installation so the new skills are loaded.
+
 ## Current Capabilities
 
 - `Agents` integrate through `MCP`; `Owners` manage the wallet and limits through the local management surface and local `HTTP API`
@@ -28,43 +46,67 @@ The default Chinese version is [README.md](./README.md).
 - Agent transfers are enforced with independent daily / weekly / monthly limits per asset; Owner transfers are exempt
 - `wallet.operation_status` reports server-side orchestration status, while on-chain progress must be checked through `nervos.tx_status` and `ethereum.tx_status`
 
-## Common Commands
+## Ways To Run
+
+This README keeps only two recommended startup paths and prioritizes the published Docker image.
+
+### 1. Use The Published Docker Image Directly
+
+Use this for zero-app-config startup. The official image name is `superise/agent-wallet`.
+
+The image has two runtime profiles:
+
+- `quickstart`: the default profile; intended for fast local startup; auto-generates runtime secrets; fixed to the built-in `testnet` preset; requires `superise-agent-wallet-data:/app/runtime-data`
+- `managed`: the controlled deployment profile; requires explicit `DEPLOYMENT_PROFILE=managed`, an external `KEK`, and `OWNER_JWT_SECRET`; intended for controlled environments, mainnet, or custom chain config
+
+#### `quickstart`
+
+Check or create the runtime volume first, then pull the latest image and start it:
 
 ```bash
-pnpm install
-pnpm build
-cp apps/wallet-server/.env.example apps/wallet-server/.env
-pnpm dev
-pnpm --filter @superise/wallet-server start
+docker volume inspect superise-agent-wallet-data >/dev/null 2>&1 || docker volume create superise-agent-wallet-data
+docker pull superise/agent-wallet:latest
+docker run -d \
+  --name superise-agent-wallet \
+  --restart unless-stopped \
+  -p 18799:18799 \
+  -v superise-agent-wallet-data:/app/runtime-data \
+  superise/agent-wallet:latest
 ```
 
-## Docker
+Notes:
 
-Docker now follows a single-image, two-profile model:
+- `superise-agent-wallet-data` is the required persistent volume for quickstart
+- without `-v superise-agent-wallet-data:/app/runtime-data`, the official image fails fast on purpose
+- on the first quickstart boot, the logs print the initial Owner password once; rotate it immediately after the first login
 
-- `quickstart`: the default profile of the official image, intended for direct `docker run`
-- `managed`: the controlled deployment profile used by the repository `docker-compose` flow
+#### `managed`
 
-The minimal official-image experience is:
+If you want to keep using the same image but run it in a controlled mode, switch explicitly to `managed` and provide external secrets. A minimal example is:
 
 ```bash
-docker run -p 18799:18799 <official-image>
+mkdir -p ./runtime-data ./secrets
+openssl rand -hex 32 > ./secrets/wallet.kek
+
+docker pull superise/agent-wallet:latest
+docker run -d \
+  --name superise-agent-wallet-managed \
+  --restart unless-stopped \
+  -p 18799:18799 \
+  -e DEPLOYMENT_PROFILE=managed \
+  -e OWNER_JWT_SECRET='replace-with-a-high-entropy-secret' \
+  -e WALLET_KEK_PATH=/run/secrets/wallet_kek \
+  -v "$PWD/runtime-data:/app/runtime-data" \
+  -v "$PWD/secrets/wallet.kek:/run/secrets/wallet_kek:ro" \
+  superise/agent-wallet:latest
 ```
 
-In `quickstart`, the container persists the database, `wallet.kek`, `owner-jwt.secret`, and the Owner credential notice under `/app/runtime-data`, and prints the initial Owner password to logs only once on the first boot.
+Notes:
 
-The repository still provides one-command managed deployment:
-
-```bash
-pnpm docker:up
-```
-
-On the first run, the helper script will:
-
-- create `deploy/docker/.env` from `deploy/docker/.env.example`
-- generate `deploy/docker/secrets/wallet_kek.txt` as the controlled `KEK` source
-- persist runtime data under `deploy/docker/runtime-data`
-- build and start the `wallet-server` container in `managed` mode
+- `managed` never falls back to `quickstart`
+- startup fails fast when `OWNER_JWT_SECRET` or `WALLET_KEK_PATH` / `WALLET_KEK` is missing
+- if you need mainnet or custom chain settings, add the required `CKB_*` / `EVM_*` environment variables and mount the JSON config files
+- for the repository-managed controlled deployment flow, prefer `pnpm docker:up`
 
 After startup:
 
@@ -74,13 +116,33 @@ After startup:
 
 The default Docker configuration binds only to local `127.0.0.1`. `/mcp` is unauthenticated and must not be exposed to the public Internet or to untrusted networks.
 
-Docker deployment also provides one-command `KEK` rotation:
+### 2. Clone The Code And Run It Yourself
+
+Use this for local development, debugging, or code changes.
 
 ```bash
-pnpm docker:rotate-kek
+git clone https://github.com/appfi5/SupeRISE-for-agent.git
+cd SupeRISE-for-agent
+pnpm install
+cp apps/wallet-server/.env.example apps/wallet-server/.env
+pnpm dev
 ```
 
-This command stops the service, re-wraps the current `DEK` with a new `KEK`, backs up the previous key source, and starts the service again.
+If you want a production-style local start:
+
+```bash
+pnpm build
+pnpm --filter @superise/wallet-server start
+```
+
+### Controlled Deployment Note
+
+If you are doing a controlled local deployment from the source repository, you can still use the repository-managed flow:
+
+```bash
+pnpm docker:up
+pnpm docker:rotate-kek
+```
 
 ## Image Publishing
 
@@ -111,7 +173,7 @@ Chain configuration is resolved independently for `CKB` and `EVM`, so preset and
 
 Rules:
 
-- `quickstart` is for zero-config startup and only allows the built-in `testnet` preset on both chains
+- `quickstart` is for zero-app-config startup and only allows the built-in `testnet` preset on both chains
 - `managed` is for controlled deployment and requires an external `KEK` plus `OWNER_JWT_SECRET`
 - `preset` uses the built-in `testnet/mainnet` profiles
 - `custom` loads a dedicated JSON file per chain
