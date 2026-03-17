@@ -20,7 +20,7 @@
 apps/
   wallet-server/
   owner-ui/
-    src/i18n/
+    src/localization/
 packages/
   app-contracts/
   domain/
