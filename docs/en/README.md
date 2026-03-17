@@ -12,7 +12,7 @@ Chinese remains the default language. The default entry is [docs/README.md](../R
 ## Current Coverage
 
 - the MCP tool surface, including the boundary between `wallet.operation_status` and chain-specific `tx_status`
-- Owner local-management capabilities, including wallet views, the shared address book, transfers, and per-asset daily / weekly / monthly limits
+- Owner local-management capabilities, including wallet views, the shared address book, transfers, per-asset daily / weekly / monthly limits, and `en` / `zh` UI switching
 - deployment and runtime configuration for `USDT` / `USDC`, background settlement polling, and health checks
 
 ## Scope
