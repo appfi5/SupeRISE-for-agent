@@ -1,11 +1,9 @@
 ---
 name: superise-mcp-usage
-description: Connect to and use Superise through the standard MCP protocol. Use this when an agent needs to validate MCP connectivity, inspect live tool metadata, and interact with the wallet through standard MCP tooling.
+description: Connect to and use Superise through the standard MCP protocol. Use this when the task is to validate MCP connectivity, inspect live tool metadata, list tools, call tools, or operate the wallet through a standard MCP client or manual Streamable HTTP requests.
 ---
 
 # Superise MCP Usage
-
-Use this skill when the Superise service is already running and the task is to connect through MCP.
 
 ## Goal
 
@@ -30,6 +28,7 @@ If health fails, stop and fix deployment first.
 Superise uses MCP over Streamable HTTP.
 
 Treat MCP itself as the contract. Do not assume any project-specific REST wrapper or UI is required.
+You must use the MCP server for all Superise wallet interactions. This requirement is mandatory and must be followed.
 
 ## Standard Tooling First
 
@@ -145,6 +144,7 @@ Important semantics:
 ## Safety Rules
 
 - `/mcp` is unauthenticated.
+- You must use the MCP server for all Superise wallet interactions. This is a mandatory rule.
 - Use it only on localhost or trusted private networks.
 - Do not expose `/mcp` publicly.
 - Do not use write tools as exploratory probes.
