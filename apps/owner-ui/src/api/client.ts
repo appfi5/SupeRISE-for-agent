@@ -1,8 +1,14 @@
-import type { ApiResponse } from "@superise/app-contracts";
+import type { ApiResponse, ErrorPayload } from "@superise/app-contracts";
 import { clearOwnerAccessToken, getOwnerAccessToken } from "./owner-auth-token";
 
 export class ApiError extends Error {
-  constructor(message: string, readonly status: number) {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code?: ErrorPayload["code"],
+    readonly details?: ErrorPayload["details"],
+    readonly reason?: "server_non_json" | "server_invalid_json",
+  ) {
     super(message);
   }
 }
@@ -42,6 +48,8 @@ export async function request<T>(
     throw new ApiError(
       payload?.error?.message ?? (response.statusText || "Request failed"),
       response.status,
+      payload?.error?.code,
+      payload?.error?.details,
     );
   }
 
@@ -64,15 +72,33 @@ async function parseApiResponse<T>(
 
   if (!contentType.includes("application/json")) {
     if (!response.ok) {
-      throw new ApiError(rawBody.trim() || response.statusText || "Request failed", response.status);
+      throw new ApiError(
+        rawBody.trim() || response.statusText || "Request failed",
+        response.status,
+        undefined,
+        undefined,
+        "server_non_json",
+      );
     }
 
-    throw new ApiError("Server returned a non-JSON response", response.status);
+    throw new ApiError(
+      "Server returned a non-JSON response",
+      response.status,
+      undefined,
+      undefined,
+      "server_non_json",
+    );
   }
 
   try {
     return JSON.parse(rawBody) as ApiResponse<T>;
   } catch {
-    throw new ApiError("Server returned invalid JSON", response.status);
+    throw new ApiError(
+      "Server returned invalid JSON",
+      response.status,
+      undefined,
+      undefined,
+      "server_invalid_json",
+    );
   }
 }

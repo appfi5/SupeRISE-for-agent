@@ -45,7 +45,9 @@ import type {
   AuditLogDto,
   OwnerAssetLimitEntryDto,
 } from "@superise/app-contracts";
-import { OWNER_RISK_NOTICES, type AppState } from "../types/app-state";
+import { LanguageSwitcher } from "./LanguageSwitcher";
+import { useLocalization } from "../localization";
+import { OWNER_RISK_NOTICE_KEYS, type AppState } from "../types/app-state";
 import type {
   AssetAmountInputState,
   AssetAmountUnit,
@@ -227,6 +229,7 @@ export function DashboardScreen({
   onCkbToTypeChange,
   onEthToTypeChange,
 }: DashboardScreenProps) {
+  const { formatDateTime, formatDecimalString, formatNumber, t } = useLocalization();
   const [selectedKey, setSelectedKey] = useState<SectionKey>(() => getSectionKeyFromHash());
   const filteredContacts = useMemo(() => {
     const normalized = addressBookFilter.trim().toLowerCase();
@@ -240,14 +243,14 @@ export function DashboardScreen({
   }, [addressBookFilter, appState.addressBookContacts]);
 
   const menuItems: MenuProps["items"] = [
-    { key: "overview", icon: <DashboardOutlined />, label: "概览" },
-    { key: "wallet", icon: <WalletOutlined />, label: "钱包状态" },
-    { key: "transfers", icon: <SendOutlined />, label: "转账" },
-    { key: "signing", icon: <SignatureOutlined />, label: "签名" },
-    { key: "address-book", icon: <BookOutlined />, label: "地址簿" },
-    { key: "limits", icon: <SafetyCertificateOutlined />, label: "限额管理" },
-    { key: "security", icon: <KeyOutlined />, label: "安全与凭证" },
-    { key: "audit", icon: <AuditOutlined />, label: "审计日志" },
+    { key: "overview", icon: <DashboardOutlined />, label: t("menu.overview") },
+    { key: "wallet", icon: <WalletOutlined />, label: t("menu.wallet") },
+    { key: "transfers", icon: <SendOutlined />, label: t("menu.transfers") },
+    { key: "signing", icon: <SignatureOutlined />, label: t("menu.signing") },
+    { key: "address-book", icon: <BookOutlined />, label: t("menu.address_book") },
+    { key: "limits", icon: <SafetyCertificateOutlined />, label: t("menu.limits") },
+    { key: "security", icon: <KeyOutlined />, label: t("menu.security") },
+    { key: "audit", icon: <AuditOutlined />, label: t("menu.audit") },
   ];
 
   useEffect(() => {
@@ -270,7 +273,7 @@ export function DashboardScreen({
         <div className="owner-brand">
           <div className="owner-brand-mark">S</div>
           <div className="owner-brand-copy">
-            <Title level={4}>Owner Console</Title>
+            <Title level={4}>{t("brand.owner_console")}</Title>
           </div>
         </div>
 
@@ -290,23 +293,24 @@ export function DashboardScreen({
       <Layout>
         <Header className="owner-header">
           <div>
-            <Title level={2}>高权限操作台</Title>
+            <Title level={2}>{t("header.title")}</Title>
           </div>
 
           <Space wrap>
             <Badge
               status={appState.credential?.credentialStatus === "DEFAULT_PENDING_ROTATION" ? "warning" : "success"}
-              text={formatCredentialStatus(appState.credential?.credentialStatus)}
+              text={formatCredentialStatus(appState.credential?.credentialStatus, t)}
             />
+            <LanguageSwitcher />
             <Button
               icon={isRefreshing ? <LoadingOutlined /> : <ReloadOutlined />}
               loading={isRefreshing}
               onClick={onRefresh}
             >
-              刷新
+              {t("header.refresh")}
             </Button>
             <Button danger onClick={onLogout} loading={activeAction === "logout"}>
-              退出
+              {t("header.logout")}
             </Button>
           </Space>
         </Header>
@@ -314,8 +318,8 @@ export function DashboardScreen({
         <Content className="owner-content">
           <div className="owner-page-head">
             <div>
-              <Title level={2}>{getSectionTitle(selectedKey)}</Title>
-              <Paragraph type="secondary">{getSectionDescription(selectedKey)}</Paragraph>
+              <Title level={2}>{getSectionTitle(selectedKey, t)}</Title>
+              <Paragraph type="secondary">{getSectionDescription(selectedKey, t)}</Paragraph>
             </div>
           </div>
 
@@ -427,6 +431,7 @@ function OverviewSection({
   appState: AppState;
   isRefreshing: boolean;
 }) {
+  const { formatDecimalString, formatNumber, t } = useLocalization();
   const configuredLimitCount = appState.assetLimits.filter(
     (limit) => limit.dailyLimit || limit.weeklyLimit || limit.monthlyLimit,
   ).length;
@@ -438,14 +443,14 @@ function OverviewSection({
       <Alert
         type="warning"
         showIcon
-        message="Owner 操作不受 Agent 侧限额拦截，请在执行转账、导出和导入前再次确认。"
+        message={t("overview.alert.owner_bypass")}
       />
 
       <Row gutter={[16, 16]}>
         <Col xs={24} md={12} xl={6}>
           <Card loading={isRefreshing}>
             <Statistic
-              title="钱包指纹"
+              title={t("overview.stat.wallet_fingerprint")}
               value={appState.current?.walletFingerprint ?? "-"}
               valueStyle={{ fontSize: 18 }}
             />
@@ -453,21 +458,30 @@ function OverviewSection({
         </Col>
         <Col xs={24} md={12} xl={6}>
           <Card loading={isRefreshing}>
-            <Statistic title="钱包状态" value={appState.current?.status ?? "-"} />
-          </Card>
-        </Col>
-        <Col xs={24} md={12} xl={6}>
-          <Card loading={isRefreshing}>
             <Statistic
-              title="地址簿联系人"
-              value={appState.addressBookContacts.length}
-              suffix="个"
+              title={t("overview.stat.wallet_status")}
+              value={formatWalletStatus(appState.current?.status, t)}
             />
           </Card>
         </Col>
         <Col xs={24} md={12} xl={6}>
           <Card loading={isRefreshing}>
-            <Statistic title="审计记录" value={appState.audits.length} suffix="条" />
+            <Statistic
+              title={t("overview.stat.address_book_contacts")}
+              value={appState.addressBookContacts.length}
+              formatter={(value) => formatNumber(Number(value ?? 0))}
+              suffix={t("common.page_item.contacts")}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} md={12} xl={6}>
+          <Card loading={isRefreshing}>
+            <Statistic
+              title={t("overview.stat.audit_records")}
+              value={appState.audits.length}
+              formatter={(value) => formatNumber(Number(value ?? 0))}
+              suffix={t("common.page_item.records")}
+            />
           </Card>
         </Col>
       </Row>
@@ -475,8 +489,8 @@ function OverviewSection({
       <Row gutter={[16, 16]}>
         <Col xs={24} xl={14}>
           <Card
-            title="链上余额概览"
-            extra={<Tag color="processing">实时视图</Tag>}
+            title={t("overview.card.balance_summary")}
+            extra={<Tag color="processing">{t("overview.card.live_tag")}</Tag>}
           >
             <Row gutter={[16, 16]}>
               <Col xs={24} md={12}>
@@ -486,6 +500,7 @@ function OverviewSection({
                       appState.nervos.ckbBalance?.amount,
                       appState.nervos.ckbBalance?.decimals,
                       "CKB",
+                      formatDecimalString,
                     )}
                   >
                     <Statistic
@@ -494,6 +509,7 @@ function OverviewSection({
                         appState.nervos.ckbBalance?.amount,
                         appState.nervos.ckbBalance?.decimals,
                         "CKB",
+                        formatDecimalString,
                       )}
                       valueStyle={{ fontSize: 28, fontWeight: 700 }}
                     />
@@ -507,6 +523,7 @@ function OverviewSection({
                       appState.ethereum.ethBalance?.amount,
                       appState.ethereum.ethBalance?.decimals,
                       "ETH",
+                      formatDecimalString,
                     )}
                   >
                     <Statistic
@@ -515,6 +532,7 @@ function OverviewSection({
                         appState.ethereum.ethBalance?.amount,
                         appState.ethereum.ethBalance?.decimals,
                         "ETH",
+                        formatDecimalString,
                       )}
                       valueStyle={{ fontSize: 28, fontWeight: 700 }}
                     />
@@ -528,6 +546,7 @@ function OverviewSection({
                       appState.ethereum.usdtBalance?.amount,
                       appState.ethereum.usdtBalance?.decimals,
                       "USDT",
+                      formatDecimalString,
                     )}
                   >
                     <Statistic
@@ -536,6 +555,7 @@ function OverviewSection({
                         appState.ethereum.usdtBalance?.amount,
                         appState.ethereum.usdtBalance?.decimals,
                         "USDT",
+                        formatDecimalString,
                       )}
                       valueStyle={{ fontSize: 28, fontWeight: 700 }}
                     />
@@ -549,6 +569,7 @@ function OverviewSection({
                       appState.ethereum.usdcBalance?.amount,
                       appState.ethereum.usdcBalance?.decimals,
                       "USDC",
+                      formatDecimalString,
                     )}
                   >
                     <Statistic
@@ -557,6 +578,7 @@ function OverviewSection({
                         appState.ethereum.usdcBalance?.amount,
                         appState.ethereum.usdcBalance?.decimals,
                         "USDC",
+                        formatDecimalString,
                       )}
                       valueStyle={{ fontSize: 28, fontWeight: 700 }}
                     />
@@ -569,23 +591,25 @@ function OverviewSection({
 
         <Col xs={24} xl={10}>
           <Card
-            title="控制台状态"
+            title={t("overview.card.console_status")}
             extra={
               <Tag color={defaultCredentialPending ? "warning" : "success"}>
-                {formatCredentialStatus(appState.credential?.credentialStatus)}
+                {formatCredentialStatus(appState.credential?.credentialStatus, t)}
               </Tag>
             }
           >
             <Descriptions column={1} size="small" style={{ marginBottom: 16 }}>
-              <Descriptions.Item label="当前钱包来源">
-                {appState.current?.source ?? "-"}
+              <Descriptions.Item label={t("overview.card.current_wallet_source")}>
+                {formatWalletSource(appState.current?.source, t)}
               </Descriptions.Item>
-              <Descriptions.Item label="已配置限额资产">
-                {configuredLimitCount} / {appState.assetLimits.length}
+              <Descriptions.Item label={t("overview.card.configured_limit_assets")}>
+                {formatNumber(configuredLimitCount)} / {formatNumber(appState.assetLimits.length)}
               </Descriptions.Item>
-              <Descriptions.Item label="地址簿可用性">
+              <Descriptions.Item label={t("overview.card.address_book_availability")}>
                 <Tag color={appState.addressBookContacts.length > 0 ? "success" : "default"}>
-                  {appState.addressBookContacts.length > 0 ? "已就绪" : "空"}
+                  {appState.addressBookContacts.length > 0
+                    ? t("address_book.state.ready")
+                    : t("address_book.state.empty")}
                 </Tag>
               </Descriptions.Item>
             </Descriptions>
@@ -598,7 +622,11 @@ function OverviewSection({
               }
               size="small"
               status="active"
-              format={(percent) => `限额配置 ${percent ?? 0}%`}
+              format={(percent) =>
+                t("overview.card.limit_progress", {
+                  percent: formatNumber(percent ?? 0),
+                })
+              }
             />
           </Card>
         </Col>
@@ -606,32 +634,39 @@ function OverviewSection({
 
       <Row gutter={[16, 16]}>
         <Col xs={24} xl={14}>
-          <Card title="风险提示" extra={<Tag color="warning">Owner 高权限</Tag>}>
+          <Card
+            title={t("overview.card.risk_notices")}
+            extra={<Tag color="warning">{t("overview.card.high_privilege")}</Tag>}
+          >
             <List
-              dataSource={[...OWNER_RISK_NOTICES]}
+              dataSource={[...OWNER_RISK_NOTICE_KEYS]}
               renderItem={(item) => (
                 <List.Item>
-                  <Text>{item}</Text>
+                  <Text>{t(item)}</Text>
                 </List.Item>
               )}
             />
           </Card>
         </Col>
         <Col xs={24} xl={10}>
-          <Card title="快速摘要">
+          <Card title={t("overview.card.quick_summary")}>
             <List
               size="small"
               dataSource={[
                 <Space key="nervos-address" direction="vertical" size={4}>
-                  <Text type="secondary">Nervos 地址</Text>
+                  <Text type="secondary">{t("overview.summary.nervos_address")}</Text>
                   {renderAddressValue(appState.nervos.address?.address)}
                 </Space>,
                 <Space key="ethereum-address" direction="vertical" size={4}>
-                  <Text type="secondary">Ethereum 地址</Text>
+                  <Text type="secondary">{t("overview.summary.ethereum_address")}</Text>
                   {renderAddressValue(appState.ethereum.address?.address)}
                 </Space>,
-                `最新审计数量：${appState.audits.length} 条`,
-                `联系人数量：${appState.addressBookContacts.length} 个`,
+                t("overview.summary.latest_audit_count", {
+                  count: formatNumber(appState.audits.length),
+                }),
+                t("overview.summary.contact_count", {
+                  count: formatNumber(appState.addressBookContacts.length),
+                }),
               ]}
               renderItem={(item) => <List.Item>{item}</List.Item>}
             />
@@ -649,46 +684,50 @@ function WalletSection({
   appState: AppState;
   isRefreshing: boolean;
 }) {
+  const { t, formatDecimalString } = useLocalization();
+
   return (
     <Row gutter={[16, 16]}>
       <Col xs={24}>
-        <Card title="当前钱包" loading={isRefreshing}>
+        <Card title={t("wallet.card.current_wallet")} loading={isRefreshing}>
           <Descriptions column={1} size="small">
-            <Descriptions.Item label="Fingerprint">
+            <Descriptions.Item label={t("wallet.field.fingerprint")}>
               {appState.current?.walletFingerprint ?? "-"}
             </Descriptions.Item>
-            <Descriptions.Item label="状态">
-              {appState.current?.status ?? "-"}
+            <Descriptions.Item label={t("wallet.field.status")}>
+              {formatWalletStatus(appState.current?.status, t)}
             </Descriptions.Item>
-            <Descriptions.Item label="来源">
-              {appState.current?.source ?? "-"}
+            <Descriptions.Item label={t("wallet.field.source")}>
+              {formatWalletSource(appState.current?.source, t)}
             </Descriptions.Item>
           </Descriptions>
         </Card>
       </Col>
 
       <Col xs={24} xl={10}>
-        <Card title="Nervos / CKB" loading={isRefreshing} className="owner-full-card">
+        <Card title={t("wallet.card.nervos_balance")} loading={isRefreshing} className="owner-full-card">
           <Space direction="vertical" size={20} className="owner-stack">
             <Tooltip
               title={formatAssetAmount(
                 appState.nervos.ckbBalance?.amount,
                 appState.nervos.ckbBalance?.decimals,
                 "CKB",
+                formatDecimalString,
               )}
             >
               <Statistic
-                title="CKB 余额"
+                title={t("wallet.balance.label", { asset: "CKB" })}
                 value={formatCompactAssetAmount(
                   appState.nervos.ckbBalance?.amount,
                   appState.nervos.ckbBalance?.decimals,
                   "CKB",
+                  formatDecimalString,
                 )}
                 valueStyle={{ fontSize: 32, fontWeight: 700 }}
               />
             </Tooltip>
             <Descriptions column={1} size="small">
-              <Descriptions.Item label="地址">
+              <Descriptions.Item label={t("wallet.field.address")}>
                 {renderAddressValue(appState.nervos.address?.address)}
               </Descriptions.Item>
             </Descriptions>
@@ -697,7 +736,7 @@ function WalletSection({
       </Col>
 
       <Col xs={24} xl={14}>
-        <Card title="Ethereum" loading={isRefreshing} className="owner-full-card">
+        <Card title={t("wallet.card.ethereum_balance")} loading={isRefreshing} className="owner-full-card">
           <Space direction="vertical" size={20} className="owner-stack">
             <Row gutter={[16, 16]}>
               <Col xs={24} md={8}>
@@ -707,14 +746,16 @@ function WalletSection({
                       appState.ethereum.ethBalance?.amount,
                       appState.ethereum.ethBalance?.decimals,
                       "ETH",
+                      formatDecimalString,
                     )}
                   >
                     <Statistic
-                      title="ETH 余额"
+                      title={t("wallet.balance.label", { asset: "ETH" })}
                       value={formatCompactAssetAmount(
                         appState.ethereum.ethBalance?.amount,
                         appState.ethereum.ethBalance?.decimals,
                         "ETH",
+                        formatDecimalString,
                       )}
                       valueStyle={{ fontSize: 28, fontWeight: 700 }}
                     />
@@ -728,14 +769,16 @@ function WalletSection({
                       appState.ethereum.usdtBalance?.amount,
                       appState.ethereum.usdtBalance?.decimals,
                       "USDT",
+                      formatDecimalString,
                     )}
                   >
                     <Statistic
-                      title="USDT 余额"
+                      title={t("wallet.balance.label", { asset: "USDT" })}
                       value={formatCompactAssetAmount(
                         appState.ethereum.usdtBalance?.amount,
                         appState.ethereum.usdtBalance?.decimals,
                         "USDT",
+                        formatDecimalString,
                       )}
                       valueStyle={{ fontSize: 28, fontWeight: 700 }}
                     />
@@ -749,14 +792,16 @@ function WalletSection({
                       appState.ethereum.usdcBalance?.amount,
                       appState.ethereum.usdcBalance?.decimals,
                       "USDC",
+                      formatDecimalString,
                     )}
                   >
                     <Statistic
-                      title="USDC 余额"
+                      title={t("wallet.balance.label", { asset: "USDC" })}
                       value={formatCompactAssetAmount(
                         appState.ethereum.usdcBalance?.amount,
                         appState.ethereum.usdcBalance?.decimals,
                         "USDC",
+                        formatDecimalString,
                       )}
                       valueStyle={{ fontSize: 28, fontWeight: 700 }}
                     />
@@ -765,7 +810,7 @@ function WalletSection({
               </Col>
             </Row>
             <Descriptions column={1} size="small">
-              <Descriptions.Item label="地址">
+              <Descriptions.Item label={t("wallet.field.address")}>
                 {renderAddressValue(appState.ethereum.address?.address)}
               </Descriptions.Item>
             </Descriptions>
@@ -806,18 +851,20 @@ function TransfersSection(
     | "onUsdtToTypeChange"
   >,
 ) {
+  const { t } = useLocalization();
+
   return (
     <Tabs
       items={[
         {
           key: "nervos",
-          label: "Nervos",
+          label: t("tab.nervos"),
           children: (
             <TransferCard
               actionKey="transfer-ckb"
               activeAction={props.activeAction}
               asset="CKB"
-              description="最小单位整数，100000000 = 1 CKB"
+              description={t("transfers.description.CKB")}
               form={props.ckbTransfer}
               onAmountChange={props.onCkbAmountChange}
               onAmountUnitChange={props.onCkbAmountUnitChange}
@@ -829,7 +876,7 @@ function TransfersSection(
         },
         {
           key: "ethereum",
-          label: "Ethereum",
+          label: t("tab.ethereum"),
           children: (
             <Row gutter={[16, 16]}>
               <Col xs={24} xl={8}>
@@ -837,7 +884,7 @@ function TransfersSection(
                   actionKey="transfer-eth"
                   activeAction={props.activeAction}
                   asset="ETH"
-                  description="最小单位整数，1000000000000000000 = 1 ETH"
+                  description={t("transfers.description.ETH")}
                   form={props.ethTransfer}
                   onAmountChange={props.onEthAmountChange}
                   onAmountUnitChange={props.onEthAmountUnitChange}
@@ -851,7 +898,7 @@ function TransfersSection(
                   actionKey="transfer-usdt"
                   activeAction={props.activeAction}
                   asset="USDT"
-                  description="最小单位整数，1000000 = 1 USDT"
+                  description={t("transfers.description.USDT")}
                   form={props.usdtTransfer}
                   onAmountChange={props.onUsdtAmountChange}
                   onAmountUnitChange={props.onUsdtAmountUnitChange}
@@ -865,7 +912,7 @@ function TransfersSection(
                   actionKey="transfer-usdc"
                   activeAction={props.activeAction}
                   asset="USDC"
-                  description="最小单位整数，1000000 = 1 USDC"
+                  description={t("transfers.description.USDC")}
                   form={props.usdcTransfer}
                   onAmountChange={props.onUsdcAmountChange}
                   onAmountUnitChange={props.onUsdcAmountUnitChange}
@@ -905,35 +952,47 @@ function TransferCard({
   onToChange: (value: string) => void;
   onToTypeChange: (value: "address" | "contact_name") => void;
 }) {
-  const amountValidation = validateAmountInput(asset, form.amount, {
-    allowEmpty: true,
-    requirePositive: true,
-  });
+  const { t } = useLocalization();
+  const amountValidation = validateAmountInput(
+    asset,
+    form.amount,
+    {
+      allowEmpty: true,
+      requirePositive: true,
+    },
+    t,
+  );
 
   return (
-    <Card title={`${asset} 转账`}>
+    <Card title={t("transfers.card.title", { asset })}>
       <Form layout="vertical">
-        <Form.Item label="目标类型">
+        <Form.Item label={t("transfers.target_type")}>
           <Radio.Group
             value={form.toType}
             onChange={(event) => onToTypeChange(event.target.value as "address" | "contact_name")}
           >
-            <Radio.Button value="address">原始地址</Radio.Button>
-            <Radio.Button value="contact_name">联系人名称</Radio.Button>
+            <Radio.Button value="address">{t("transfers.target_type.address")}</Radio.Button>
+            <Radio.Button value="contact_name">{t("transfers.target_type.contact_name")}</Radio.Button>
           </Radio.Group>
         </Form.Item>
-        <Form.Item label={form.toType === "address" ? "目标地址" : "联系人名称"}>
+        <Form.Item
+          label={
+            form.toType === "address"
+              ? t("transfers.target_address")
+              : t("transfers.contact_name")
+          }
+        >
           <Input value={form.to} onChange={(event) => onToChange(event.target.value)} />
         </Form.Item>
         <Form.Item
-          label={`数量 (${description})`}
+          label={t("transfers.amount", { description })}
           validateStatus={amountValidation.error ? "error" : undefined}
           help={
             amountValidation.error
               ? amountValidation.error
               : amountValidation.baseValue
-                ? `基础单位值：${amountValidation.baseValue}`
-                : getAmountInputHint(asset, form.amount.unit)
+                ? t("common.base_value", { value: amountValidation.baseValue })
+                : getAmountInputHint(asset, form.amount.unit, t)
           }
         >
           <Space.Compact className="owner-compact-row">
@@ -950,7 +1009,7 @@ function TransferCard({
           </Space.Compact>
         </Form.Item>
         <Button type="primary" onClick={onSubmit} loading={activeAction === actionKey}>
-          提交 {asset} 转账
+          {t("transfers.submit", { asset })}
         </Button>
       </Form>
     </Card>
@@ -970,9 +1029,15 @@ function AmountInputField({
   onUnitChange: (unit: AssetAmountUnit) => void;
   onValueChange: (value: string) => void;
 }) {
-  const validation = validateAmountInput(asset, input, {
-    allowEmpty: true,
-  });
+  const { t } = useLocalization();
+  const validation = validateAmountInput(
+    asset,
+    input,
+    {
+      allowEmpty: true,
+    },
+    t,
+  );
 
   return (
     <Form.Item
@@ -982,13 +1047,13 @@ function AmountInputField({
         validation.error
           ? validation.error
           : validation.baseValue
-            ? `基础单位值：${validation.baseValue}`
-            : getAmountInputHint(asset, input.unit)
+            ? t("common.base_value", { value: validation.baseValue })
+            : getAmountInputHint(asset, input.unit, t)
       }
     >
       <Space.Compact className="owner-compact-row">
         <Input
-          placeholder="留空表示不限额"
+          placeholder={t("limits.placeholder")}
           value={input.value}
           onChange={(event) => onValueChange(event.target.value)}
         />
@@ -1019,17 +1084,19 @@ function SigningSection(
     | "onNervosSignSubmit"
   >,
 ) {
+  const { t } = useLocalization();
+
   return (
     <Tabs
       items={[
         {
           key: "nervos",
-          label: "Nervos",
+          label: t("tab.nervos"),
           children: (
             <SignCard
               actionKey="sign-nervos"
               activeAction={props.activeAction}
-              title="Nervos 消息签名"
+              title={t("signing.card.title", { chain: "Nervos" })}
               result={props.nervosSignResult}
               value={props.nervosSignForm}
               onEncodingChange={props.onNervosSignEncodingChange}
@@ -1040,12 +1107,12 @@ function SigningSection(
         },
         {
           key: "ethereum",
-          label: "Ethereum",
+          label: t("tab.ethereum"),
           children: (
             <SignCard
               actionKey="sign-ethereum"
               activeAction={props.activeAction}
-              title="Ethereum 消息签名"
+              title={t("signing.card.title", { chain: "Ethereum" })}
               result={props.ethereumSignResult}
               value={props.ethereumSignForm}
               onEncodingChange={props.onEthereumSignEncodingChange}
@@ -1078,13 +1145,15 @@ function SignCard({
   onMessageChange: (value: string) => void;
   onSubmit: () => void;
 }) {
+  const { t } = useLocalization();
+
   return (
     <Card title={title}>
       <Form layout="vertical">
-        <Form.Item label="消息">
+        <Form.Item label={t("signing.message")}>
           <TextArea rows={6} value={value.message} onChange={(event) => onMessageChange(event.target.value)} />
         </Form.Item>
-        <Form.Item label="编码">
+        <Form.Item label={t("signing.encoding")}>
           <Radio.Group
             value={value.encoding}
             onChange={(event) => onEncodingChange(event.target.value as MessageSigningFormState["encoding"])}
@@ -1094,7 +1163,7 @@ function SignCard({
           </Radio.Group>
         </Form.Item>
         <Button type="primary" onClick={onSubmit} loading={activeAction === actionKey}>
-          提交签名
+          {t("signing.submit")}
         </Button>
       </Form>
 
@@ -1143,11 +1212,12 @@ function AddressBookSection({
   onAddressBookSave: () => Promise<void>;
   onAddressBookSelect: (contact: AddressBookContactDto) => void;
 }) {
+  const { t } = useLocalization();
   const [editorOpen, setEditorOpen] = useState(false);
 
   const columns: TableColumnsType<AddressBookContactDto> = [
     {
-      title: "联系人",
+      title: t("address_book.table.contact"),
       dataIndex: "name",
       key: "name",
       width: 180,
@@ -1165,21 +1235,21 @@ function AddressBookSection({
       ),
     },
     {
-      title: "Nervos",
+      title: t("address_book.table.nervos"),
       key: "nervosAddress",
       width: 240,
       render: (_, record) =>
         renderAddressCell(record.addresses.nervosAddress),
     },
     {
-      title: "Ethereum",
+      title: t("address_book.table.ethereum"),
       key: "ethereumAddress",
       width: 240,
       render: (_, record) =>
         renderAddressCell(record.addresses.ethereumAddress),
     },
     {
-      title: "备注",
+      title: t("address_book.table.note"),
       dataIndex: "note",
       key: "note",
       width: 180,
@@ -1187,7 +1257,7 @@ function AddressBookSection({
       render: (value: string | null) => value ?? "-",
     },
     {
-      title: "操作",
+      title: t("address_book.table.actions"),
       key: "actions",
       width: 140,
       fixed: "right",
@@ -1200,7 +1270,7 @@ function AddressBookSection({
               setEditorOpen(true);
             }}
           >
-            编辑
+            {t("common.edit")}
           </Button>
           <Button
             type="link"
@@ -1210,7 +1280,7 @@ function AddressBookSection({
               void handleDelete();
             }}
           >
-            删除
+            {t("common.delete")}
           </Button>
         </Space>
       ),
@@ -1230,11 +1300,11 @@ function AddressBookSection({
   return (
     <Space direction="vertical" size={16} className="owner-stack">
       <Card
-        title="联系人列表"
+        title={t("address_book.card.contacts")}
         extra={
           <Space wrap>
             <Input
-              placeholder="按名称或备注筛选"
+              placeholder={t("address_book.filter_placeholder")}
               value={filter}
               onChange={(event) => onAddressBookFilterChange(event.target.value)}
               style={{ width: 240 }}
@@ -1246,7 +1316,7 @@ function AddressBookSection({
                 setEditorOpen(true);
               }}
             >
-              新建联系人
+              {t("address_book.new_contact")}
             </Button>
           </Space>
         }
@@ -1258,15 +1328,15 @@ function AddressBookSection({
           pagination={{ pageSize: 6 }}
           tableLayout="fixed"
           scroll={{ x: 1040 }}
-          locale={{ emptyText: <Empty description="暂无联系人" /> }}
+          locale={{ emptyText: <Empty description={t("address_book.empty")} /> }}
         />
       </Card>
 
-      <Card title="地址反查">
+      <Card title={t("address_book.lookup.title")}>
         <Space direction="vertical" size={16} className="owner-stack">
           <Space.Compact className="owner-compact-row">
             <Input
-              placeholder="输入 CKB / Ethereum 地址"
+              placeholder={t("address_book.lookup.placeholder")}
               value={addressLookupAddress}
               onChange={(event) => onAddressBookLookupAddressChange(event.target.value)}
             />
@@ -1275,7 +1345,7 @@ function AddressBookSection({
               onClick={onAddressBookLookup}
               loading={activeAction === "address-book-lookup"}
             >
-              查询
+              {t("common.query")}
             </Button>
           </Space.Compact>
 
@@ -1285,8 +1355,10 @@ function AddressBookSection({
               showIcon
               message={
                 addressLookupResult.matched
-                  ? `匹配成功${addressLookupResult.chain ? ` · ${addressLookupResult.chain}` : ""}`
-                  : "未匹配到联系人"
+                  ? t("address_book.lookup.matched", {
+                      chainSuffix: addressLookupResult.chain ? ` · ${addressLookupResult.chain}` : "",
+                    })
+                  : t("address_book.lookup.not_matched")
               }
               description={
                 <Space direction="vertical">
@@ -1296,7 +1368,7 @@ function AddressBookSection({
                       ? addressLookupResult.contacts.map((contact) => (
                           <Tag key={contact}>{contact}</Tag>
                         ))
-                      : "当前没有命中联系人"}
+                      : t("address_book.lookup.none")}
                   </Space>
                 </Space>
               }
@@ -1308,7 +1380,11 @@ function AddressBookSection({
       <Modal
         destroyOnHidden={false}
         open={editorOpen}
-        title={addressBookEditor.currentName ? "编辑联系人" : "新建联系人"}
+        title={
+          addressBookEditor.currentName
+            ? t("address_book.modal.edit_title")
+            : t("address_book.modal.create_title")
+        }
         onCancel={() => setEditorOpen(false)}
         footer={
           <Space wrap>
@@ -1318,28 +1394,30 @@ function AddressBookSection({
                 onClick={() => void handleDelete()}
                 loading={activeAction === "address-book-delete"}
               >
-                删除联系人
+                {t("address_book.modal.delete_contact")}
               </Button>
             ) : null}
-            <Button onClick={() => setEditorOpen(false)}>取消</Button>
+            <Button onClick={() => setEditorOpen(false)}>{t("common.cancel")}</Button>
             <Button
               type="primary"
               onClick={() => void handleSave()}
               loading={activeAction === "address-book-save"}
             >
-              {addressBookEditor.currentName ? "保存联系人" : "创建联系人"}
+              {addressBookEditor.currentName
+                ? t("address_book.modal.save_contact")
+                : t("address_book.modal.create_contact")}
             </Button>
           </Space>
         }
       >
         <Form layout="vertical">
-          <Form.Item label="联系人名称">
+          <Form.Item label={t("address_book.field.name")}>
             <Input
               value={addressBookEditor.name}
               onChange={(event) => onAddressBookEditorChange("name", event.target.value)}
             />
           </Form.Item>
-          <Form.Item label="Nervos 地址">
+          <Form.Item label={t("address_book.field.nervos_address")}>
             <Input
               value={addressBookEditor.nervosAddress}
               onChange={(event) =>
@@ -1347,7 +1425,7 @@ function AddressBookSection({
               }
             />
           </Form.Item>
-          <Form.Item label="Ethereum 地址">
+          <Form.Item label={t("address_book.field.ethereum_address")}>
             <Input
               value={addressBookEditor.ethereumAddress}
               onChange={(event) =>
@@ -1355,7 +1433,7 @@ function AddressBookSection({
               }
             />
           </Form.Item>
-          <Form.Item label="备注">
+          <Form.Item label={t("address_book.field.note")}>
             <TextArea
               rows={3}
               value={addressBookEditor.note}
@@ -1391,12 +1469,14 @@ function LimitsSection({
   ) => void;
   onAssetLimitSave: (key: string) => void;
 }) {
+  const { t } = useLocalization();
+
   return (
     <Tabs
       items={[
         {
           key: "nervos",
-          label: "Nervos",
+          label: t("tab.nervos"),
           children: renderLimitCards({
             activeAction,
             assetLimitDrafts,
@@ -1404,11 +1484,12 @@ function LimitsSection({
             onAssetLimitChange,
             onAssetLimitSave,
             onAssetLimitUnitChange,
+            t,
           }),
         },
         {
           key: "ethereum",
-          label: "Ethereum",
+          label: t("tab.ethereum"),
           children: renderLimitCards({
             activeAction,
             assetLimitDrafts,
@@ -1416,6 +1497,7 @@ function LimitsSection({
             onAssetLimitChange,
             onAssetLimitSave,
             onAssetLimitUnitChange,
+            t,
           }),
         },
       ]}
@@ -1430,6 +1512,7 @@ function renderLimitCards({
   onAssetLimitChange,
   onAssetLimitSave,
   onAssetLimitUnitChange,
+  t,
 }: {
   activeAction: string | null;
   assetLimitDrafts: Record<string, AssetLimitFormState>;
@@ -1445,6 +1528,7 @@ function renderLimitCards({
     field: keyof AssetLimitFormState,
     unit: AssetAmountUnit,
   ) => void;
+  t: ReturnType<typeof useLocalization>["t"];
 }) {
   return (
     <Row gutter={[16, 16]}>
@@ -1467,7 +1551,7 @@ function renderLimitCards({
                   onClick={() => onAssetLimitSave(key)}
                   loading={activeAction === `limit:${key}`}
                 >
-                  保存
+                  {t("common.save")}
                 </Button>
               }
             >
@@ -1475,30 +1559,30 @@ function renderLimitCards({
                 <AmountInputField
                   asset={asset}
                   input={draft.dailyLimit}
-                  label="日限额"
+                  label={t("limits.window.daily_limit")}
                   onUnitChange={(unit) => onAssetLimitUnitChange(key, "dailyLimit", unit)}
                   onValueChange={(value) => onAssetLimitChange(key, "dailyLimit", value)}
                 />
                 <AmountInputField
                   asset={asset}
                   input={draft.weeklyLimit}
-                  label="周限额"
+                  label={t("limits.window.weekly_limit")}
                   onUnitChange={(unit) => onAssetLimitUnitChange(key, "weeklyLimit", unit)}
                   onValueChange={(value) => onAssetLimitChange(key, "weeklyLimit", value)}
                 />
                 <AmountInputField
                   asset={asset}
                   input={draft.monthlyLimit}
-                  label="月限额"
+                  label={t("limits.window.monthly_limit")}
                   onUnitChange={(unit) => onAssetLimitUnitChange(key, "monthlyLimit", unit)}
                   onValueChange={(value) => onAssetLimitChange(key, "monthlyLimit", value)}
                 />
               </Form>
 
               <Row gutter={[12, 12]}>
-                {renderUsageCard("日", limit.usage.daily)}
-                {renderUsageCard("周", limit.usage.weekly)}
-                {renderUsageCard("月", limit.usage.monthly)}
+                {renderUsageCard(t("limits.window.day"), limit.usage.daily)}
+                {renderUsageCard(t("limits.window.week"), limit.usage.weekly)}
+                {renderUsageCard(t("limits.window.month"), limit.usage.monthly)}
               </Row>
             </Card>
           </Col>
@@ -1512,17 +1596,35 @@ function renderUsageCard(
   label: string,
   usage: OwnerAssetLimitEntryDto["usage"][keyof OwnerAssetLimitEntryDto["usage"]],
 ) {
+  const { t, formatDateTime } = useLocalization();
+
   return (
     <Col xs={24} md={8} key={label}>
       <Card size="small" className="inner-card">
         <Space direction="vertical" size={4}>
-          <Text strong>{label}窗口</Text>
-          <Text type="secondary">配置：{usage.limitAmount ?? "不限额"}</Text>
-          <Text type="secondary">已消耗：{usage.consumedAmount}</Text>
-          <Text type="secondary">已预占：{usage.reservedAmount}</Text>
-          <Text type="secondary">有效已用：{usage.effectiveUsedAmount}</Text>
-          <Text type="secondary">剩余：{usage.remainingAmount ?? "不限额"}</Text>
-          <Text type="secondary">重置：{usage.resetsAt}</Text>
+          <Text strong>{t("limits.window.card", { label })}</Text>
+          <Text type="secondary">
+            {t("limits.usage.configured", {
+              amount: usage.limitAmount ?? t("common.unlimited"),
+            })}
+          </Text>
+          <Text type="secondary">
+            {t("limits.usage.consumed", { amount: usage.consumedAmount })}
+          </Text>
+          <Text type="secondary">
+            {t("limits.usage.reserved", { amount: usage.reservedAmount })}
+          </Text>
+          <Text type="secondary">
+            {t("limits.usage.effective_used", { amount: usage.effectiveUsedAmount })}
+          </Text>
+          <Text type="secondary">
+            {t("limits.usage.remaining", {
+              amount: usage.remainingAmount ?? t("common.unlimited"),
+            })}
+          </Text>
+          <Text type="secondary">
+            {t("limits.usage.resets_at", { value: formatDateTime(usage.resetsAt) })}
+          </Text>
         </Space>
       </Card>
     </Col>
@@ -1588,18 +1690,20 @@ function SecuritySection({
   onRotateNewPasswordChange: (value: string) => void;
   onRotateSubmit: () => void;
 }) {
+  const { t } = useLocalization();
+
   return (
     <Row gutter={[16, 16]}>
       <Col xs={24} xl={8}>
-        <Card title="凭证轮换">
+        <Card title={t("security.card.rotate")}>
           <Form layout="vertical">
-            <Form.Item label="当前密码">
+            <Form.Item label={t("security.field.current_password")}>
               <Input.Password
                 value={rotateForm.currentPassword}
                 onChange={(event) => onRotateCurrentPasswordChange(event.target.value)}
               />
             </Form.Item>
-            <Form.Item label="新密码">
+            <Form.Item label={t("security.field.new_password")}>
               <Input.Password
                 value={rotateForm.newPassword}
                 onChange={(event) => onRotateNewPasswordChange(event.target.value)}
@@ -1610,28 +1714,28 @@ function SecuritySection({
               onClick={onRotateSubmit}
               loading={activeAction === "rotate-credential"}
             >
-              更新凭证
+              {t("security.submit.rotate")}
             </Button>
           </Form>
         </Card>
       </Col>
 
       <Col xs={24} xl={8}>
-        <Card title="导入恢复">
+        <Card title={t("security.card.import")}>
           <Alert
             type="warning"
             showIcon
-            message="导入会直接替换当前唯一钱包，仅建议在恢复场景下使用。"
+            message={t("security.alert.import")}
           />
           <Form layout="vertical" style={{ marginTop: 16 }}>
-            <Form.Item label="私钥">
+            <Form.Item label={t("security.field.private_key")}>
               <TextArea
                 rows={7}
                 value={importKey}
                 onChange={(event) => onImportKeyChange(event.target.value)}
               />
             </Form.Item>
-            <Form.Item label="确认替换">
+            <Form.Item label={t("security.field.confirm_replace")}>
               <Switch checked={importConfirmed} onChange={onImportConfirmedChange} />
             </Form.Item>
             <Button
@@ -1641,18 +1745,18 @@ function SecuritySection({
               disabled={!importConfirmed || importKey.trim().length === 0}
               loading={activeAction === "import-wallet"}
             >
-              导入并替换钱包
+              {t("security.submit.import")}
             </Button>
           </Form>
         </Card>
       </Col>
 
       <Col xs={24} xl={8}>
-        <Card title="高风险导出">
+        <Card title={t("security.card.export")}>
           <Alert
             type="error"
             showIcon
-            message="导出私钥后，Owner 将直接掌握钱包控制权。"
+            message={t("security.alert.export")}
           />
           <Space direction="vertical" size={16} className="owner-stack" style={{ marginTop: 16 }}>
             <Button
@@ -1661,7 +1765,7 @@ function SecuritySection({
               onClick={onExport}
               loading={activeAction === "export-wallet"}
             >
-              导出私钥
+              {t("security.submit.export")}
             </Button>
 
             {exportedKey ? (
@@ -1679,88 +1783,100 @@ function SecuritySection({
 }
 
 function AuditSection({ audits }: { audits: AuditLogDto[] }) {
+  const { formatDateTime, t } = useLocalization();
   const columns: TableColumnsType<AuditLogDto> = [
     {
-      title: "动作",
+      title: t("audit.table.action"),
       dataIndex: "action",
       key: "action",
+      render: (value: string) => getAuditActionLabel(value, t),
     },
     {
-      title: "角色",
+      title: t("audit.table.role"),
       dataIndex: "actorRole",
       key: "actorRole",
-      render: (value: string) => <Tag color={value === "OWNER" ? "green" : "default"}>{value}</Tag>,
-    },
-    {
-      title: "结果",
-      dataIndex: "result",
-      key: "result",
       render: (value: string) => (
-        <Tag color={value === "SUCCESS" ? "success" : value === "FAILURE" ? "error" : "default"}>
-          {value}
+        <Tag color={value === "OWNER" ? "green" : "default"}>
+          {getAuditRoleLabel(value, t)}
         </Tag>
       ),
     },
     {
-      title: "时间",
+      title: t("audit.table.result"),
+      dataIndex: "result",
+      key: "result",
+      render: (value: string) => (
+        <Tag color={value === "SUCCESS" ? "success" : value === "FAILED" ? "error" : "default"}>
+          {getAuditResultLabel(value, t)}
+        </Tag>
+      ),
+    },
+    {
+      title: t("audit.table.time"),
       dataIndex: "createdAt",
       key: "createdAt",
-      render: (value: string) => new Date(value).toLocaleString(),
+      render: (value: string) => formatDateTime(value),
     },
   ];
 
   return (
-    <Card title="审计日志">
+    <Card title={t("section.audit.title")}>
       <Table
         rowKey="auditId"
         columns={columns}
         dataSource={audits}
         pagination={{ pageSize: 10 }}
-        locale={{ emptyText: <Empty description="暂无审计记录" /> }}
+        locale={{ emptyText: <Empty description={t("audit.empty")} /> }}
       />
     </Card>
   );
 }
 
-function getSectionTitle(key: SectionKey): string {
+function getSectionTitle(
+  key: SectionKey,
+  t: ReturnType<typeof useLocalization>["t"],
+): string {
   switch (key) {
     case "overview":
-      return "概览";
+      return t("section.overview.title");
     case "wallet":
-      return "钱包状态";
+      return t("section.wallet.title");
     case "transfers":
-      return "转账";
+      return t("section.transfers.title");
     case "signing":
-      return "签名";
+      return t("section.signing.title");
     case "address-book":
-      return "地址簿";
+      return t("section.address_book.title");
     case "limits":
-      return "限额管理";
+      return t("section.limits.title");
     case "security":
-      return "安全与凭证";
+      return t("section.security.title");
     case "audit":
-      return "审计日志";
+      return t("section.audit.title");
   }
 }
 
-function getSectionDescription(key: SectionKey): string {
+function getSectionDescription(
+  key: SectionKey,
+  t: ReturnType<typeof useLocalization>["t"],
+): string {
   switch (key) {
     case "overview":
-      return "面向人工接管场景的总览视图，聚合余额、风险提示和当前钱包状态。";
+      return t("section.overview.description");
     case "wallet":
-      return "按链查看当前唯一钱包的地址与余额，不默认铺开交易细节。";
+      return t("section.wallet.description");
     case "transfers":
-      return "按资产拆分转账操作，支持直接输入地址或地址簿联系人名称。";
+      return t("section.transfers.description");
     case "signing":
-      return "执行链上消息签名，返回签名地址与签名结果。";
+      return t("section.signing.description");
     case "address-book":
-      return "维护共享联系人，支持筛选、编辑和精确地址反查。";
+      return t("section.address_book.description");
     case "limits":
-      return "查看并调整按资产维度的日、周、月限额配置与使用情况。";
+      return t("section.limits.description");
     case "security":
-      return "处理凭证轮换、钱包导入恢复和高风险私钥导出。";
+      return t("section.security.description");
     case "audit":
-      return "查看最新 Owner 操作审计记录。";
+      return t("section.audit.description");
   }
 }
 
@@ -1799,41 +1915,48 @@ function isSectionHash(hash: string): boolean {
   );
 }
 
-function formatCredentialStatus(status?: string | null): string {
+function formatCredentialStatus(
+  status: string | null | undefined,
+  t: ReturnType<typeof useLocalization>["t"],
+): string {
   if (!status) {
-    return "凭证状态未知";
+    return t("credential.unknown");
   }
 
-  return status === "DEFAULT_PENDING_ROTATION" ? "默认凭证待轮换" : "凭证已轮换";
+  return status === "DEFAULT_PENDING_ROTATION"
+    ? t("credential.pending_rotation")
+    : t("credential.active");
 }
 
 function formatAssetAmount(
   amount: string | undefined,
   decimals: number | undefined,
   asset: string,
+  formatDecimalString: ReturnType<typeof useLocalization>["formatDecimalString"],
 ): string {
   if (!amount || decimals === undefined) {
     return "-";
   }
 
-  return `${toDisplayAmount(amount, decimals)} ${asset}`;
+  return `${formatDecimalString(toDisplayAmount(amount, decimals))} ${asset}`;
 }
 
 function formatCompactAssetAmount(
   amount: string | undefined,
   decimals: number | undefined,
   asset: string,
+  formatDecimalString: ReturnType<typeof useLocalization>["formatDecimalString"],
 ): string {
   if (!amount || decimals === undefined) {
     return "-";
   }
 
   const display = toDisplayAmount(amount, decimals);
-  const [whole, fraction = ""] = display.split(".");
+  const [whole = "0", fraction = ""] = display.split(".");
   const compactFraction = fraction.slice(0, 6).replace(/0+$/, "");
   const compactValue = compactFraction ? `${whole}.${compactFraction}` : whole;
 
-  return `${compactValue} ${asset}`;
+  return `${formatDecimalString(compactValue)} ${asset}`;
 }
 
 function toDisplayAmount(amount: string, decimals: number): string {
@@ -1848,3 +1971,97 @@ function toDisplayAmount(amount: string, decimals: number): string {
 
   return fraction ? `${whole}.${fraction}` : whole;
 }
+
+function formatWalletStatus(
+  status: string | undefined,
+  t: ReturnType<typeof useLocalization>["t"],
+): string {
+  if (status === "ACTIVE") {
+    return t("wallet.status.ACTIVE");
+  }
+
+  if (status === "EMPTY") {
+    return t("wallet.status.EMPTY");
+  }
+
+  return t("wallet.status.unknown");
+}
+
+function formatWalletSource(
+  source: string | undefined,
+  t: ReturnType<typeof useLocalization>["t"],
+): string {
+  if (source === "AUTO_GENERATED") {
+    return t("wallet.source.AUTO_GENERATED");
+  }
+
+  if (source === "IMPORTED") {
+    return t("wallet.source.IMPORTED");
+  }
+
+  return t("wallet.source.UNKNOWN");
+}
+
+function getAuditRoleLabel(
+  role: string,
+  t: ReturnType<typeof useLocalization>["t"],
+): string {
+  if (role === "AGENT") {
+    return t("audit.role.AGENT");
+  }
+
+  if (role === "OWNER") {
+    return t("audit.role.OWNER");
+  }
+
+  if (role === "SYSTEM") {
+    return t("audit.role.SYSTEM");
+  }
+
+  return role;
+}
+
+function getAuditResultLabel(
+  result: string,
+  t: ReturnType<typeof useLocalization>["t"],
+): string {
+  if (result === "SUCCESS") {
+    return t("audit.result.SUCCESS");
+  }
+
+  if (result === "FAILED") {
+    return t("audit.result.FAILED");
+  }
+
+  return result;
+}
+
+function getAuditActionLabel(
+  action: string,
+  t: ReturnType<typeof useLocalization>["t"],
+): string {
+  const mapped = AUDIT_ACTION_KEYS[action as keyof typeof AUDIT_ACTION_KEYS];
+  return mapped ? t(mapped) : action;
+}
+
+const AUDIT_ACTION_KEYS = {
+  "wallet.bootstrap": "audit.action.wallet.bootstrap",
+  "owner_credential.bootstrap": "audit.action.owner_credential.bootstrap",
+  "address_book.create": "audit.action.address_book.create",
+  "address_book.update": "audit.action.address_book.update",
+  "address_book.delete": "audit.action.address_book.delete",
+  "nervos.sign_message": "audit.action.nervos.sign_message",
+  "nervos.transfer_ckb": "audit.action.nervos.transfer_ckb",
+  "ethereum.sign_message": "audit.action.ethereum.sign_message",
+  "ethereum.transfer_eth": "audit.action.ethereum.transfer_eth",
+  "ethereum.transfer_usdt": "audit.action.ethereum.transfer_usdt",
+  "ethereum.transfer_usdc": "audit.action.ethereum.transfer_usdc",
+  "owner.login": "audit.action.owner.login",
+  "owner.rotate_credential": "audit.action.owner.rotate_credential",
+  "wallet.import": "audit.action.wallet.import",
+  "wallet.export": "audit.action.wallet.export",
+  "vault.rotate_kek": "audit.action.vault.rotate_kek",
+  "owner.asset_limit.update": "audit.action.owner.asset_limit.update",
+  "transfer.settlement_confirmed": "audit.action.transfer.settlement_confirmed",
+  "transfer.settlement_failed": "audit.action.transfer.settlement_failed",
+} as const;
