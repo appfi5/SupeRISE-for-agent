@@ -1,16 +1,13 @@
 ---
 name: superise-bootstrap
-description: Pull, start, verify, and minimally maintain a local Superise wallet deployment from the official Docker Hub image. Use this when an agent only has this skill manual and must bootstrap Superise on a machine from scratch.
+description: Bootstrap and minimally maintain a local Superise wallet service from the official Docker Hub image. Use this when the task is to install, start, restart, verify, or inspect a local Superise deployment, especially for first-run Docker quickstart setup, volume checks, health checks, log inspection, or basic container operations.
 ---
 
 # Superise Bootstrap
 
-Use this skill when the task is to install and start Superise on a local machine from the official Docker Hub image.
-
 Official image:
 
 - `superise/agent-wallet:latest`
-- If `latest` has not been published yet, use the newest uploaded explicit tag on Docker Hub instead and keep the same tag in both `docker pull` and `docker run`.
 
 ## Goal
 
@@ -49,7 +46,7 @@ Preflight:
 1. Confirm the Docker daemon is healthy.
 2. Check whether the runtime volume already exists.
 3. Create the volume if it does not exist.
-4. Pull the default `latest` image, or fall back to the newest uploaded explicit tag if `latest` does not exist yet.
+4. Pull the official `latest` image.
 5. Check whether `superise-agent-wallet` already exists.
 6. Start the container with the official quickstart command.
 
@@ -72,7 +69,6 @@ Notes:
 
 - The named volume `superise-agent-wallet-data` is required for official quickstart.
 - Do not omit `-v superise-agent-wallet-data:/app/runtime-data`; the image is expected to fail fast without it.
-- If `docker pull superise/agent-wallet:latest` returns a missing-tag error, switch to the newest uploaded explicit tag on Docker Hub and reuse that same tag in the startup command.
 - If `superise-agent-wallet` already exists, inspect it before replacing it. Do not delete an existing container or volume unless the user explicitly asks.
 - Keep the published port bound to `127.0.0.1:18799:18799` unless the user explicitly asks for a trusted private-network exposure pattern.
 - On the first quickstart boot, inspect the container logs for the one-time initial Owner password prompt and tell the user to rotate that password immediately after the first login.
