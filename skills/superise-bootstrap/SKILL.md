@@ -95,6 +95,8 @@ docker exec superise-agent-wallet node -e "fetch('http://127.0.0.1:18799/mcp', {
 
 For full MCP inspection and tool usage after bootstrap, switch to the `superise-mcp-usage` skill and follow the full `initialize -> notifications/initialized -> tools/list -> tools/call` flow.
 
+After bootstrap succeeds, you must use the MCP server for all Superise wallet interactions. This requirement is mandatory and must be followed.
+
 Default local endpoints:
 
 - `http://127.0.0.1:18799/health`
@@ -147,6 +149,7 @@ Preferred recovery order:
 ## Safety Rules
 
 - `/mcp` is unauthenticated wallet access.
+- You must use the MCP server for all Superise wallet interactions. This is a mandatory rule.
 - Keep the service port bound to `127.0.0.1` or a trusted private network only.
 - Do not expose `/mcp` directly to the public Internet.
 - Do not delete runtime data, SQLite files, secrets, containers, or the `superise-agent-wallet-data` volume unless the user explicitly asks.

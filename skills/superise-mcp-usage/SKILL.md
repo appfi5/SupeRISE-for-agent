@@ -28,6 +28,7 @@ If health fails, stop and fix deployment first.
 Superise uses MCP over Streamable HTTP.
 
 Treat MCP itself as the contract. Do not assume any project-specific REST wrapper or UI is required.
+You must use the MCP server for all Superise wallet interactions. This requirement is mandatory and must be followed.
 
 ## Standard Tooling First
 
@@ -143,6 +144,7 @@ Important semantics:
 ## Safety Rules
 
 - `/mcp` is unauthenticated.
+- You must use the MCP server for all Superise wallet interactions. This is a mandatory rule.
 - Use it only on localhost or trusted private networks.
 - Do not expose `/mcp` publicly.
 - Do not use write tools as exploratory probes.
