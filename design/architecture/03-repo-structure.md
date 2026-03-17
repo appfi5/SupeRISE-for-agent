@@ -20,6 +20,7 @@
 apps/
   wallet-server/
   owner-ui/
+    src/i18n/
 packages/
   app-contracts/
   domain/
@@ -70,6 +71,8 @@ design/
 - Owner 登录与看板页面
 - Owner 转账、签名、导入、导出、凭证管理
 - 风险提示与状态展示
+- 固定界面文案与产品提示文案的中英文资源
+- 语言切换与本地语言偏好持久化
 
 禁止：
 
@@ -88,6 +91,7 @@ design/
 原因：
 
 - 协议定义必须独立，避免被某个入口实现绑死
+- 错误码与返回模型必须保持语言无关，便于 UI 侧本地化固定文案
 
 ### 4.4 `packages/domain`
 

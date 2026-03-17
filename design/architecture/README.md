@@ -1,7 +1,7 @@
 # Agent 信用钱包详细架构设计文档集
 
 > 状态：Proposed
-> 更新时间：2026-03-16
+> 更新时间：2026-03-17
 > 关联文档：`design/product/prd.md`
 
 本目录是 Agent 信用钱包重构的正式架构文档集。该文档集用于指导开发团队完成一次彻底重构，不为历史代码提供兼容路径，也不以现有实现作为设计边界。
@@ -31,6 +31,7 @@
 15. [ADR 0002 转账结算与链上状态跟踪](./adr/0002-transfer-settlement-and-tx-status.md)
 16. [ADR 0003 地址簿与转账目标解析模型](./adr/0003-address-book-and-transfer-target-resolution.md)
 17. [ADR 0004 零配置容器启动与双部署档位](./adr/0004-zero-config-container-quickstart.md)
+18. [ADR 0005 Owner UI 多语言边界](./adr/0005-owner-ui-localization-boundary.md)
 
 ## 本次重构的正式定案
 
@@ -47,6 +48,7 @@
 - 密钥管理：`DEK + KEK` 双层设计；`managed` 由部署侧提供 `KEK`，`quickstart` 允许首次启动自举并写入运行时目录
 - 当前支持资产：`CKB`、`ETH`、`USDT`、`USDC`
 - 当前支持地址簿能力：按名称管理 `Nervos` / `Ethereum` 收款目标，并支持按精确地址反查已知联系人名称
+- 当前产品侧多语言只覆盖 Owner UI 中的固定界面文案和产品提示文案，支持 `en` / `zh`，默认 `en`
 - 官方只发布一个运行镜像，`quickstart` / `managed` 是运行档位，不是不同镜像
 - 官方镜像必须支持 `quickstart` 零应用配置启动档位，但必须显式挂载 `superise-agent-wallet-data:/app/runtime-data`
 - server 侧按币种执行 `daily/weekly/monthly` 三档限额
