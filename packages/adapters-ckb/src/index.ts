@@ -100,46 +100,51 @@ export class CkbCccWalletAdapter implements CkbWalletAdapter {
     try {
       const client = this.createClient();
       const transaction = await client.getTransaction(txHash);
+      const normalizedStatus = normalizeCkbTxStatus(transaction);
 
-      if (!transaction || transaction.status === "unknown") {
+      if (normalizedStatus.status === "unknown") {
         return {
           txHash,
           status: "NOT_FOUND" as const,
         };
       }
 
-      if (transaction.status === "rejected") {
+      if (normalizedStatus.status === "rejected") {
         return {
           txHash,
           status: "FAILED" as const,
-          reason: transaction.reason,
+          reason: normalizedStatus.reason,
         };
       }
 
-      if (transaction.status === "committed") {
+      if (normalizedStatus.status === "committed") {
         const tip = await client.getTip();
-        const blockNumber = transaction.blockNumber?.toString();
+        const blockNumber = normalizedStatus.blockNumber;
         const confirmations =
           blockNumber !== undefined
-            ? (BigInt(tip.toString()) - BigInt(blockNumber) + 1n).toString()
+            ? (
+                normalizeBigIntLike(tip, "CKB tip") -
+                normalizeBigIntLike(blockNumber, "CKB transaction block number") +
+                1n
+              ).toString()
             : undefined;
 
         return {
           txHash,
           status: "CONFIRMED" as const,
           blockNumber,
-          blockHash: transaction.blockHash?.toString(),
+          blockHash: normalizedStatus.blockHash,
           confirmations,
-          reason: transaction.reason,
+          reason: normalizedStatus.reason,
         };
       }
 
       return {
         txHash,
         status: "PENDING" as const,
-        blockNumber: transaction.blockNumber?.toString(),
-        blockHash: transaction.blockHash?.toString(),
-        reason: transaction.reason,
+        blockNumber: normalizedStatus.blockNumber,
+        blockHash: normalizedStatus.blockHash,
+        reason: normalizedStatus.reason,
       };
     } catch (error) {
       throw new WalletDomainError(
@@ -215,4 +220,105 @@ export class CkbCccWalletAdapter implements CkbWalletAdapter {
       normalizePrivateKeyHex(privateKey),
     );
   }
+}
+
+type CkbTxStatusView = {
+  status: "unknown" | "pending" | "proposed" | "committed" | "rejected";
+  blockNumber?: string;
+  blockHash?: string;
+  reason?: string;
+};
+
+function normalizeCkbTxStatus(transaction: unknown): CkbTxStatusView {
+  if (!isRecord(transaction)) {
+    return { status: "unknown" };
+  }
+
+  const nestedStatus = transaction.txStatus ?? transaction.tx_status;
+  const statusSource = isRecord(nestedStatus) ? nestedStatus : transaction;
+  const rawStatus = typeof statusSource.status === "string" ? statusSource.status : "unknown";
+
+  return {
+    status: rawStatus as CkbTxStatusView["status"],
+    blockNumber: normalizeDecimalString(
+      transaction.blockNumber ??
+        transaction.block_number ??
+        statusSource.blockNumber ??
+        statusSource.block_number,
+    ),
+    blockHash: normalizeOptionalString(
+      transaction.blockHash ??
+        transaction.block_hash ??
+        statusSource.blockHash ??
+        statusSource.block_hash,
+    ),
+    reason: normalizeOptionalString(transaction.reason ?? statusSource.reason),
+  };
+}
+
+function normalizeDecimalString(value: unknown): string | undefined {
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+
+  return normalizeBigIntLike(value, "CKB block number").toString();
+}
+
+function normalizeBigIntLike(value: unknown, label: string): bigint {
+  if (typeof value === "bigint") {
+    return value;
+  }
+
+  if (typeof value === "number" && Number.isInteger(value)) {
+    return BigInt(value);
+  }
+
+  if (typeof value === "string") {
+    return BigInt(value);
+  }
+
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    typeof value.toString === "function"
+  ) {
+    const asString = value.toString();
+    if (asString.length > 0 && asString !== "[object Object]") {
+      return BigInt(asString);
+    }
+  }
+
+  throw new WalletDomainError(
+    "CHAIN_UNAVAILABLE",
+    `${label} is not a valid integer-like value`,
+  );
+}
+
+function normalizeOptionalString(value: unknown): string | undefined {
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (typeof value === "number" || typeof value === "bigint") {
+    return value.toString();
+  }
+
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    typeof value.toString === "function"
+  ) {
+    const asString = value.toString();
+    return asString === "[object Object]" ? undefined : asString;
+  }
+
+  return undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
