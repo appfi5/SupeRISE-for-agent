@@ -10,6 +10,7 @@ Use this skill when the task is to install and start Superise on a local machine
 Official image:
 
 - `superise/agent-wallet:latest`
+- If `latest` has not been published yet, use the newest uploaded explicit tag on Docker Hub instead and keep the same tag in both `docker pull` and `docker run`.
 
 ## Goal
 
@@ -48,7 +49,7 @@ Preflight:
 1. Confirm the Docker daemon is healthy.
 2. Check whether the runtime volume already exists.
 3. Create the volume if it does not exist.
-4. Pull the latest official image.
+4. Pull the default `latest` image, or fall back to the newest uploaded explicit tag if `latest` does not exist yet.
 5. Check whether `superise-agent-wallet` already exists.
 6. Start the container with the official quickstart command.
 
@@ -62,7 +63,7 @@ docker container inspect superise-agent-wallet >/dev/null 2>&1
 docker run -d \
   --name superise-agent-wallet \
   --restart unless-stopped \
-  -p 18799:18799 \
+  -p 127.0.0.1:18799:18799 \
   -v superise-agent-wallet-data:/app/runtime-data \
   superise/agent-wallet:latest
 ```
@@ -71,7 +72,9 @@ Notes:
 
 - The named volume `superise-agent-wallet-data` is required for official quickstart.
 - Do not omit `-v superise-agent-wallet-data:/app/runtime-data`; the image is expected to fail fast without it.
+- If `docker pull superise/agent-wallet:latest` returns a missing-tag error, switch to the newest uploaded explicit tag on Docker Hub and reuse that same tag in the startup command.
 - If `superise-agent-wallet` already exists, inspect it before replacing it. Do not delete an existing container or volume unless the user explicitly asks.
+- Keep the published port bound to `127.0.0.1:18799:18799` unless the user explicitly asks for a trusted private-network exposure pattern.
 - On the first quickstart boot, inspect the container logs for the one-time initial Owner password prompt and tell the user to rotate that password immediately after the first login.
 - Do not keep repeating or reprint the initial Owner password after the bootstrap handoff unless the user explicitly asks for it again.
 
@@ -148,7 +151,7 @@ Preferred recovery order:
 ## Safety Rules
 
 - `/mcp` is unauthenticated wallet access.
-- Keep the service bound to localhost or a trusted private network only.
+- Keep the service port bound to `127.0.0.1` or a trusted private network only.
 - Do not expose `/mcp` directly to the public Internet.
 - Do not delete runtime data, SQLite files, secrets, containers, or the `superise-agent-wallet-data` volume unless the user explicitly asks.
 - Do not persist, echo repeatedly, or summarize the initial Owner password outside the minimum first-run handoff needed for the user to rotate it.

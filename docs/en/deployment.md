@@ -20,7 +20,7 @@ Characteristics:
 Minimal accessible example:
 
 ```bash
-docker run -p 18799:18799 -v superise-agent-wallet-data:/app/runtime-data <official-image>
+docker run -p 127.0.0.1:18799:18799 -v superise-agent-wallet-data:/app/runtime-data <official-image>
 ```
 
 After the first boot, `/app/runtime-data` contains:
@@ -34,7 +34,9 @@ Notes:
 
 - quickstart guarantees zero-app-config startup, not zero-argument host accessibility
 - without an explicit `superise-agent-wallet-data:/app/runtime-data` mount, startup fails fast
+- prefer `superise/agent-wallet:latest` by default; if `latest` has not been published yet, switch to the newest uploaded explicit tag on Docker Hub
 - without `-p`, the container still initializes, but the host cannot reach the service directly
+- when using `-p`, bind explicitly to `127.0.0.1:18799:18799` so unauthenticated `/mcp` is not exposed publicly
 - the initial Owner password is printed only once on the first boot
 
 ### GitHub Tag Image Publishing

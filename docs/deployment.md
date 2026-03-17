@@ -22,7 +22,7 @@
 最简可访问示例：
 
 ```bash
-docker run -p 18799:18799 -v superise-agent-wallet-data:/app/runtime-data <official-image>
+docker run -p 127.0.0.1:18799:18799 -v superise-agent-wallet-data:/app/runtime-data <official-image>
 ```
 
 首次启动后，运行时目录 `/app/runtime-data` 下会包含：
@@ -36,7 +36,9 @@ docker run -p 18799:18799 -v superise-agent-wallet-data:/app/runtime-data <offic
 
 - Quickstart 只保证零应用配置启动，不保证零参数即可从宿主机访问
 - 若未显式挂载 `superise-agent-wallet-data:/app/runtime-data`，系统会直接启动失败
+- 默认应优先使用 `superise/agent-wallet:latest`；若 `latest` 尚未发布，则改用 Docker Hub 上最新上传的具体 tag
 - 若不提供 `-p`，容器仍可完成初始化，但宿主机无法直接访问服务
+- 若提供 `-p`，应显式绑定 `127.0.0.1:18799:18799`，避免把无鉴权 `/mcp` 暴露到公网
 - 初始 Owner 密码只会在首次启动日志中打印一次
 
 ### 2.1.1 GitHub tag 镜像发布

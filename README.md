@@ -61,7 +61,7 @@ npx skills add https://github.com/appfi5/SupeRISE-for-agent \
 
 #### `quickstart`
 
-先检查并创建运行时 volume，再拉最新镜像并启动：
+先检查并创建运行时 volume，再拉镜像并启动。默认使用 `superise/agent-wallet:latest`；如果 `latest` 尚未发布，则改用 Docker Hub 上最新上传的具体 tag，并在 `pull` 与 `run` 中保持同一个 tag：
 
 ```bash
 docker volume inspect superise-agent-wallet-data >/dev/null 2>&1 || docker volume create superise-agent-wallet-data
@@ -69,7 +69,7 @@ docker pull superise/agent-wallet:latest
 docker run -d \
   --name superise-agent-wallet \
   --restart unless-stopped \
-  -p 18799:18799 \
+  -p 127.0.0.1:18799:18799 \
   -v superise-agent-wallet-data:/app/runtime-data \
   superise/agent-wallet:latest
 ```
@@ -78,6 +78,7 @@ docker run -d \
 
 - `superise-agent-wallet-data` 是 quickstart 必需的持久化卷
 - 未显式挂载 `-v superise-agent-wallet-data:/app/runtime-data` 时，官方镜像会直接启动失败
+- 如果 `docker pull superise/agent-wallet:latest` 返回 tag 不存在，就改用 Docker Hub 上最新上传的具体 tag，例如 `superise/agent-wallet:0.2.0-rc.1`
 - 首次 quickstart 启动会在日志中打印一次初始 Owner 密码，首次登录后应立即修改
 
 #### `managed`
@@ -92,7 +93,7 @@ docker pull superise/agent-wallet:latest
 docker run -d \
   --name superise-agent-wallet-managed \
   --restart unless-stopped \
-  -p 18799:18799 \
+  -p 127.0.0.1:18799:18799 \
   -e DEPLOYMENT_PROFILE=managed \
   -e OWNER_JWT_SECRET='replace-with-a-high-entropy-secret' \
   -e WALLET_KEK_PATH=/run/secrets/wallet_kek \
@@ -105,6 +106,7 @@ docker run -d \
 
 - `managed` 不会自动回退到 `quickstart`
 - 缺失 `OWNER_JWT_SECRET` 或 `WALLET_KEK_PATH` / `WALLET_KEK` 时会直接启动失败
+- 建议继续把端口显式绑定在 `127.0.0.1`；只有在受控内网场景下才自行调整发布地址
 - 如果需要主网或自定义链配置，再继续补充 `CKB_*` / `EVM_*` 环境变量和链配置挂载
 - 对于源码仓库内的一键受控部署，仍推荐使用 `pnpm docker:up`
 

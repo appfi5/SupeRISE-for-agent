@@ -61,7 +61,7 @@ The image has two runtime profiles:
 
 #### `quickstart`
 
-Check or create the runtime volume first, then pull the latest image and start it:
+Check or create the runtime volume first, then pull and start the image. Use `superise/agent-wallet:latest` by default; if `latest` has not been published yet, switch to the newest uploaded explicit tag on Docker Hub and keep that same tag in both `pull` and `run`:
 
 ```bash
 docker volume inspect superise-agent-wallet-data >/dev/null 2>&1 || docker volume create superise-agent-wallet-data
@@ -69,7 +69,7 @@ docker pull superise/agent-wallet:latest
 docker run -d \
   --name superise-agent-wallet \
   --restart unless-stopped \
-  -p 18799:18799 \
+  -p 127.0.0.1:18799:18799 \
   -v superise-agent-wallet-data:/app/runtime-data \
   superise/agent-wallet:latest
 ```
@@ -78,6 +78,7 @@ Notes:
 
 - `superise-agent-wallet-data` is the required persistent volume for quickstart
 - without `-v superise-agent-wallet-data:/app/runtime-data`, the official image fails fast on purpose
+- if `docker pull superise/agent-wallet:latest` reports that the tag does not exist, switch to the newest uploaded explicit tag on Docker Hub, for example `superise/agent-wallet:0.2.0-rc.1`
 - on the first quickstart boot, the logs print the initial Owner password once; rotate it immediately after the first login
 
 #### `managed`
@@ -92,7 +93,7 @@ docker pull superise/agent-wallet:latest
 docker run -d \
   --name superise-agent-wallet-managed \
   --restart unless-stopped \
-  -p 18799:18799 \
+  -p 127.0.0.1:18799:18799 \
   -e DEPLOYMENT_PROFILE=managed \
   -e OWNER_JWT_SECRET='replace-with-a-high-entropy-secret' \
   -e WALLET_KEK_PATH=/run/secrets/wallet_kek \
@@ -105,6 +106,7 @@ Notes:
 
 - `managed` never falls back to `quickstart`
 - startup fails fast when `OWNER_JWT_SECRET` or `WALLET_KEK_PATH` / `WALLET_KEK` is missing
+- keep the published port bound to `127.0.0.1` unless you are intentionally deploying into a trusted private network
 - if you need mainnet or custom chain settings, add the required `CKB_*` / `EVM_*` environment variables and mount the JSON config files
 - for the repository-managed controlled deployment flow, prefer `pnpm docker:up`
 
