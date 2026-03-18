@@ -4,6 +4,28 @@ on:
   push:
     branches:
       - main
+    paths:
+      - .dockerignore
+      - .github/.release-please-manifest.json
+      - .github/release-please-config.json
+      - .github/workflows/release.yml
+      - Dockerfile
+      - apps/owner-ui/index.html
+      - apps/owner-ui/package.json
+      - apps/owner-ui/src/**
+      - apps/owner-ui/tsconfig.json
+      - apps/owner-ui/vite.config.ts
+      - apps/wallet-server/package.json
+      - apps/wallet-server/src/**
+      - apps/wallet-server/tsconfig.build.json
+      - package.json
+      - packages/*/package.json
+      - packages/*/src/**
+      - packages/*/tsconfig.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - scripts/version-*.mjs
+      - tsconfig.base.json
   workflow_dispatch:
     inputs:
       release_as:
