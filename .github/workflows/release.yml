@@ -1,0 +1,229 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      release_as:
+        description: Optional semver override for the next release PR.
+        required: false
+        type: string
+
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGE_NAME: superise/agent-wallet
+  RELEASE_PLEASE_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN != '' && secrets.RELEASE_PLEASE_TOKEN || github.token }}
+
+jobs:
+  build_candidate:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    outputs:
+      candidate_tag: ${{ steps.meta.outputs.candidate_tag }}
+      digest: ${{ steps.build.outputs.digest }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate version lockstep
+        run: pnpm version:check
+
+      - name: Run test suite
+        run: pnpm test
+
+      - name: Resolve candidate tag
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "candidate_tag=sha-${GITHUB_SHA}" >>"$GITHUB_OUTPUT"
+          echo "build_ref=${GITHUB_REF}" >>"$GITHUB_OUTPUT"
+          echo "built_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >>"$GITHUB_OUTPUT"
+          echo "app_version=$(node -p 'require(\"./package.json\").version')" >>"$GITHUB_OUTPUT"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: superise
+          password: ${{ secrets.SUPERISE_DOCKERHUB_TOKEN }}
+
+      - name: Build and push candidate image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.candidate_tag }}
+          build-args: |
+            SUPERISE_BUILD_REF=${{ steps.meta.outputs.build_ref }}
+            SUPERISE_GIT_SHA=${{ github.sha }}
+            SUPERISE_BUILT_AT=${{ steps.meta.outputs.built_at }}
+          labels: |
+            org.opencontainers.image.title=agent-wallet
+            org.opencontainers.image.created=${{ steps.meta.outputs.built_at }}
+            org.opencontainers.image.version=${{ steps.meta.outputs.app_version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            io.superise.build.ref=${{ steps.meta.outputs.build_ref }}
+
+  release:
+    if: github.event_name == 'push'
+    needs:
+      - build_candidate
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: Create or update release PR
+        id: release
+        uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ env.RELEASE_PLEASE_TOKEN }}
+          config-file: .github/release-please-config.json
+          manifest-file: .github/.release-please-manifest.json
+          target-branch: main
+
+      - name: Checkout
+        if: steps.release.outputs.release_created == 'true'
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        if: steps.release.outputs.release_created == 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Verify release version state
+        if: steps.release.outputs.release_created == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          node scripts/version-check.mjs
+
+          root_version="$(node -p "require('./package.json').version")"
+          released_version="${{ steps.release.outputs.version }}"
+          released_tag="${{ steps.release.outputs.tag_name }}"
+          released_sha="${{ steps.release.outputs.sha }}"
+
+          if [[ "$released_version" != "$root_version" ]]; then
+            echo "Release version ${released_version} does not match root package version ${root_version}." >&2
+            exit 1
+          fi
+
+          if [[ "$released_tag" != "v${released_version}" ]]; then
+            echo "Release tag ${released_tag} does not match expected tag v${released_version}." >&2
+            exit 1
+          fi
+
+          if [[ "$released_sha" != "${GITHUB_SHA}" ]]; then
+            echo "Release SHA ${released_sha} does not match workflow SHA ${GITHUB_SHA}." >&2
+            exit 1
+          fi
+
+      - name: Resolve release image tags
+        if: steps.release.outputs.release_created == 'true'
+        id: tags
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="${{ steps.release.outputs.version }}"
+          tags="${IMAGE_NAME}:${version}"
+
+          if [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            tags="${tags}"$'\n'"${IMAGE_NAME}:${version%.*}"$'\n'"${IMAGE_NAME}:latest"
+          fi
+
+          printf "tags<<EOF\n%s\nEOF\n" "$tags" >>"$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        if: steps.release.outputs.release_created == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        if: steps.release.outputs.release_created == 'true'
+        uses: docker/login-action@v3
+        with:
+          username: superise
+          password: ${{ secrets.SUPERISE_DOCKERHUB_TOKEN }}
+
+      - name: Promote candidate image to release tags
+        if: steps.release.outputs.release_created == 'true'
+        shell: bash
+        env:
+          CANDIDATE_DIGEST: ${{ needs.build_candidate.outputs.digest }}
+          RELEASE_TAGS: ${{ steps.tags.outputs.tags }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "$CANDIDATE_DIGEST" ]]; then
+            echo "Missing candidate digest." >&2
+            exit 1
+          fi
+
+          while IFS= read -r tag; do
+            if [[ -z "$tag" ]]; then
+              continue
+            fi
+
+            docker buildx imagetools create \
+              --tag "$tag" \
+              "${IMAGE_NAME}@${CANDIDATE_DIGEST}"
+          done <<<"$RELEASE_TAGS"
+
+  release_override:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: Create or update release PR with optional version override
+        uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ env.RELEASE_PLEASE_TOKEN }}
+          config-file: .github/release-please-config.json
+          manifest-file: .github/.release-please-manifest.json
+          target-branch: main
+          release-as: ${{ inputs.release_as }}

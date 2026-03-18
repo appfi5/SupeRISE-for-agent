@@ -70,6 +70,7 @@ Notes:
 - `PUBLISH_HOST` defaults to `127.0.0.1`
 - `ENABLE_API_DOCS` defaults to `false`
 - `/mcp` remains unauthenticated and must not be exposed to the public Internet or to untrusted networks
+- if you want `/health` to report the deployed image alias, inject `SUPERISE_DEPLOY_IMAGE_TAG` at runtime; if you also track digests in your deployment system, inject `SUPERISE_DEPLOY_IMAGE_DIGEST`
 
 ## Owner Access
 
@@ -98,6 +99,8 @@ For local configuration examples, start from [`apps/wallet-server/.env.example`]
 - `PORT`
 - `PUBLISH_HOST`
 - `ENABLE_API_DOCS`
+- `SUPERISE_DEPLOY_IMAGE_TAG`
+- `SUPERISE_DEPLOY_IMAGE_DIGEST`
 
 ### Data And Secrets
 

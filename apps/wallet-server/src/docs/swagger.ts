@@ -35,6 +35,7 @@ import {
   WalletToolCallResponseDoc,
   WalletToolCatalogItemDoc,
 } from "./openapi.models";
+import { APP_VERSION } from "../version";
 
 type ModelClass = Type<unknown>;
 
@@ -73,7 +74,7 @@ export function registerSwagger(app: INestApplication): void {
         "MCP is documented in the repository at `docs/mcp.md` and is not exposed as an interactive Swagger endpoint.",
       ].join("\n"),
     )
-    .setVersion("0.2.1")
+    .setVersion(APP_VERSION)
     .addBearerAuth(
       {
         type: "http",

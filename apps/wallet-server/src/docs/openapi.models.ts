@@ -18,6 +18,34 @@ export class ErrorPayloadDoc {
   details?: Record<string, unknown> | null;
 }
 
+export class BuildInfoDoc {
+  @ApiProperty({ example: "0.2.0" })
+  appVersion!: string;
+
+  @ApiProperty({ required: false, nullable: true, example: "refs/heads/main" })
+  buildRef!: string | null;
+
+  @ApiProperty({
+    required: false,
+    nullable: true,
+    example: "4f2c9ab62f8f6c0d34f01a56ffef9e1f1b2c3d4e",
+  })
+  gitSha!: string | null;
+
+  @ApiProperty({ required: false, nullable: true, example: "2026-03-18T03:14:15Z" })
+  builtAt!: string | null;
+
+  @ApiProperty({ required: false, nullable: true, example: "0.3.0-rc.1" })
+  deployImageTag!: string | null;
+
+  @ApiProperty({
+    required: false,
+    nullable: true,
+    example: "sha256:59f4f9f2a4f6f1d3047f7400f9031f4379be8d5f5a3d9dc56ab4f5cb3f1ad4e3",
+  })
+  deployImageDigest!: string | null;
+}
+
 export class HealthStatusDoc {
   @ApiProperty({ enum: ["ok"] })
   status!: "ok";
@@ -31,6 +59,9 @@ export class HealthStatusDoc {
   checks!: {
     database: "ok";
   };
+
+  @ApiProperty({ type: () => BuildInfoDoc })
+  build!: BuildInfoDoc;
 }
 
 export class OwnerLoginRequestDoc {

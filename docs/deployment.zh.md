@@ -70,6 +70,7 @@ pnpm docker:up
 - `PUBLISH_HOST` 默认值为 `127.0.0.1`
 - `ENABLE_API_DOCS` 默认值为 `false`
 - `/mcp` 仍然是无鉴权入口，不能直接暴露到公网或不受信任网络
+- 如果你希望 `/health` 返回当前部署时使用的镜像别名，可在运行时注入 `SUPERISE_DEPLOY_IMAGE_TAG`；如果你的部署系统也能拿到 digest，可再注入 `SUPERISE_DEPLOY_IMAGE_DIGEST`
 
 ## Owner 访问入口
 
@@ -98,6 +99,8 @@ pnpm docker:up
 - `PORT`
 - `PUBLISH_HOST`
 - `ENABLE_API_DOCS`
+- `SUPERISE_DEPLOY_IMAGE_TAG`
+- `SUPERISE_DEPLOY_IMAGE_DIGEST`
 
 ### 数据与 Secret
 

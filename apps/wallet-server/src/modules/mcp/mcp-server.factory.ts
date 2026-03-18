@@ -8,6 +8,7 @@ import {
 } from "@superise/app-contracts";
 import { toContractError } from "@superise/application";
 import { TOKENS } from "../../tokens";
+import { APP_VERSION } from "../../version";
 import { WalletToolRegistryService } from "../wallet-tools/wallet-tool-registry.service";
 
 @Injectable()
@@ -36,7 +37,7 @@ export class McpServerFactory {
   private createServer(): McpServer {
     const server = new McpServer({
       name: "superise-agent-wallet",
-      version: "0.2.1",
+      version: APP_VERSION,
     });
     const registerTool = server.registerTool.bind(server) as (...args: any[]) => unknown;
 

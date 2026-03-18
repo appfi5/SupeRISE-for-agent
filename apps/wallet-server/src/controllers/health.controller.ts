@@ -1,6 +1,7 @@
 import { Controller, Get, Inject } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { RuntimeHealthCheckService } from "@superise/application";
+import { BUILD_INFO } from "../build-info";
 import { ok } from "../common/http/response";
 import { ApiEnvelopeOk } from "../docs/swagger";
 import { HealthStatusDoc } from "../docs/openapi.models";
@@ -18,6 +19,9 @@ export class HealthController {
   @ApiOperation({ summary: "Check runtime health" })
   @ApiEnvelopeOk(HealthStatusDoc)
   async health() {
-    return ok(await this.runtimeHealthCheckService.execute());
+    return ok({
+      ...(await this.runtimeHealthCheckService.execute()),
+      build: BUILD_INFO,
+    });
   }
 }
