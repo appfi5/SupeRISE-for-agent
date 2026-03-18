@@ -184,6 +184,14 @@ body {
   align-items: center;
   max-width: 1180px;
   margin: 0 auto;
+  position: relative;
+}
+
+.login-toolbar {
+  position: absolute;
+  top: 24px;
+  right: 32px;
+  z-index: 1;
 }
 
 .login-hero .ant-typography {
@@ -204,6 +212,10 @@ body {
   box-shadow: 0 24px 48px rgba(15, 23, 42, 0.08);
 }
 
+.language-switcher {
+  min-width: 128px;
+}
+
 @media (max-width: 960px) {
   .owner-header {
     flex-direction: column;
@@ -215,6 +227,11 @@ body {
     align-items: start;
     padding-top: 56px;
     padding-bottom: 56px;
+  }
+
+  .login-toolbar {
+    top: 20px;
+    right: 20px;
   }
 }
 

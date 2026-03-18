@@ -53,6 +53,7 @@ import {
   validateAmountInput,
   type SupportedAsset,
 } from "./utils/asset-amounts";
+import { getLocalizedErrorMessage, useLocalization } from "./localization";
 
 const EMPTY_MESSAGE_SIGNING_FORM: MessageSigningFormState = {
   message: "",
@@ -94,6 +95,7 @@ const EMPTY_ADDRESS_BOOK_EDITOR: AddressBookEditorState = {
 export function App() {
   const refreshTokenRef = useRef(0);
   const { message, modal } = AntdApp.useApp();
+  const { t } = useLocalization();
   const [appState, setAppState] = useState<AppState>(emptyAppState);
   const [authenticated, setAuthenticated] = useState(false);
   const [booting, setBooting] = useState(true);
@@ -179,15 +181,15 @@ export function App() {
       await refreshChainState(refreshToken);
 
       if (!options?.quiet) {
-        message.success("数据已刷新。");
+        message.success(t("toast.refresh.success"));
       }
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
-        resetToLogin("登录状态已过期，请重新登录。");
+        resetToLogin(t("toast.session_expired"));
         return;
       }
 
-      message.error(error instanceof Error ? error.message : "Owner Mode 加载失败");
+      message.error(getLocalizedErrorMessage(error, t, "toast.load_failed"));
     } finally {
       if (refreshToken === refreshTokenRef.current) {
         setRefreshing(false);
@@ -292,11 +294,11 @@ export function App() {
       }
 
       if (error instanceof ApiError && error.status === 401) {
-        resetToLogin("登录状态已过期，请重新登录。");
+        resetToLogin(t("toast.session_expired"));
         return;
       }
 
-      message.error(error instanceof Error ? error.message : "链上数据刷新失败");
+      message.error(getLocalizedErrorMessage(error, t, "toast.chain_refresh_failed"));
     }
   }
 
@@ -307,11 +309,15 @@ export function App() {
       await task();
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
-        resetToLogin(authenticated ? "登录状态已过期，请重新登录。" : error.message);
+        resetToLogin(
+          authenticated
+            ? t("toast.session_expired")
+            : getLocalizedErrorMessage(error, t, "toast.action_failed"),
+        );
         return;
       }
 
-      message.error(error instanceof Error ? error.message : "操作失败");
+      message.error(getLocalizedErrorMessage(error, t, "toast.action_failed"));
     } finally {
       setActiveAction((current) => (current === actionKey ? null : current));
     }
@@ -349,8 +355,8 @@ export function App() {
     setLoginPassword("");
     message.success(
       result.credentialStatus === "DEFAULT_PENDING_ROTATION"
-        ? "已登录。当前仍是默认凭证，请尽快轮换。"
-        : "已登录 Owner Mode。",
+        ? t("toast.login.pending_rotation")
+        : t("toast.login.success"),
     );
     await refreshAuthenticatedState({ quiet: true });
   }
@@ -361,7 +367,7 @@ export function App() {
         method: "POST",
       });
     } finally {
-      resetToLogin("已退出 Owner Mode。");
+      resetToLogin(t("toast.logout.success"));
     }
   }
 
@@ -371,7 +377,7 @@ export function App() {
       body: JSON.stringify(rotateForm),
     });
     setRotateForm({ currentPassword: "", newPassword: "" });
-    resetToLogin("Owner 凭证已更新，请使用新密码重新登录。");
+    resetToLogin(t("toast.credential_rotated"));
   }
 
   async function handleNervosSignMessage() {
@@ -380,7 +386,7 @@ export function App() {
       nervosSignForm,
     );
     setNervosSignResult(formatSignResult(result.signingAddress, result.signature));
-    message.success("Nervos 消息签名完成。");
+    message.success(t("toast.sign.success", { chain: "Nervos" }));
     await refreshAuthenticatedState({ quiet: true });
   }
 
@@ -390,12 +396,12 @@ export function App() {
       ethereumSignForm,
     );
     setEthereumSignResult(formatSignResult(result.signingAddress, result.signature));
-    message.success("Ethereum 消息签名完成。");
+    message.success(t("toast.sign.success", { chain: "Ethereum" }));
     await refreshAuthenticatedState({ quiet: true });
   }
 
   async function handleTransferCkb() {
-    const amount = requireAmount("CKB", ckbTransfer.amount);
+    const amount = requireAmount("CKB", ckbTransfer.amount, t);
     const result = await callWalletTool<NervosTransferCkbResponse>(
       "nervos.transfer.ckb",
       {
@@ -404,12 +410,12 @@ export function App() {
       },
     );
     setCkbTransfer(EMPTY_CKB_TRANSFER_FORM);
-    message.success(formatTransferMessage("CKB", result));
+    message.success(formatTransferMessage("CKB", result, t));
     await refreshAuthenticatedState({ quiet: true });
   }
 
   async function handleTransferUsdt() {
-    const amount = requireAmount("USDT", usdtTransfer.amount);
+    const amount = requireAmount("USDT", usdtTransfer.amount, t);
     const result = await callWalletTool<EthereumTransferUsdtResponse>(
       "ethereum.transfer.usdt",
       {
@@ -418,12 +424,12 @@ export function App() {
       },
     );
     setUsdtTransfer(EMPTY_USDT_TRANSFER_FORM);
-    message.success(formatTransferMessage("USDT", result));
+    message.success(formatTransferMessage("USDT", result, t));
     await refreshAuthenticatedState({ quiet: true });
   }
 
   async function handleTransferUsdc() {
-    const amount = requireAmount("USDC", usdcTransfer.amount);
+    const amount = requireAmount("USDC", usdcTransfer.amount, t);
     const result = await callWalletTool<EthereumTransferUsdcResponse>(
       "ethereum.transfer.usdc",
       {
@@ -432,12 +438,12 @@ export function App() {
       },
     );
     setUsdcTransfer(EMPTY_USDC_TRANSFER_FORM);
-    message.success(formatTransferMessage("USDC", result));
+    message.success(formatTransferMessage("USDC", result, t));
     await refreshAuthenticatedState({ quiet: true });
   }
 
   async function handleTransferEth() {
-    const amount = requireAmount("ETH", ethTransfer.amount);
+    const amount = requireAmount("ETH", ethTransfer.amount, t);
     const result = await callWalletTool<EthereumTransferEthResponse>(
       "ethereum.transfer.eth",
       {
@@ -446,7 +452,7 @@ export function App() {
       },
     );
     setEthTransfer(EMPTY_ETH_TRANSFER_FORM);
-    message.success(formatTransferMessage("ETH", result));
+    message.success(formatTransferMessage("ETH", result, t));
     await refreshAuthenticatedState({ quiet: true });
   }
 
@@ -470,7 +476,7 @@ export function App() {
       });
 
       setAddressBookEditor(createAddressBookEditor(result.contact));
-      message.success(`联系人已更新：${result.contact.name}`);
+      message.success(t("toast.contact.updated", { name: result.contact.name }));
     } else {
       const addresses: Record<string, string> = {};
       if (nervosAddress) {
@@ -489,7 +495,7 @@ export function App() {
       });
 
       setAddressBookEditor(createAddressBookEditor(result.contact));
-      message.success(`联系人已创建：${result.contact.name}`);
+      message.success(t("toast.contact.created", { name: result.contact.name }));
     }
 
     await refreshAuthenticatedState({ quiet: true });
@@ -497,7 +503,7 @@ export function App() {
 
   async function handleDeleteAddressBookContact() {
     if (!addressBookEditor.currentName) {
-      message.warning("请先选择一个联系人。");
+      message.warning(t("toast.contact.delete_requires_selection"));
       return;
     }
 
@@ -505,7 +511,7 @@ export function App() {
       name: addressBookEditor.currentName,
     });
     setAddressBookEditor(EMPTY_ADDRESS_BOOK_EDITOR);
-    message.success(`联系人已删除：${result.name}`);
+    message.success(t("toast.contact.deleted", { name: result.name }));
     await refreshAuthenticatedState({ quiet: true });
   }
 
@@ -518,11 +524,11 @@ export function App() {
     );
     setAddressLookupResult(result);
     if (result.matched) {
-      message.success("地址反查完成。");
+      message.success(t("toast.address_lookup.success"));
       return;
     }
 
-    message.info("地址未匹配到联系人。");
+    message.info(t("toast.address_lookup.not_matched"));
   }
 
   async function handleSaveAssetLimit(key: string) {
@@ -530,25 +536,25 @@ export function App() {
     const draft = assetLimitDrafts[key];
 
     if (!limit || !draft) {
-      message.warning("未找到对应的限额配置。");
+      message.warning(t("toast.limit.not_found"));
       return;
     }
 
     await request<OwnerAssetLimitEntryDto>(`/api/owner/asset-limits/${limit.chain}/${limit.asset}`, {
       method: "PUT",
       body: JSON.stringify({
-        dailyLimit: optionalAmount(limit.asset as SupportedAsset, draft.dailyLimit),
-        weeklyLimit: optionalAmount(limit.asset as SupportedAsset, draft.weeklyLimit),
-        monthlyLimit: optionalAmount(limit.asset as SupportedAsset, draft.monthlyLimit),
+        dailyLimit: optionalAmount(limit.asset as SupportedAsset, draft.dailyLimit, t),
+        weeklyLimit: optionalAmount(limit.asset as SupportedAsset, draft.weeklyLimit, t),
+        monthlyLimit: optionalAmount(limit.asset as SupportedAsset, draft.monthlyLimit, t),
       }),
     });
-    message.success(`${limit.asset} 限额已保存。`);
+    message.success(t("toast.limit.saved", { asset: limit.asset }));
     await refreshAuthenticatedState({ quiet: true });
   }
 
   async function handleImportWallet() {
     if (!importConfirmed) {
-      message.warning("请先确认导入会替换当前唯一钱包。");
+      message.warning(t("toast.import.requires_confirmation"));
       return;
     }
 
@@ -558,7 +564,7 @@ export function App() {
     });
     setImportKey("");
     setImportConfirmed(false);
-    message.success("钱包已导入并替换当前钱包。");
+    message.success(t("toast.wallet.imported"));
     await refreshAuthenticatedState({ quiet: true });
   }
 
@@ -568,34 +574,34 @@ export function App() {
       body: JSON.stringify({ confirmed: true }),
     });
     setExportedKey(result.privateKey);
-    message.success("私钥已导出。请按高风险动作处理。");
+    message.success(t("toast.wallet.exported"));
     await refreshAuthenticatedState({ quiet: true });
   }
 
   function confirmImportWallet() {
     void modal.confirm({
-      title: "确认导入并替换当前钱包？",
-      content: "该操作会直接替换当前唯一钱包，仅建议在恢复场景中使用。",
-      okText: "确认导入",
+      title: t("modal.import.title"),
+      content: t("modal.import.content"),
+      okText: t("modal.import.confirm"),
       okType: "danger",
-      cancelText: "取消",
+      cancelText: t("common.cancel"),
       onOk: async () => runAction("import-wallet", handleImportWallet),
     });
   }
 
   function confirmExportWallet() {
     void modal.confirm({
-      title: "确认导出私钥？",
-      content: "导出后 Owner 将直接掌握钱包控制权，请按高风险动作处理导出的私钥。",
-      okText: "确认导出",
+      title: t("modal.export.title"),
+      content: t("modal.export.content"),
+      okText: t("modal.export.confirm"),
       okType: "danger",
-      cancelText: "取消",
+      cancelText: t("common.cancel"),
       onOk: async () => runAction("export-wallet", handleExportWallet),
     });
   }
 
   if (booting) {
-    return <div className="screen-center">Loading Owner Mode...</div>;
+    return <div className="screen-center">{t("app.loading")}</div>;
   }
 
   if (!authenticated) {
@@ -824,19 +830,33 @@ function formatTransferMessage(
     | EthereumTransferEthResponse
     | EthereumTransferUsdtResponse
     | EthereumTransferUsdcResponse,
+  t: ReturnType<typeof useLocalization>["t"],
 ): string {
   const targetLabel = result.contactName
     ? `${result.contactName} (${result.resolvedAddress})`
     : result.resolvedAddress;
-  return `${asset} 转账已提交：${result.operationId} -> ${targetLabel}`;
+  return t("toast.transfer.success", {
+    asset,
+    operationId: result.operationId,
+    target: targetLabel,
+  });
 }
 
-function requireAmount(asset: SupportedAsset, input: AssetAmountInputState): string {
-  const result = validateAmountInput(asset, input, {
-    requirePositive: true,
-  });
+function requireAmount(
+  asset: SupportedAsset,
+  input: AssetAmountInputState,
+  t: ReturnType<typeof useLocalization>["t"],
+): string {
+  const result = validateAmountInput(
+    asset,
+    input,
+    {
+      requirePositive: true,
+    },
+    t,
+  );
   if (result.error || !result.baseValue) {
-    throw new Error(result.error ?? "金额无效。");
+    throw new Error(result.error ?? t("toast.action_failed"));
   }
 
   return result.baseValue;
@@ -845,10 +865,16 @@ function requireAmount(asset: SupportedAsset, input: AssetAmountInputState): str
 function optionalAmount(
   asset: SupportedAsset,
   input: AssetAmountInputState,
+  t: ReturnType<typeof useLocalization>["t"],
 ): string | null {
-  const result = validateAmountInput(asset, input, {
-    allowEmpty: true,
-  });
+  const result = validateAmountInput(
+    asset,
+    input,
+    {
+      allowEmpty: true,
+    },
+    t,
+  );
   if (result.error) {
     throw new Error(result.error);
   }

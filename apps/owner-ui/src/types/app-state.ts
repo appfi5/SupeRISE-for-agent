@@ -85,11 +85,11 @@ export type AppState = {
   audits: AuditLogDto[];
 };
 
-export const OWNER_RISK_NOTICES = [
-  "签名和转账都会直接使用当前唯一钱包，请先确认链与资产类型。",
-  "Agent 的币种限额只在 server 侧生效，Owner 手动操作不会被这套限额阻塞。",
-  "导入私钥会替换当前钱包；导出私钥后，Owner 将直接掌握钱包控制权。",
-  "JWT 访问令牌默认 1 小时有效，过期后需要重新登录。",
+export const OWNER_RISK_NOTICE_KEYS = [
+  "risk_notice.sign_transfer",
+  "risk_notice.owner_limit_bypass",
+  "risk_notice.import_export",
+  "risk_notice.jwt_expiry",
 ] as const;
 
 export const emptyAppState: AppState = {

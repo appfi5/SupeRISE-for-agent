@@ -40,6 +40,7 @@ npx skills add https://github.com/appfi5/SupeRISE-for-agent \
 ## 当前能力
 
 - `Agent` 通过 `MCP` 接入；`Owner` 通过本地管理面和本地 `HTTP API` 管理钱包与限额
+- Owner 本地管理面支持 `en` / `zh` 双语；默认语言为 `en`，登录页和登录后顶部都可切换
 - 当前支持资产为 Nervos `CKB`，以及 Ethereum `ETH`、`USDT`、`USDC`
 - 提供共享地址簿，可维护联系人名称与 `Nervos` / `Ethereum` 地址映射，并支持按精确地址反查联系人
 - 四个 transfer 工具都支持 `to + toType`：可直接转原始地址，也可按联系人名称解析为当前链地址
@@ -115,6 +116,12 @@ docker run -d \
 - 服务地址：`http://127.0.0.1:18799/`
 - MCP 端点：`http://127.0.0.1:18799/mcp`
 - 健康检查：`http://127.0.0.1:18799/health`
+
+Owner 本地管理面说明：
+
+- 默认语言是 `en`
+- 用户切换到 `zh` 后会保存在浏览器本地；刷新、重新登录后继续沿用上次选择
+- 登录页右上角和登录后顶部 Header 都提供语言切换入口
 
 默认 Docker 配置只绑定到本机 `127.0.0.1`。`/mcp` 无鉴权，禁止直接暴露到公网或不受信任网络。
 

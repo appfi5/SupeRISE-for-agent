@@ -40,6 +40,7 @@ Add `-g` if you want to install into the global skill directory. Restart your cl
 ## Current Capabilities
 
 - `Agents` integrate through `MCP`; `Owners` manage the wallet and limits through the local management surface and local `HTTP API`
+- the Owner local-management surface supports `en` and `zh`; the default language is `en`, and the language switcher is available both before and after sign-in
 - Supported assets are Nervos `CKB`, plus Ethereum `ETH`, `USDT`, and `USDC`
 - A shared address book maps contact names to `Nervos` / `Ethereum` addresses and supports exact-address reverse lookup
 - All four transfer tools support `to + toType`: they can send to a raw address directly or resolve a contact name on the current chain first
@@ -115,6 +116,12 @@ After startup:
 - Service URL: `http://127.0.0.1:18799/`
 - MCP endpoint: `http://127.0.0.1:18799/mcp`
 - Health check: `http://127.0.0.1:18799/health`
+
+Owner local-management UI notes:
+
+- the default language is `en`
+- when the user switches to `zh`, the selection is persisted in the browser and reused after refresh or sign-in
+- the language switcher is available on the login screen and in the authenticated header
 
 The default Docker configuration binds only to local `127.0.0.1`. `/mcp` is unauthenticated and must not be exposed to the public Internet or to untrusted networks.
 

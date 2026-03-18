@@ -163,12 +163,12 @@ function validateDeploymentProfileConstraints(
 
   if (parsed.WALLET_KEK_PATH || parsed.WALLET_KEK) {
     throw new Error(
-      "quickstart does not accept external KEK configuration. Set DEPLOYMENT_PROFILE=managed.",
+      "quickstart does not accept external KEK configuration. Remove legacy WALLET_KEK_PATH / WALLET_KEK from your environment, or set DEPLOYMENT_PROFILE=managed.",
     );
   }
   if (parsed.OWNER_JWT_SECRET) {
     throw new Error(
-      "quickstart does not accept OWNER_JWT_SECRET. Set DEPLOYMENT_PROFILE=managed.",
+      "quickstart does not accept OWNER_JWT_SECRET. Remove legacy OWNER_JWT_SECRET from your environment, or set DEPLOYMENT_PROFILE=managed.",
     );
   }
   assertQuickstartChainConfig(chainConfig);
@@ -177,12 +177,12 @@ function validateDeploymentProfileConstraints(
 function assertQuickstartChainConfig(chainConfig: WalletServerChainConfig): void {
   if (chainConfig.ckb.mode !== "preset" || chainConfig.ckb.preset !== "testnet") {
     throw new Error(
-      "quickstart only supports the built-in CKB testnet preset. Set DEPLOYMENT_PROFILE=managed for mainnet or custom chain config.",
+      "quickstart only supports the built-in CKB testnet preset. Remove legacy CKB mainnet/custom chain config from your environment, or set DEPLOYMENT_PROFILE=managed.",
     );
   }
   if (chainConfig.evm.mode !== "preset" || chainConfig.evm.preset !== "testnet") {
     throw new Error(
-      "quickstart only supports the built-in EVM testnet preset. Set DEPLOYMENT_PROFILE=managed for mainnet or custom chain config.",
+      "quickstart only supports the built-in EVM testnet preset. Remove legacy EVM mainnet/custom chain config from your environment, or set DEPLOYMENT_PROFILE=managed.",
     );
   }
 }

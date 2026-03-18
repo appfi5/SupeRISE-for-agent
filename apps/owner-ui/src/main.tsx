@@ -2,12 +2,16 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { App as AntdApp, ConfigProvider } from "antd";
 import { App } from "./App";
+import { LocalizationProvider, useLocalization } from "./localization";
 import "antd/dist/reset.css";
 import "./styles.css";
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
+function OwnerUiRoot() {
+  const { antdLocale } = useLocalization();
+
+  return (
     <ConfigProvider
+      locale={antdLocale}
       theme={{
         token: {
           colorPrimary: "#14532d",
@@ -22,5 +26,13 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <App />
       </AntdApp>
     </ConfigProvider>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <LocalizationProvider>
+      <OwnerUiRoot />
+    </LocalizationProvider>
   </React.StrictMode>,
 );

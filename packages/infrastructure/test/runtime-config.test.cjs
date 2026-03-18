@@ -314,7 +314,13 @@ test("loadWalletServerConfig quickstart rejects external OWNER_JWT_SECRET", () =
         },
         cwd,
       ),
-    /quickstart does not accept OWNER_JWT_SECRET/i,
+    (error) => {
+      assert.equal(
+        error.message,
+        "quickstart does not accept OWNER_JWT_SECRET. Remove legacy OWNER_JWT_SECRET from your environment, or set DEPLOYMENT_PROFILE=managed.",
+      );
+      return true;
+    },
   );
 });
 
@@ -330,7 +336,13 @@ test("loadWalletServerConfig quickstart rejects external KEK configuration", () 
         },
         cwd,
       ),
-    /quickstart does not accept external KEK/i,
+    (error) => {
+      assert.equal(
+        error.message,
+        "quickstart does not accept external KEK configuration. Remove legacy WALLET_KEK_PATH / WALLET_KEK from your environment, or set DEPLOYMENT_PROFILE=managed.",
+      );
+      return true;
+    },
   );
 });
 
@@ -346,7 +358,31 @@ test("loadWalletServerConfig quickstart rejects mainnet presets", () => {
         },
         cwd,
       ),
-    /quickstart only supports the built-in CKB testnet preset/i,
+    (error) => {
+      assert.equal(
+        error.message,
+        "quickstart only supports the built-in CKB testnet preset. Remove legacy CKB mainnet/custom chain config from your environment, or set DEPLOYMENT_PROFILE=managed.",
+      );
+      return true;
+    },
+  );
+
+  assert.throws(
+    () =>
+      loadWalletServerConfig(
+        {
+          DEPLOYMENT_PROFILE: "quickstart",
+          EVM_CHAIN_PRESET: "mainnet",
+        },
+        cwd,
+      ),
+    (error) => {
+      assert.equal(
+        error.message,
+        "quickstart only supports the built-in EVM testnet preset. Remove legacy EVM mainnet/custom chain config from your environment, or set DEPLOYMENT_PROFILE=managed.",
+      );
+      return true;
+    },
   );
 });
 
