@@ -92,4 +92,5 @@ pnpm --filter @superise/wallet-server start
 - Overview and navigation: [`docs/README.md`](./docs/README.md)
 - MCP integration: [`docs/mcp.md`](./docs/mcp.md)
 - Deployment and operations, including the local operator surface: [`docs/deployment.md`](./docs/deployment.md)
+- Release and image publishing workflow: [`docs/release.md`](./docs/release.md)
 - Secondary development and customization: [`docs/development.md`](./docs/development.md)

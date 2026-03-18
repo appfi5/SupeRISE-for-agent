@@ -14,6 +14,7 @@ import {
 import type { ReferenceObject, SchemaObject } from "@nestjs/swagger/dist/interfaces/open-api-spec.interface";
 import {
   AuditLogDoc,
+  BuildInfoDoc,
   ErrorPayloadDoc,
   HealthStatusDoc,
   OwnerCredentialStatusDoc,
@@ -35,11 +36,13 @@ import {
   WalletToolCallResponseDoc,
   WalletToolCatalogItemDoc,
 } from "./openapi.models";
+import { APP_VERSION } from "../version";
 
 type ModelClass = Type<unknown>;
 
 const swaggerModels = [
   ErrorPayloadDoc,
+  BuildInfoDoc,
   HealthStatusDoc,
   OwnerLoginRequestDoc,
   OwnerLoginResponseDoc,
@@ -73,7 +76,7 @@ export function registerSwagger(app: INestApplication): void {
         "MCP is documented in the repository at `docs/mcp.md` and is not exposed as an interactive Swagger endpoint.",
       ].join("\n"),
     )
-    .setVersion("0.2.1")
+    .setVersion(APP_VERSION)
     .addBearerAuth(
       {
         type: "http",

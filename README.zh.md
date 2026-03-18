@@ -94,4 +94,5 @@ pnpm --filter @superise/wallet-server start
 - 总览与导航：[`docs/README.zh.md`](./docs/README.zh.md)
 - MCP 接入：[`docs/mcp.zh.md`](./docs/mcp.zh.md)
 - 部署与运维，以及本地人工操作入口说明：[`docs/deployment.zh.md`](./docs/deployment.zh.md)
+- 发布与镜像发布流程：[`docs/release.zh.md`](./docs/release.zh.md)
 - 二次开发与定制：[`docs/development.zh.md`](./docs/development.zh.md)

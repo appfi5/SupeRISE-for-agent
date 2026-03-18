@@ -33,12 +33,15 @@ pnpm --filter @superise/wallet-server start
 - `pnpm build`：构建 workspace 包、Owner UI 与 wallet server
 - `pnpm test`：先构建，再运行全部 `*.test.cjs`
 - `pnpm typecheck`：对整个 workspace 进行 TypeScript 类型检查
+- `pnpm version:check`：检查根包与所有 workspace 包的版本是否一致
+- `pnpm version:sync`：把所有 workspace 包版本同步到根 `package.json`
+- `pnpm version:set <version>`：把根包和所有 workspace 包一次性设置为指定版本
 - `pnpm docker:up`：启动仓库内置 Docker 部署
 - `pnpm docker:down`：停止仓库内置 Docker 部署
 
 ## 仓库结构
 
-- `apps/wallet-server`：暴露 `/mcp`、`/api/owner/*`、`/health` 以及可选 Swagger 的 NestJS 服务
+- `apps/wallet-server`：暴露 `/mcp`、`/api/owner/*`、`/health`、`/build` 以及可选 Swagger 的 NestJS 服务
 - `apps/owner-ui`：由 `wallet-server` 提供静态服务的 React/Vite Owner UI
 - `packages/app-contracts`：共享 MCP 与 HTTP 请求/响应 schema
 - `packages/application`：应用层服务与用例编排
@@ -60,6 +63,26 @@ pnpm --filter @superise/wallet-server start
 - 共享 MCP 与 Owner API schema：[`packages/app-contracts`](../packages/app-contracts)
 - Owner UI 代码：[`apps/owner-ui`](../apps/owner-ui)
 - wallet server 代码：[`apps/wallet-server`](../apps/wallet-server)
+- release 自动化配置： [`.github/release-please-config.json`](../.github/release-please-config.json)
+- release workflow： [`.github/workflows/release.yml`](../.github/workflows/release.yml)
+- 直接发布 tag 镜像的 workflow： [`.github/workflows/tag-image.yml`](../.github/workflows/tag-image.yml)
+
+## Release 自动化
+
+完整的稳定版发布、预发布 tag 与镜像直发模型请查看 [发布说明](./release.zh.md)。
+
+## Build 元数据
+
+`/build` 现在会独立返回 build 元数据，和 `/health` 的健康检查职责分开。这些字段的语义是刻意拆开的：
+
+- `appVersion`：代码版本，来源于 [`apps/wallet-server/package.json`](../apps/wallet-server/package.json)
+- `buildRef`：镜像构建时对应的源码引用，例如 `refs/heads/main` 或 `refs/tags/test-address-book-1`
+- `gitSha`：烘焙进镜像的准确 commit
+- `builtAt`：UTC 时间的镜像构建时间
+- `deployImageTag`：容器实际以哪个镜像别名部署
+- `deployImageDigest`：运行时注入的镜像 digest
+
+只有构建期字段会被烘焙进镜像。`deployImageTag` 与 `deployImageDigest` 属于部署期元数据，需要在确实关心时由运行环境显式注入，例如设置 `SUPERISE_DEPLOY_IMAGE_TAG` 和 `SUPERISE_DEPLOY_IMAGE_DIGEST`。这样同一个 digest 即使同时对应 `0.3.0`、`0.3`、`latest` 等多个 tag，也不会在镜像内部伪装成某一个固定别名。
 
 ## 验证建议
 
@@ -67,10 +90,12 @@ pnpm --filter @superise/wallet-server start
 
 1. 运行 `pnpm typecheck`
 2. 运行 `pnpm test`
-3. 验证 `http://127.0.0.1:18799/health`
-4. 验证 `http://127.0.0.1:18799/` 的 Owner UI 能正常加载
-5. 如果改动影响 MCP 行为，再通过 MCP Inspector 重新验证接入
-6. 如果改动影响 Owner 侧行为，再重新验证对应的 Owner UI 或 Owner API 流程
+3. 运行 `pnpm version:check`
+4. 验证 `http://127.0.0.1:18799/health`
+5. 验证 `http://127.0.0.1:18799/build`
+6. 验证 `http://127.0.0.1:18799/` 的 Owner UI 能正常加载
+7. 如果改动影响 MCP 行为，再通过 MCP Inspector 重新验证接入
+8. 如果改动影响 Owner 侧行为，再重新验证对应的 Owner UI 或 Owner API 流程
 
 ## 安全提示
 

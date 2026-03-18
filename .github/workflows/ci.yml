@@ -36,6 +36,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Validate version lockstep
+        run: pnpm version:check
+
       - name: Run test suite
         run: pnpm test
 

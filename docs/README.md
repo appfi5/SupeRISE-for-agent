@@ -8,6 +8,7 @@ This directory contains the external documentation for SupeRISE Agent Wallet, a 
 
 - I want to integrate an agent through MCP: [MCP Integration](./mcp.md)
 - I want to deploy or operate the service: [Deployment](./deployment.md)
+- I want to publish images or cut a release: [Release Guide](./release.md)
 - I want to customize or extend the project: [Development](./development.md)
 
 The service also includes a local operator surface for human-managed wallet actions, limits, and credential handling. See the deployment guide when you need that workflow.
@@ -16,6 +17,7 @@ The service also includes a local operator surface for human-managed wallet acti
 
 - `POST /mcp`: Agent integration surface
 - `GET /health`: runtime health probe
+- `GET /build`: build and deployment metadata
 - `/`: local Owner web UI
 - `/api/owner/*`: local Owner HTTP API
 - `/docs` and `/docs-json`: optional Swagger for the Owner HTTP API when `ENABLE_API_DOCS=true`

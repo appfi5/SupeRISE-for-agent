@@ -29,6 +29,7 @@ After startup:
 - MCP endpoint: `http://127.0.0.1:18799/mcp`
 - Owner UI: `http://127.0.0.1:18799/`
 - Health check: `http://127.0.0.1:18799/health`
+- Build metadata: `http://127.0.0.1:18799/build`
 
 Notes:
 
@@ -62,6 +63,7 @@ After startup:
 - MCP endpoint: `http://127.0.0.1:${PORT:-18799}/mcp`
 - Owner UI: `http://127.0.0.1:${PORT:-18799}/`
 - Health check: `http://127.0.0.1:${PORT:-18799}/health`
+- Build metadata: `http://127.0.0.1:${PORT:-18799}/build`
 - SQLite database: `deploy/docker/runtime-data/wallet.sqlite`
 
 Notes:
@@ -70,6 +72,7 @@ Notes:
 - `PUBLISH_HOST` defaults to `127.0.0.1`
 - `ENABLE_API_DOCS` defaults to `false`
 - `/mcp` remains unauthenticated and must not be exposed to the public Internet or to untrusted networks
+- if you want `/build` to report the deployed image alias, inject `SUPERISE_DEPLOY_IMAGE_TAG` at runtime; if you also track digests in your deployment system, inject `SUPERISE_DEPLOY_IMAGE_DIGEST`
 
 ## Owner Access
 
@@ -98,6 +101,8 @@ For local configuration examples, start from [`apps/wallet-server/.env.example`]
 - `PORT`
 - `PUBLISH_HOST`
 - `ENABLE_API_DOCS`
+- `SUPERISE_DEPLOY_IMAGE_TAG`
+- `SUPERISE_DEPLOY_IMAGE_DIGEST`
 
 ### Data And Secrets
 
@@ -129,6 +134,7 @@ Use `managed` when you need mainnet or custom chain config. `quickstart` is inte
 ## Health And Data
 
 - `GET /health` reports runtime database availability
+- `GET /build` reports build and deployment metadata
 - the main runtime data is the SQLite database plus the active `KEK`
 - if you use custom chain JSON files, back them up together with the database and `KEK`
 

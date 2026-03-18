@@ -15,7 +15,10 @@
     "docker:down": "docker compose down",
     "docker:rotate-kek": "sh scripts/docker-rotate-kek.sh",
     "test": "corepack pnpm build && find apps packages -type f -name '*.test.cjs' -print0 | xargs -0 node --test",
-    "typecheck": "corepack pnpm -r typecheck"
+    "typecheck": "corepack pnpm -r typecheck",
+    "version:check": "node scripts/version-check.mjs",
+    "version:set": "node scripts/version-set.mjs",
+    "version:sync": "node scripts/version-sync.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.0.1",

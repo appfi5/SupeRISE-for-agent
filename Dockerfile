@@ -18,6 +18,10 @@ RUN pnpm build
 
 FROM node:24-bookworm-slim AS runtime
 
+ARG SUPERISE_BUILD_REF=
+ARG SUPERISE_GIT_SHA=
+ARG SUPERISE_BUILT_AT=
+
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 ENV NODE_ENV=production
@@ -28,6 +32,9 @@ ENV DATA_DIR=/app/runtime-data
 ENV SQLITE_PATH=/app/runtime-data/wallet.sqlite
 ENV OWNER_NOTICE_PATH=/app/runtime-data/owner-credential.txt
 ENV RUNTIME_SECRET_DIR=/app/runtime-data/secrets
+ENV SUPERISE_BUILD_REF=$SUPERISE_BUILD_REF
+ENV SUPERISE_GIT_SHA=$SUPERISE_GIT_SHA
+ENV SUPERISE_BUILT_AT=$SUPERISE_BUILT_AT
 
 RUN corepack enable
 

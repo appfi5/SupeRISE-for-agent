@@ -46,6 +46,7 @@ export class AppModule implements NestModule {
           rootPath: resolve(__dirname, "../../owner-ui/dist"),
           exclude: [
             "/api/(.*)",
+            "/build",
             "/mcp",
             "/health",
             "/docs",
