@@ -25,6 +25,8 @@ The formal flow is:
 4. merge the Release PR
 5. the `Release` workflow builds the `sha-<commit>` candidate image, creates the GitHub release, and promotes that validated digest to the stable Docker tags
 
+The `main` trigger is scoped to release-relevant files such as `apps/**`, `packages/**`, `Dockerfile`, version manifests, and release workflow config. Documentation-only, design-only, or other out-of-scope repository changes do not trigger the stable release workflow on `main`.
+
 Stable releases publish these Docker tags:
 
 - `<version>`

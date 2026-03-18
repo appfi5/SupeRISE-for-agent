@@ -25,6 +25,8 @@ English version: [release.md](./release.md).
 4. 合并 Release PR
 5. `Release` workflow 会构建 `sha-<commit>` 候选镜像、创建 GitHub release，并把这份已验证的 digest promote 成稳定 Docker tag
 
+`main` 上的触发范围被限定在 release 相关文件上，例如 `apps/**`、`packages/**`、`Dockerfile`、版本清单以及 release workflow 配置。纯文档、纯设计资料或其他不在这个范围内的仓库改动，不会触发正式 release workflow。
+
 稳定版会发布这些 Docker tag：
 
 - `<version>`

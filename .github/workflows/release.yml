@@ -4,6 +4,21 @@ on:
   push:
     branches:
       - main
+    paths:
+      - .dockerignore
+      - .github/.release-please-manifest.json
+      - .github/release-please-config.json
+      - .github/workflows/release.yml
+      - .github/workflows/tag-image.yml
+      - CHANGELOG.md
+      - Dockerfile
+      - apps/**
+      - package.json
+      - packages/**
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - scripts/version-*.mjs
+      - tsconfig.base.json
   workflow_dispatch:
     inputs:
       release_as:
