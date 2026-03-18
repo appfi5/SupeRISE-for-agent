@@ -1,22 +1,21 @@
-# 使用文档
+# Documentation
 
-本目录用于存放面向使用者、接入者和部署者的文档，默认语言为中文。
+This directory contains the external documentation for SupeRISE Agent Wallet, a local wallet service for agents that uses `MCP` for integration.
 
-英文版本见 [docs/en/README.md](./en/README.md)。
+中文版本见 [README.zh.md](./README.zh.md)。
 
-## 按主题阅读
+## Choose By Goal
 
-- Agent 接入： [MCP 接入说明](./mcp.md)
-- 部署与运行： [部署说明](./deployment.md)
+- I want to integrate an agent through MCP: [MCP Integration](./mcp.md)
+- I want to deploy or operate the service: [Deployment](./deployment.md)
+- I want to customize or extend the project: [Development](./development.md)
 
-## 当前覆盖范围
+The service also includes a local operator surface for human-managed wallet actions, limits, and credential handling. See the deployment guide when you need that workflow.
 
-- `MCP` 工具清单，以及 `wallet.operation_status` 与链上 `tx_status` 的职责划分
-- Owner 本地管理能力，包括钱包查看、共享地址簿、转账、按资产日 / 周 / 月限额配置，以及 `en` / `zh` 双语界面切换
-- 部署与运行配置，包括 `USDT` / `USDC` 合约配置、后台结算轮询与健康检查
+## Public Runtime Surfaces
 
-## 文档边界
-
-`docs/` 只保留“如何使用、如何接入、如何部署、如何运维”这类外部可消费文档。
-
-内部管理面、实现细节、PRD、架构设计和接口契约等材料统一放在 [`design/`](../design/README.md)。
+- `POST /mcp`: Agent integration surface
+- `GET /health`: runtime health probe
+- `/`: local Owner web UI
+- `/api/owner/*`: local Owner HTTP API
+- `/docs` and `/docs-json`: optional Swagger for the Owner HTTP API when `ENABLE_API_DOCS=true`

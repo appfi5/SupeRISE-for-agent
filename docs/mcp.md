@@ -1,28 +1,33 @@
-# MCP 接入说明
+# MCP Integration
 
-本项目首先面向 Agent 使用。正式的 Agent 接入面是 MCP。
+SupeRISE Agent Wallet is a local wallet service for agents. Agents connect through `MCP` at `POST /mcp`.
 
-英文版本见 [docs/en/mcp.md](./en/mcp.md)。
+中文版本见 [mcp.zh.md](./mcp.zh.md)。
 
-## MCP 入口
+Use this document as a semantic guide, but treat `tools/list` as the live contract. Swagger documents only the Owner HTTP API and is not the source of truth for Agent integrations.
 
-- 传输端点：`POST /mcp`
-- 请求方法：仅支持 `POST`
-- 必需 `Accept`：`application/json, text/event-stream`
-- 必需 `Content-Type`：`application/json`
+## Endpoint Contract
 
-`/mcp` 是协议端点，应该通过 MCP 客户端或 MCP Inspector 使用，而不是当作 Swagger 风格的普通 HTTP 表单接口来调用。
+- Endpoint: `POST /mcp`
+- Supported method: `POST` only
+- Required `Accept`: `application/json, text/event-stream`
+- Required `Content-Type`: `application/json`
+- `GET /mcp` and `DELETE /mcp` return `405`
 
-## 推荐调用流程
+`/mcp` is a protocol endpoint. Use an MCP client or MCP Inspector instead of Swagger-style manual form calls.
 
-1. 发送 `initialize`
-2. 发送 `notifications/initialized`
-3. 发送 `tools/list`
-4. 发送 `tools/call`
+## Recommended Client Workflow
 
-本地调试建议优先使用 `@modelcontextprotocol/inspector`。
+1. Send `initialize`
+2. Send `notifications/initialized`
+3. Send `tools/list`
+4. Send `tools/call`
 
-`tools/list` 是 Agent 的权威契约源。当前实现会在 `tools/list` 中直接暴露每个工具的：
+For local inspection, prefer `@modelcontextprotocol/inspector`.
+
+## `tools/list` Is The Source Of Truth
+
+The current implementation exposes each tool's:
 
 - `title`
 - `description`
@@ -30,18 +35,17 @@
 - `outputSchema`
 - `annotations`
 
-外部 Agent 应优先依赖这些元数据理解工具，而不是依赖其他本地管理入口或 Swagger。
+External Agents should discover and validate tool behavior from this metadata first, then use this document for high-level semantics and operational context.
 
-安全边界说明：
+## Current Tool Groups
 
-- `/mcp` 默认无鉴权
-- 该服务应只运行在受信任的本地或私有网络环境中
-- 不应将 `/mcp` 直接暴露到公网
-
-## 当前工具集合
+### Wallet
 
 - `wallet.current`
 - `wallet.operation_status`
+
+### Address Book
+
 - `address_book.list`
 - `address_book.search`
 - `address_book.lookup_by_address`
@@ -50,11 +54,17 @@
 - `address_book.create`
 - `address_book.update`
 - `address_book.delete`
+
+### Nervos
+
 - `nervos.address`
 - `nervos.balance.ckb`
 - `nervos.sign_message`
 - `nervos.transfer.ckb`
 - `nervos.tx_status`
+
+### Ethereum
+
 - `ethereum.address`
 - `ethereum.balance.eth`
 - `ethereum.balance.usdt`
@@ -65,22 +75,31 @@
 - `ethereum.transfer.usdc`
 - `ethereum.tx_status`
 
-## 工具语义
+## Tool And State Semantics
 
-- 当前支持资产为 Nervos `CKB`，以及 Ethereum `ETH`、`USDT`、`USDC`
-- `amount` 一律是资产最小单位的整数字符串
-- `nervos.balance.ckb` 和 `nervos.transfer.ckb` 使用 `Shannon`
-- `ethereum.balance.eth` 和 `ethereum.transfer.eth` 使用 `wei`
-- `ethereum.balance.usdt` 和 `ethereum.transfer.usdt` 使用 USDT 最小单位
-- `ethereum.balance.usdc` 和 `ethereum.transfer.usdc` 使用 USDC 最小单位
-- 余额查询结果会返回 `amount`、`decimals`、`symbol`
-- transfer 工具返回的是 server 已接受并开始处理的提交结果，不表示最终链上确认
-- `wallet.operation_status` 返回本地操作状态：`RESERVED`、`SUBMITTED`、`CONFIRMED`、`FAILED`
-- `nervos.tx_status` 与 `ethereum.tx_status` 返回链上观察状态：`NOT_FOUND`、`PENDING`、`CONFIRMED`、`FAILED`
-- 一次转账后，通常需要同时使用 `wallet.operation_status` 与对应链的 `tx_status` 跟踪内部进度和链上最终结果
-- 当 Agent 转账命中按资产限额时，transfer 工具会返回 `ASSET_LIMIT_EXCEEDED`；限额按资产独立执行，并按日 / 周 / 月窗口统计
-- 地址簿工具用于维护共享联系人；`address_book.lookup_by_address` 只表达“地址簿中有哪些匹配联系人”，不表达链上真实归属
-- 四个 transfer 工具都支持可选 `toType`
-  - `toType=address` 表示 `to` 是原始链地址；省略时默认按这个模式处理
-  - `toType=contact_name` 表示 `to` 是联系人名称；server 会按当前链解析最终地址
-  - `toType=address` 时不会自动反查地址簿，也不会回填联系人名称
+- Supported assets are Nervos `CKB`, plus Ethereum `ETH`, `USDT`, and `USDC`
+- `amount` is always an integer string in the asset's smallest unit
+- `nervos.balance.ckb` and `nervos.transfer.ckb` use `Shannon`
+- `ethereum.balance.eth` and `ethereum.transfer.eth` use `wei`
+- `ethereum.balance.usdt` and `ethereum.transfer.usdt` use the smallest USDT unit
+- `ethereum.balance.usdc` and `ethereum.transfer.usdc` use the smallest USDC unit
+- Balance responses include `amount`, `decimals`, and `symbol`
+- Transfer tools return the server-side acceptance result for a submitted operation, not final chain confirmation
+- `wallet.operation_status` reports local orchestration states: `RESERVED`, `SUBMITTED`, `CONFIRMED`, `FAILED`
+- `nervos.tx_status` and `ethereum.tx_status` report observed chain states: `NOT_FOUND`, `PENDING`, `CONFIRMED`, `FAILED`
+- After a transfer, poll both `wallet.operation_status` and the chain-specific `tx_status` tool to follow internal progress and final on-chain outcome
+- If an Agent transfer exceeds a configured per-asset limit, the transfer tool returns `ASSET_LIMIT_EXCEEDED`
+- Limits are enforced independently per asset across daily, weekly, and monthly windows
+- Address-book tools manage local shared contacts; `address_book.lookup_by_address` reports only local matches and does not claim real on-chain ownership
+- All four transfer tools accept optional `toType`
+- `toType=address` means `to` is a raw chain address; omitting `toType` defaults to this mode
+- `toType=contact_name` means `to` is a contact name; the server resolves the final chain address before transfer
+- `toType=address` does not perform reverse address-book lookup and does not backfill a contact name
+
+## Security And Operating Notes
+
+- `/mcp` is unauthenticated by default
+- Run the service only on trusted local or private networks
+- Do not expose `/mcp` directly to the public Internet
+- If you publish the Docker port at all, prefer binding to `127.0.0.1`
+- Enabling `/docs` does not change the MCP contract; it only exposes Swagger for the Owner HTTP API

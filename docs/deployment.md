@@ -1,387 +1,153 @@
-# 部署说明
+# Deployment
 
-英文版本见 [docs/en/deployment.md](./en/deployment.md)。
+This guide is for people who want to run SupeRISE Agent Wallet in a local or controlled environment. The primary integration surface remains `MCP`; the Owner UI and Owner API are local operator surfaces for human use.
 
-## 1. 文档目的
+中文版本见 [deployment.zh.md](./deployment.zh.md)。
 
-本文档定义部署方式、配置项、启动流程、健康检查、日志与恢复要求。
+## Deployment Profiles
 
-## 2. 支持的部署模式
+| Profile | Use it when | Secret model | Chain config scope |
+| --- | --- | --- | --- |
+| `quickstart` | You want the fastest local trial with the published image | Runtime secrets are generated automatically | Fixed to built-in `testnet` presets for both chains |
+| `managed` | You need explicit secrets, long-running deployment, mainnet presets, or custom chain config | `KEK` and `OWNER_JWT_SECRET` are provided explicitly | Supports built-in `testnet` or `mainnet` presets, plus custom chain JSON |
 
-### 2.1 `docker run` quickstart
-
-官方镜像默认支持这一档位。
-
-特点：
-
-- 同一镜像直接 `docker run`
-- 默认零应用配置启动
-- 首次启动自动生成 runtime secret
-- 默认链环境固定为内置 `testnet` preset
-
-最简可访问示例：
+## Quickstart With The Published Image
 
 ```bash
-docker run -p 127.0.0.1:18799:18799 -v superise-agent-wallet-data:/app/runtime-data <official-image>
+docker volume inspect superise-agent-wallet-data >/dev/null 2>&1 || docker volume create superise-agent-wallet-data
+docker pull superise/agent-wallet:latest
+docker run -d \
+  --name superise-agent-wallet \
+  --restart unless-stopped \
+  -p 127.0.0.1:18799:18799 \
+  -v superise-agent-wallet-data:/app/runtime-data \
+  superise/agent-wallet:latest
 ```
 
-首次启动后，运行时目录 `/app/runtime-data` 下会包含：
+After startup:
 
-- SQLite 数据库
-- `/app/runtime-data/secrets/wallet.kek`
-- `/app/runtime-data/secrets/owner-jwt.secret`
-- `/app/runtime-data/owner-credential.txt`
+- MCP endpoint: `http://127.0.0.1:18799/mcp`
+- Owner UI: `http://127.0.0.1:18799/`
+- Health check: `http://127.0.0.1:18799/health`
 
-说明：
+Notes:
 
-- Quickstart 只保证零应用配置启动，不保证零参数即可从宿主机访问
-- 若未显式挂载 `superise-agent-wallet-data:/app/runtime-data`，系统会直接启动失败
-- 默认应优先使用 `superise/agent-wallet:latest`；若 `latest` 尚未发布，则改用 Docker Hub 上最新上传的具体 tag
-- 若不提供 `-p`，容器仍可完成初始化，但宿主机无法直接访问服务
-- 若提供 `-p`，应显式绑定 `127.0.0.1:18799:18799`，避免把无鉴权 `/mcp` 暴露到公网
-- 初始 Owner 密码只会在首次启动日志中打印一次
+- keep the published port on `127.0.0.1` unless you are deploying into a trusted private network
+- `quickstart` requires the explicit `superise-agent-wallet-data:/app/runtime-data` mount
+- `quickstart` uses the built-in `testnet` presets for both chains
+- the initial Owner password is printed once in the container logs on the first boot
+- `quickstart` does not accept external `WALLET_KEK*` or `OWNER_JWT_SECRET`
 
-### 2.1.1 GitHub tag 镜像发布
+## Managed Deployment From This Repository
 
-仓库通过 GitHub Actions 在 tag push 时自动构建并推送 Docker Hub 镜像。
+Use this when you want an explicit `KEK`, an explicit `OWNER_JWT_SECRET`, or more controlled runtime settings.
 
-正式规则：
+Key files:
 
-- 镜像仓库名固定为 `superise/agent-wallet`
-- Git tag 触发镜像发布
-- 若 Git tag 以 `v` 开头，则 Docker tag 会去掉前缀 `v`
-- 若 Git tag 不以 `v` 开头，则 Docker tag 直接使用原 tag
-- 发布镜像为多架构 manifest，当前覆盖 `linux/amd64` 与 `linux/arm64`
+- [`docker-compose.yml`](../docker-compose.yml)
+- [`deploy/docker/.env.example`](../deploy/docker/.env.example)
+- [`deploy/docker/chain-config`](../deploy/docker/chain-config)
+- [`scripts/docker-up.sh`](../scripts/docker-up.sh)
+- [`scripts/docker-rotate-kek.sh`](../scripts/docker-rotate-kek.sh)
 
-示例：
-
-- `v0.2.0` -> `superise/agent-wallet:0.2.0`
-- `v0.2.0-rc.1` -> `superise/agent-wallet:0.2.0-rc.1`
-- `test-address-book-1` -> `superise/agent-wallet:test-address-book-1`
-
-`latest` 只会在以下条件同时满足时更新：
-
-- Git tag 匹配稳定版 `vX.Y.Z`
-- 该 tag 指向的提交来自 `main`
-
-### 2.2 `docker-compose` managed
-
-这是仓库内推荐的标准受控部署模式。
-
-特点：
-
-- 单一镜像，但显式固定为 `DEPLOYMENT_PROFILE=managed`
-- `KEK` 可通过 `docker secret` 注入
-- Owner JWT secret 由部署环境显式提供
-
-当前仓库内提供：
-
-- root [Dockerfile](../Dockerfile)
-- root [docker-compose.yml](../docker-compose.yml)
-- 启动脚本 [docker-up.sh](../scripts/docker-up.sh)
-- `KEK` 轮换脚本 [docker-rotate-kek.sh](../scripts/docker-rotate-kek.sh)
-- 部署环境示例 [deploy/docker/.env.example](../deploy/docker/.env.example)
-- Docker custom 链配置示例 [deploy/docker/chain-config](../deploy/docker/chain-config)
-
-一键启动命令：
+Start it with:
 
 ```bash
+pnpm install
 pnpm docker:up
 ```
 
-启动后宿主机可直接查看：
+After startup:
 
-- 服务地址：`http://127.0.0.1:${PORT:-18799}/`
-- MCP 端点：`http://127.0.0.1:${PORT:-18799}/mcp`
-- 健康检查：`http://127.0.0.1:${PORT:-18799}/health`
-- SQLite 数据：`deploy/docker/runtime-data/wallet.sqlite`
+- MCP endpoint: `http://127.0.0.1:${PORT:-18799}/mcp`
+- Owner UI: `http://127.0.0.1:${PORT:-18799}/`
+- Health check: `http://127.0.0.1:${PORT:-18799}/health`
+- SQLite database: `deploy/docker/runtime-data/wallet.sqlite`
 
-说明：
+Notes:
 
-- `docker-compose` 默认以 `NODE_ENV=production` 启动
-- `docker-compose` 在 compose 文件中显式固定 `DEPLOYMENT_PROFILE=managed`
-- `docker-compose` 默认通过 `PUBLISH_HOST=127.0.0.1` 只绑定本机回环地址
-- `ENABLE_API_DOCS` 默认为 `false`
-- 因此部署默认不暴露 `/docs` 和 `/docs-json`
-- `deploy/docker/chain-config` 会只读挂载到容器内的 `/app/chain-config`
-- `/mcp` 无鉴权，禁止把该端口直接暴露到公网或不受信任网络
+- the repository flow uses `DEPLOYMENT_PROFILE=managed`
+- `PUBLISH_HOST` defaults to `127.0.0.1`
+- `ENABLE_API_DOCS` defaults to `false`
+- `/mcp` remains unauthenticated and must not be exposed to the public Internet or to untrusted networks
 
-### 2.3 非 docker
+## Owner Access
 
-支持：
+- the Owner UI is served from `/`
+- the Owner HTTP API lives under `/api/owner/*`
+- in `quickstart`, the initial Owner password is printed once in the startup logs
+- in `managed`, Owner authentication depends on the configured `OWNER_JWT_SECRET`
+- treat the Owner UI and Owner API as local operator surfaces, just like the rest of the runtime
 
-- `systemd`
-- `pm2`
-- 手工进程启动
+## Manual Managed Deployment
 
-要求：
+If you run the service outside Docker Compose, provide at least:
 
-- 建议显式设置 `DEPLOYMENT_PROFILE=managed`
-- 必须提供 `WALLET_KEK_PATH` 或显式允许的 `WALLET_KEK`
-- 必须显式提供 `OWNER_JWT_SECRET`
+- `DEPLOYMENT_PROFILE=managed`
+- `OWNER_JWT_SECRET`
+- `WALLET_KEK_PATH`, or `WALLET_KEK` together with `ALLOW_PLAINTEXT_KEK_ENV=true`
+- the required `CKB_CHAIN_*` and `EVM_CHAIN_*` settings for your target network
 
-## 3. 核心配置项
+For local configuration examples, start from [`apps/wallet-server/.env.example`](../apps/wallet-server/.env.example).
 
-建议配置项清单：
+## Key Configuration
 
-- `NODE_ENV`
-- `DEPLOYMENT_PROFILE`
-- `ENABLE_API_DOCS`
-- `PUBLISH_HOST`
+### Runtime And Network
+
 - `HOST`
 - `PORT`
+- `PUBLISH_HOST`
+- `ENABLE_API_DOCS`
+
+### Data And Secrets
+
+- `DEPLOYMENT_PROFILE`
 - `DATA_DIR`
 - `RUNTIME_SECRET_DIR`
 - `SQLITE_PATH`
+- `OWNER_NOTICE_PATH`
+- `OWNER_JWT_SECRET`
+- `OWNER_JWT_TTL`
 - `WALLET_KEK_PATH`
 - `WALLET_KEK`
 - `ALLOW_PLAINTEXT_KEK_ENV`
-- `TRANSFER_SETTLEMENT_INTERVAL_MS`
-- `TRANSFER_RESERVED_TIMEOUT_MS`
-- `TRANSFER_SUBMITTED_TIMEOUT_MS`
+
+### Chain And Settlement
+
 - `CKB_CHAIN_MODE`
 - `CKB_CHAIN_PRESET`
 - `CKB_CHAIN_CONFIG_PATH`
 - `EVM_CHAIN_MODE`
 - `EVM_CHAIN_PRESET`
 - `EVM_CHAIN_CONFIG_PATH`
+- `TRANSFER_SETTLEMENT_INTERVAL_MS`
+- `TRANSFER_RESERVED_TIMEOUT_MS`
+- `TRANSFER_SUBMITTED_TIMEOUT_MS`
 
-补充说明：
+Use `managed` when you need mainnet or custom chain config. `quickstart` is intentionally constrained to the built-in testnets.
 
-- `DEPLOYMENT_PROFILE=quickstart` 时，不接受外部 `WALLET_KEK_PATH`、`WALLET_KEK` 或 `OWNER_JWT_SECRET`
-- `DEPLOYMENT_PROFILE=quickstart` 只允许两条链都落在内置 `testnet` preset
-- `DEPLOYMENT_PROFILE=managed` 时，缺失外部 `KEK` 或 `OWNER_JWT_SECRET` 会直接启动失败
-- 当且仅当 `ENABLE_API_DOCS=true` 时启用 Swagger 文档
-- 未设置该变量时按 `false` 处理
-- `PUBLISH_HOST` 控制 Docker 将端口发布到哪个宿主机地址，默认值为 `127.0.0.1`
-- `pnpm docker:up` 首次生成 `deploy/docker/.env` 时会自动写入本地管理面所需的高熵 JWT 签名密钥
-- `TRANSFER_SETTLEMENT_INTERVAL_MS`、`TRANSFER_RESERVED_TIMEOUT_MS`、`TRANSFER_SUBMITTED_TIMEOUT_MS` 共同控制后台转账结算轮询与超时判定
-- `CKB` 与 `EVM` 独立选择 `preset|custom`
-- `preset` 模式使用内置 `testnet|mainnet`
-- `custom` 模式分别通过各自 JSON 文件提供链配置
-- `EVM custom` 必须同时提供 `tokens.erc20.usdt` 与 `tokens.erc20.usdc`
+## Health And Data
 
-`CKB custom` 配置示例：
+- `GET /health` reports runtime database availability
+- the main runtime data is the SQLite database plus the active `KEK`
+- if you use custom chain JSON files, back them up together with the database and `KEK`
 
-```json
-{
-  "rpcUrl": "https://testnet.ckb.dev",
-  "indexerUrl": "https://testnet.ckb.dev/indexer",
-  "genesisHash": "0x10639e0895502b5688a6be8cf69460d76541bfa4821629d86d62ba0aae3f9606",
-  "addressPrefix": "ckt",
-  "scripts": {
-    "Secp256k1Blake160": {
-      "codeHash": "0x9bd7e06f3ecf4be0f2fcd2188b23f1b9fcc88e5d4b65a8637b17723bbda3cce8",
-      "hashType": "type",
-      "cellDeps": [
-        {
-          "cellDep": {
-            "outPoint": {
-              "txHash": "0x71a7ba8f0f0c92bfbf76d5e3ef0b75ab6b2df95d060c5bc3d2dfb3b9f4f7c452",
-              "index": 0
-            },
-            "depType": "depGroup"
-          }
-        }
-      ]
-    }
-  }
-}
-```
+For the repository-managed flow, the important local paths are:
 
-`EVM custom` 配置示例：
+- `deploy/docker/runtime-data`
+- `deploy/docker/secrets/wallet_kek.txt`
+- `deploy/docker/chain-config` when custom chain files are in use
 
-```json
-{
-  "rpcUrl": "https://ethereum-sepolia-rpc.publicnode.com",
-  "chainId": 11155111,
-  "networkName": "custom-sepolia",
-  "tokens": {
-    "erc20": {
-      "usdt": {
-        "standard": "erc20",
-        "contractAddress": "0x0cF531D755F7324B910879b3Cf7beDFAb872513E"
-      },
-      "usdc": {
-        "standard": "erc20",
-        "contractAddress": "0xa704C2f31628ec73A12704fa726a1806613a30ae"
-      }
-    }
-  }
-}
-```
+## Advanced Operations
 
-## 4. 配置优先级
-
-### 4.1 `KEK`
-
-优先级：
-
-1. `WALLET_KEK_PATH`
-2. `WALLET_KEK`
-3. quickstart 运行时自动生成文件
-4. 开发模式自动生成
-
-### 4.2 数据目录
-
-优先级：
-
-1. 显式配置路径
-2. 默认应用数据目录
-
-## 5. 启动流程
-
-固定启动步骤：
-
-1. 读取环境配置
-2. 解析 `DEPLOYMENT_PROFILE`
-3. 分别解析 `CKB` 与 `EVM` 的 `MODE/PRESET/CONFIG_PATH`
-4. 如某条链为 `custom`，读取并校验对应 JSON 文件
-5. 按部署档位读取或生成 runtime secret
-6. 初始化数据库与数据目录
-7. 执行 migration
-8. 执行启动阶段自检（`KEK` / 数据库 / CKB / EVM / `USDT` 合约 / `USDC` 合约）
-9. 检查 / 生成钱包
-10. 检查 / 生成 Owner 本地管理凭证提示
-11. 若为 quickstart 首次启动，打印一次性 Owner 凭证提示
-12. 启动 MCP 与 HTTP 服务
-13. 启动后台转账结算轮询
-
-## 6. 健康检查
-
-启动前自检至少包含：
-
-- `managed` 下 `KEK` 可用
-- `quickstart` 下 runtime secret 目录可写，且所需 secret 可生成 / 读取
-- SQLite 可读写
-- CKB RPC 可达
-- ETH RPC 可达
-- EVM `chainId` 与配置一致
-- USDT 合约地址格式合法
-- USDT 合约代码存在
-- USDT `decimals()` 等于 `6`
-- USDC 合约地址格式合法
-- USDC 合约代码存在
-- USDC `decimals()` 等于 `6`
-
-当 `CKB_CHAIN_MODE=custom` 时还会额外校验：
-
-- CKB 实际 `genesisHash` 与配置一致
-
-运行中健康检查可提供：
-
-- 进程存活
-- 数据库可用性检查
-
-当前实现说明：
-
-- 启动阶段已执行 `KEK`、数据库、CKB、EVM、USDT 合约与 USDC 合约自检
-- 运行时会按 `TRANSFER_SETTLEMENT_INTERVAL_MS` 执行后台转账结算轮询
-- `/health` 会执行数据库可用性检查，并返回 `checks.database`
-
-## 7. 日志与审计
-
-### 7.1 运行日志
-
-必须记录：
-
-- 启动成功 / 失败
-- 配置校验失败
-- RPC 异常
-- 转账流程关键节点
-
-### 7.2 审计日志
-
-必须记录：
-
-- 私钥导入
-- 私钥导出
-- 签名
-- 转账
-
-## 8. 备份与恢复
-
-### 8.1 必须备份的内容
-
-- SQLite 数据库
-- `managed` 下的 `KEK` 来源文件或 `docker secret` 源
-- `quickstart` 下的 runtime secret 目录
-
-当 `CKB_CHAIN_MODE=custom` 时还必须备份：
-
-- `CKB_CHAIN_CONFIG_PATH` 指向的 JSON 配置文件
-
-当 `EVM_CHAIN_MODE=custom` 时还必须备份：
-
-- `EVM_CHAIN_CONFIG_PATH` 指向的 JSON 配置文件
-
-只备份数据库不足以恢复钱包。
-
-### 8.2 恢复原则
-
-恢复系统时必须同时恢复：
-
-- 数据库
-- `managed` 下的 `KEK`
-- `quickstart` 下的 runtime secret 目录
-
-当 `CKB_CHAIN_MODE=custom` 时还必须恢复：
-
-- `CKB` 链配置 JSON
-
-当 `EVM_CHAIN_MODE=custom` 时还必须恢复：
-
-- `EVM` 链配置 JSON
-
-否则无法解密当前钱包私钥。
-
-## 9. 轮换策略
-
-### 9.1 `KEK` 轮换
-
-本期不作为常规 UI 能力，但架构上应支持：
-
-- 解包旧 `DEK`
-- 用新 `KEK` 重包 `DEK`
-
-推荐运维方式：
-
-- 使用独立 maintenance script 执行 `KEK` 轮换
-- 执行轮换时，程序仍需使用旧 `KEK` 读取现有钱包
-- 通过 `NEXT_WALLET_KEK_PATH` 或 `NEXT_WALLET_KEK` 提供目标 `KEK`
-- 轮换成功后，再切换正式启动配置到新 `KEK`
-
-当前 Docker 操作方式：
-
-1. 执行 `pnpm docker:rotate-kek`
-2. 脚本会先停止 `wallet-server`
-3. 在 one-shot 容器中运行 [rewrap-kek.cjs](../apps/wallet-server/scripts/rewrap-kek.cjs)
-4. 成功后备份旧 `KEK` 文件，并把新的 `KEK` 切换为当前 `docker secret` 源
-5. 重新启动 `wallet-server`
-
-如需自带目标 `KEK`，可直接传入目标文件路径：
+To rotate the Docker-managed `KEK`:
 
 ```bash
-sh scripts/docker-rotate-kek.sh /absolute/path/to/next-wallet-kek.txt
+pnpm docker:rotate-kek
 ```
 
-### 9.2 从 quickstart 接管到 managed
+To stop the repository-managed deployment:
 
-推荐步骤：
-
-1. 停止当前 quickstart 容器，并保留同一份 runtime volume
-2. 选择接管策略：复用原有 `/app/runtime-data/secrets/wallet.kek`，或准备新的外部 `KEK`
-3. 如需切换到新的外部 `KEK`，先用 [rewrap-kek.cjs](../apps/wallet-server/scripts/rewrap-kek.cjs) 重包现有 `DEK`
-4. 为 managed 部署准备外部 `KEK` 与 `OWNER_JWT_SECRET`
-5. 使用同一镜像、同一数据目录，以 `DEPLOYMENT_PROFILE=managed` 重新启动
-
-原则：
-
-- 这是一条显式运维流程，不会由应用自动切换
-- 切换失败时应保留原 quickstart 运行时数据，避免半切换状态
-
-## 10. 运维结论
-
-本期运维设计的目标不是复杂编排，而是：
-
-`让单机钱包服务可启动、可诊断、可恢复。`
+```bash
+pnpm docker:down
+```
