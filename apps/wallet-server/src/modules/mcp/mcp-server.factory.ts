@@ -36,7 +36,7 @@ export class McpServerFactory {
   private createServer(): McpServer {
     const server = new McpServer({
       name: "superise-agent-wallet",
-      version: "0.2.0",
+      version: "0.2.1",
     });
     const registerTool = server.registerTool.bind(server) as (...args: any[]) => unknown;
 

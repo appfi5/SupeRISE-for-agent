@@ -73,7 +73,7 @@ export function registerSwagger(app: INestApplication): void {
         "MCP is documented in the repository at `docs/mcp.md` and is not exposed as an interactive Swagger endpoint.",
       ].join("\n"),
     )
-    .setVersion("0.2.0")
+    .setVersion("0.2.1")
     .addBearerAuth(
       {
         type: "http",
