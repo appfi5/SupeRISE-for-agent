@@ -69,29 +69,7 @@ pnpm --filter @superise/wallet-server start
 
 ## Release Automation
 
-The repository now uses a two-stage Docker release flow:
-
-1. every push to `main` runs validation, builds a multi-arch candidate image, and pushes it as `superise/agent-wallet:sha-<commit>`
-2. the same `main` push updates or creates the Release PR through `release-please`
-3. when that Release PR is merged, the next `main` run creates the GitHub release and promotes the already-built candidate digest to the semver Docker tags
-
-Non-formal tag publishing is separate from that flow. Pushing a non-stable Git tag builds and pushes an image immediately:
-
-- `v1.2.3-rc.1` becomes Docker tag `1.2.3-rc.1`
-- `test-address-book-1` becomes Docker tag `test-address-book-1`
-- stable tags like `v1.2.3` are ignored by the tag workflow because they are owned by the formal release workflow
-
-The formal Docker tags follow these rules:
-
-- every release gets `superise/agent-wallet:<version>`
-- stable releases also get `superise/agent-wallet:<major>.<minor>` and `superise/agent-wallet:latest`
-- prereleases such as `1.2.3-rc.1` do not move `latest`
-
-Versioning is lockstep across the whole repository. The root [`package.json`](../package.json) stays the source of truth, `release-please` updates every workspace `package.json` through `extra-files`, and the wallet server reads its version from [`apps/wallet-server/package.json`](../apps/wallet-server/package.json) at runtime instead of duplicating hard-coded strings.
-
-For normal releases, let `release-please` infer the bump from Conventional Commits. If you need an explicit next version, manually run the `Release` workflow and provide the optional `release_as` input.
-
-If you want CI workflows to run automatically on the Release PR itself, add a repository secret named `RELEASE_PLEASE_TOKEN` that contains a PAT or GitHub App token with permission to open pull requests. The workflow falls back to the default `GITHUB_TOKEN`, but GitHub does not trigger downstream workflows from PRs created by that token.
+For the full stable release, prerelease tag, and direct image publishing model, see [Release Guide](./release.md).
 
 ## Build Metadata
 

@@ -69,29 +69,7 @@ pnpm --filter @superise/wallet-server start
 
 ## Release 自动化
 
-仓库现在使用两段式 Docker 发版流程：
-
-1. 每次 push 到 `main`，都会执行校验、构建多架构候选镜像，并以 `superise/agent-wallet:sha-<commit>` 推送
-2. 同一次 `main` push 还会通过 `release-please` 创建或更新 Release PR
-3. 当 Release PR 被合并后，下一次对应的 `main` workflow 会创建 GitHub release，并把已经构建好的候选 digest promote 成正式 Docker tag
-
-非正式 tag 的镜像发布与这条正式流程分开。只要 push 的不是稳定版 semver tag，就会立即构建并推送镜像：
-
-- `v1.2.3-rc.1` 会发布为 Docker tag `1.2.3-rc.1`
-- `test-address-book-1` 会发布为 Docker tag `test-address-book-1`
-- `v1.2.3` 这类稳定版 tag 会被该 workflow 忽略，因为它们由正式 release workflow 负责
-
-正式 Docker tag 规则如下：
-
-- 每次 release 都会生成 `superise/agent-wallet:<version>`
-- 稳定版还会额外生成 `superise/agent-wallet:<major>.<minor>` 和 `superise/agent-wallet:latest`
-- `1.2.3-rc.1` 这类预发布版本不会移动 `latest`
-
-版本在整个仓库内保持锁步。根 [`package.json`](../package.json) 是唯一版本源，`release-please` 通过 `extra-files` 同步所有 workspace `package.json`，而 wallet server 在运行时直接读取 [`apps/wallet-server/package.json`](../apps/wallet-server/package.json) 中的版本，不再维护重复的硬编码字符串。
-
-日常发版默认让 `release-please` 根据 Conventional Commits 自动判断 bump。若确实需要指定下一版号，可手动运行 `Release` workflow，并传入可选的 `release_as` 输入。
-
-如果你希望 Release PR 创建后自动触发 CI，请在仓库 secrets 中配置 `RELEASE_PLEASE_TOKEN`，内容为具备创建 PR 权限的 PAT 或 GitHub App token。当前 workflow 会优先使用它；若不存在则回退到默认 `GITHUB_TOKEN`，而 GitHub 不会为该 token 创建的 PR 触发下游 workflow。
+完整的稳定版发布、预发布 tag 与镜像直发模型请查看 [发布说明](./release.zh.md)。
 
 ## Build 元数据
 
