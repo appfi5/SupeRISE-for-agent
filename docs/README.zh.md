@@ -17,6 +17,7 @@ English version: [README.md](./README.md).
 
 - `POST /mcp`：Agent 接入面
 - `GET /health`：运行时健康检查入口
+- `GET /build`：构建与部署元数据
 - `/`：本地 Owner Web UI
 - `/api/owner/*`：本地 Owner HTTP API
 - `/docs` 与 `/docs-json`：仅在 `ENABLE_API_DOCS=true` 时启用的 Owner HTTP API Swagger

@@ -41,7 +41,7 @@ pnpm --filter @superise/wallet-server start
 
 ## 仓库结构
 
-- `apps/wallet-server`：暴露 `/mcp`、`/api/owner/*`、`/health` 以及可选 Swagger 的 NestJS 服务
+- `apps/wallet-server`：暴露 `/mcp`、`/api/owner/*`、`/health`、`/build` 以及可选 Swagger 的 NestJS 服务
 - `apps/owner-ui`：由 `wallet-server` 提供静态服务的 React/Vite Owner UI
 - `packages/app-contracts`：共享 MCP 与 HTTP 请求/响应 schema
 - `packages/application`：应用层服务与用例编排
@@ -73,7 +73,7 @@ pnpm --filter @superise/wallet-server start
 
 ## Build 元数据
 
-`/health` 现在会在健康检查结果之外返回一组 build 元数据，这些字段的语义是刻意拆开的：
+`/build` 现在会独立返回 build 元数据，和 `/health` 的健康检查职责分开。这些字段的语义是刻意拆开的：
 
 - `appVersion`：代码版本，来源于 [`apps/wallet-server/package.json`](../apps/wallet-server/package.json)
 - `buildRef`：镜像构建时对应的源码引用，例如 `refs/heads/main` 或 `refs/tags/test-address-book-1`
@@ -92,9 +92,10 @@ pnpm --filter @superise/wallet-server start
 2. 运行 `pnpm test`
 3. 运行 `pnpm version:check`
 4. 验证 `http://127.0.0.1:18799/health`
-5. 验证 `http://127.0.0.1:18799/` 的 Owner UI 能正常加载
-6. 如果改动影响 MCP 行为，再通过 MCP Inspector 重新验证接入
-7. 如果改动影响 Owner 侧行为，再重新验证对应的 Owner UI 或 Owner API 流程
+5. 验证 `http://127.0.0.1:18799/build`
+6. 验证 `http://127.0.0.1:18799/` 的 Owner UI 能正常加载
+7. 如果改动影响 MCP 行为，再通过 MCP Inspector 重新验证接入
+8. 如果改动影响 Owner 侧行为，再重新验证对应的 Owner UI 或 Owner API 流程
 
 ## 安全提示
 

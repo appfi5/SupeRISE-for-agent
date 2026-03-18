@@ -59,9 +59,6 @@ export class HealthStatusDoc {
   checks!: {
     database: "ok";
   };
-
-  @ApiProperty({ type: () => BuildInfoDoc })
-  build!: BuildInfoDoc;
 }
 
 export class OwnerLoginRequestDoc {

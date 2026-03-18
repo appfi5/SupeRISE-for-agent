@@ -68,7 +68,7 @@ English version: [release.md](./release.md).
 
 ## Build 元数据
 
-`/health` 会返回一组 build 元数据，方便运维判断当前运行的到底是哪份代码、哪种镜像别名。
+`/build` 会返回一组 build 元数据，方便运维判断当前运行的到底是哪份代码、哪种镜像别名。`/health` 则继续专注于运行时可用性检查。
 
 字段包括：
 

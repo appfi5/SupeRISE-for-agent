@@ -29,6 +29,7 @@ docker run -d \
 - MCP 端点：`http://127.0.0.1:18799/mcp`
 - Owner UI：`http://127.0.0.1:18799/`
 - 健康检查：`http://127.0.0.1:18799/health`
+- Build 元数据：`http://127.0.0.1:18799/build`
 
 说明：
 
@@ -62,6 +63,7 @@ pnpm docker:up
 - MCP 端点：`http://127.0.0.1:${PORT:-18799}/mcp`
 - Owner UI：`http://127.0.0.1:${PORT:-18799}/`
 - 健康检查：`http://127.0.0.1:${PORT:-18799}/health`
+- Build 元数据：`http://127.0.0.1:${PORT:-18799}/build`
 - SQLite 数据库：`deploy/docker/runtime-data/wallet.sqlite`
 
 说明：
@@ -70,7 +72,7 @@ pnpm docker:up
 - `PUBLISH_HOST` 默认值为 `127.0.0.1`
 - `ENABLE_API_DOCS` 默认值为 `false`
 - `/mcp` 仍然是无鉴权入口，不能直接暴露到公网或不受信任网络
-- 如果你希望 `/health` 返回当前部署时使用的镜像别名，可在运行时注入 `SUPERISE_DEPLOY_IMAGE_TAG`；如果你的部署系统也能拿到 digest，可再注入 `SUPERISE_DEPLOY_IMAGE_DIGEST`
+- 如果你希望 `/build` 返回当前部署时使用的镜像别名，可在运行时注入 `SUPERISE_DEPLOY_IMAGE_TAG`；如果你的部署系统也能拿到 digest，可再注入 `SUPERISE_DEPLOY_IMAGE_DIGEST`
 
 ## Owner 访问入口
 
@@ -132,6 +134,7 @@ pnpm docker:up
 ## 健康检查与数据
 
 - `GET /health` 用于查看运行时数据库可用性
+- `GET /build` 用于查看构建与部署元数据
 - 最核心的运行时数据是 SQLite 数据库与当前激活的 `KEK`
 - 如果使用了自定义链配置 JSON，应与数据库和 `KEK` 一起备份
 

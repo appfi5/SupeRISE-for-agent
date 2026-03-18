@@ -41,7 +41,7 @@ pnpm --filter @superise/wallet-server start
 
 ## Repository Map
 
-- `apps/wallet-server`: the NestJS server that exposes `/mcp`, `/api/owner/*`, `/health`, and optional Swagger docs
+- `apps/wallet-server`: the NestJS server that exposes `/mcp`, `/api/owner/*`, `/health`, `/build`, and optional Swagger docs
 - `apps/owner-ui`: the React/Vite Owner UI served by `wallet-server`
 - `packages/app-contracts`: shared MCP and HTTP request/response schemas
 - `packages/application`: application services and use-case orchestration
@@ -73,7 +73,7 @@ For the full stable release, prerelease tag, and direct image publishing model, 
 
 ## Build Metadata
 
-`/health` now exposes build metadata alongside the health checks. The fields have intentionally separate meanings:
+`/build` now exposes build metadata separately from `/health`. The fields have intentionally separate meanings:
 
 - `appVersion`: the code version from [`apps/wallet-server/package.json`](../apps/wallet-server/package.json)
 - `buildRef`: the source ref used when the image was built, such as `refs/heads/main` or `refs/tags/test-address-book-1`
@@ -92,9 +92,10 @@ After changes, a typical validation flow is:
 2. run `pnpm test`
 3. run `pnpm version:check`
 4. verify `http://127.0.0.1:18799/health`
-5. verify the Owner UI loads at `http://127.0.0.1:18799/`
-6. if you changed MCP behavior, re-check the integration through MCP Inspector
-7. if you changed Owner-facing behavior, re-check the relevant Owner UI or Owner API flow
+5. verify `http://127.0.0.1:18799/build`
+6. verify the Owner UI loads at `http://127.0.0.1:18799/`
+7. if you changed MCP behavior, re-check the integration through MCP Inspector
+8. if you changed Owner-facing behavior, re-check the relevant Owner UI or Owner API flow
 
 ## Safety Notes
 

@@ -68,7 +68,7 @@ Useful commands:
 
 ## Build Metadata
 
-`/health` exposes build metadata so operators can tell which code and image alias they are actually running.
+`/build` exposes build metadata so operators can tell which code and image alias they are actually running. `/health` remains dedicated to runtime service availability.
 
 Fields:
 

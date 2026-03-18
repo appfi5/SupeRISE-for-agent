@@ -14,6 +14,7 @@ import {
 import type { ReferenceObject, SchemaObject } from "@nestjs/swagger/dist/interfaces/open-api-spec.interface";
 import {
   AuditLogDoc,
+  BuildInfoDoc,
   ErrorPayloadDoc,
   HealthStatusDoc,
   OwnerCredentialStatusDoc,
@@ -41,6 +42,7 @@ type ModelClass = Type<unknown>;
 
 const swaggerModels = [
   ErrorPayloadDoc,
+  BuildInfoDoc,
   HealthStatusDoc,
   OwnerLoginRequestDoc,
   OwnerLoginResponseDoc,

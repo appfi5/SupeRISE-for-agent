@@ -17,6 +17,7 @@ The service also includes a local operator surface for human-managed wallet acti
 
 - `POST /mcp`: Agent integration surface
 - `GET /health`: runtime health probe
+- `GET /build`: build and deployment metadata
 - `/`: local Owner web UI
 - `/api/owner/*`: local Owner HTTP API
 - `/docs` and `/docs-json`: optional Swagger for the Owner HTTP API when `ENABLE_API_DOCS=true`
