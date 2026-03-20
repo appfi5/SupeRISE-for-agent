@@ -1,0 +1,98 @@
+name: Promote Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Stable semver image version to publish, for example 0.3.0.
+        required: true
+        type: string
+      source_digest:
+        description: Candidate image digest to promote, for example sha256:...
+        required: true
+        type: string
+      publish_minor:
+        description: Also publish the major.minor tag.
+        required: true
+        default: true
+        type: boolean
+      publish_latest:
+        description: Also publish the latest tag.
+        required: true
+        default: true
+        type: boolean
+
+concurrency:
+  group: promote-image-${{ inputs.version }}
+  cancel-in-progress: false
+
+env:
+  IMAGE_NAME: superise/agent-wallet
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Validate promotion request
+        id: meta
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+          SOURCE_DIGEST: ${{ inputs.source_digest }}
+          PUBLISH_MINOR: ${{ inputs.publish_minor }}
+          PUBLISH_LATEST: ${{ inputs.publish_latest }}
+        run: |
+          set -euo pipefail
+
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Only stable semver versions can be promoted by this workflow: $VERSION" >&2
+            exit 1
+          fi
+
+          if [[ ! "$SOURCE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "Invalid image digest: $SOURCE_DIGEST" >&2
+            exit 1
+          fi
+
+          tags="${IMAGE_NAME}:${VERSION}"
+
+          if [[ "$PUBLISH_MINOR" == "true" ]]; then
+            tags="${tags}"$'\n'"${IMAGE_NAME}:${VERSION%.*}"
+          fi
+
+          if [[ "$PUBLISH_LATEST" == "true" ]]; then
+            tags="${tags}"$'\n'"${IMAGE_NAME}:latest"
+          fi
+
+          printf "tags<<EOF\n%s\nEOF\n" "$tags" >>"$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: superise
+          password: ${{ secrets.SUPERISE_DOCKERHUB_TOKEN }}
+
+      - name: Promote image tags
+        shell: bash
+        env:
+          SOURCE_DIGEST: ${{ inputs.source_digest }}
+          RELEASE_TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          set -euo pipefail
+
+          while IFS= read -r tag; do
+            if [[ -z "$tag" ]]; then
+              continue
+            fi
+
+            docker buildx imagetools create \
+              --tag "$tag" \
+              "${IMAGE_NAME}@${SOURCE_DIGEST}"
+          done <<<"$RELEASE_TAGS"
