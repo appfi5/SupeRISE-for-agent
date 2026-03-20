@@ -48,6 +48,7 @@
 - 不允许把 `ETH`、`USDT`、`USDC` 合并成外部通用 transfer tool。
 - 不允许缺失 `nervos.tx_status` 或 `ethereum.tx_status`。
 - `nervos.identity` 与 `ethereum.identity` 必须同时返回 `address` 与 `publicKey`。
+- `nervos.sign_message` 与 `ethereum.sign_message` 必须同时返回 `signature`、`signingAddress` 与 `publicKey`。
 - 必须提供按币种独立的日、周、月限额能力。
 
 地址簿能力最小集合：

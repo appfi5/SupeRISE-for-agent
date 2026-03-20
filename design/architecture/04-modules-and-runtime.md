@@ -151,6 +151,8 @@ WalletModule 是本期核心业务模块。
 
 - 多链公开身份查询必须按链返回 `address + publicKey`
 - 公开身份信息由当前私钥即时推导，不单独持久化
+- 签名结果必须按链返回 `signature + signingAddress + publicKey`
+- 签名返回中的 `signingAddress` 与 `publicKey` 必须与同链 `identity` 一致
 - 转账路径必须先解析 `to + toType`，得到最终链地址后再进入限额与链适配流程
 - `toType=address` 的转账不自动触发地址簿反查
 - Agent 转账路径必须在进入链适配器前完成限额评估与额度预占

@@ -356,10 +356,12 @@ MCP 的定位是：
 - `chain`
 - `signature`
 - `signingAddress`
+- `publicKey`
 
 说明：
 
-- 如需对 `nervos.sign_message` 结果执行验签，调用方应通过 `nervos.identity` 获取同链公钥
+- `nervos.sign_message` 必须直接返回用于验签的同链 `publicKey`
+- 返回的 `signingAddress` 与 `publicKey` 必须与 `nervos.identity` 保持一致
 
 #### `nervos.transfer.ckb`
 
@@ -477,10 +479,12 @@ MCP 的定位是：
 - `chain`
 - `signature`
 - `signingAddress`
+- `publicKey`
 
 说明：
 
-- 如需对 `ethereum.sign_message` 结果执行验签，调用方应通过 `ethereum.identity` 获取同链公钥
+- `ethereum.sign_message` 必须直接返回用于验签的同链 `publicKey`
+- 返回的 `signingAddress` 与 `publicKey` 必须与 `ethereum.identity` 保持一致
 
 #### `ethereum.transfer.eth`
 

@@ -217,6 +217,7 @@
 
 - `nervos.identity`、`nervos.balance.ckb`、`nervos.sign_message`、`nervos.transfer.ckb` 全部可用。
 - `nervos.identity` 必须同时返回 `address` 与 `publicKey`。
+- `nervos.sign_message` 必须同时返回 `signature`、`signingAddress` 与 `publicKey`。
 - `nervos.tx_status` 可按 `txHash` 返回链上状态。
 - `nervos.transfer.ckb` 使用 `contact_name` 时可解析到 `Nervos` 地址。
 - `wallet.operation_status` 能返回 CKB 转账状态。
@@ -275,6 +276,7 @@
 以上能力都能独立调用、独立报错、独立追踪状态。
 
 - `ethereum.identity` 必须同时返回 `address` 与 `publicKey`。
+- `ethereum.sign_message` 必须同时返回 `signature`、`signingAddress` 与 `publicKey`。
 
 ## 8. 阶段 5：MCP 与 Owner HTTP Gateway
 

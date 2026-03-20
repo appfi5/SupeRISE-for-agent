@@ -190,7 +190,9 @@ interface EvmTransactionStatusReader {
 
 - `getIdentity` 的返回结果必须至少包括链地址与同链验签所需的 `publicKey`
 - `nervos.identity` 与 `ethereum.identity` 复用同一身份推导能力，不允许各自维护第二套推导逻辑
-- `nervos.sign_message` 与 `ethereum.sign_message` 不重复返回公钥，验签所需公钥统一由对应 `identity` tool 提供
+- `nervos.sign_message` 与 `ethereum.sign_message` 必须返回 `publicKey`
+- 签名结果中的 `publicKey` 与 `signingAddress` 必须来自与对应 `identity` tool 相同的身份推导结果
+- 适配器若只负责原始签名，应用层必须补齐同链身份查询并组合成最终签名返回
 
 `TxStatusResult.status` 的正式取值：
 
