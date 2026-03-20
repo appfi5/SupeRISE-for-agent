@@ -50,12 +50,12 @@
 - `address_book.create`
 - `address_book.update`
 - `address_book.delete`
-- `nervos.address`
+- `nervos.identity`
 - `nervos.balance.ckb`
 - `nervos.sign_message`
 - `nervos.transfer.ckb`
 - `nervos.tx_status`
-- `ethereum.address`
+- `ethereum.identity`
 - `ethereum.balance.eth`
 - `ethereum.balance.usdt`
 - `ethereum.balance.usdc`
@@ -138,9 +138,10 @@
 - 地址簿联系人模型
 - 地址簿按精确地址匹配模型
 - 转账目标解析模型
+- 多链公开身份查询模型
 - 币种限额策略模型
 - 地址簿创建、列表、搜索、按精确地址查询、详情、全量详情、更新、删除应用服务
-- 钱包创建、恢复、导出、查看应用服务
+- 钱包创建、恢复、导出、查看与多链公开身份查询应用服务
 - 签名操作记录
 - 转账操作记录
 - 地址簿仓储实现
@@ -197,7 +198,7 @@
 
 ### 6.3 必须交付
 
-- 基于 `@ckb-ccc/shell` 的地址推导
+- 基于 `@ckb-ccc/shell` 的 Nervos 公开身份推导（地址 + 公钥）
 - `CKB` 最小单位余额查询
 - Nervos 消息签名
 - `CKB` 转账广播
@@ -214,7 +215,8 @@
 
 ### 6.5 验收标准
 
-- `nervos.address`、`nervos.balance.ckb`、`nervos.sign_message`、`nervos.transfer.ckb` 全部可用。
+- `nervos.identity`、`nervos.balance.ckb`、`nervos.sign_message`、`nervos.transfer.ckb` 全部可用。
+- `nervos.identity` 必须同时返回 `address` 与 `publicKey`。
 - `nervos.tx_status` 可按 `txHash` 返回链上状态。
 - `nervos.transfer.ckb` 使用 `contact_name` 时可解析到 `Nervos` 地址。
 - `wallet.operation_status` 能返回 CKB 转账状态。
@@ -224,7 +226,7 @@
 
 ### 7.1 目标
 
-完成 Ethereum 地址、`ETH` 余额、`USDT` 余额、`USDC` 余额、Ethereum 签名、`ETH` 转账、`USDT` 转账、`USDC` 转账。
+完成 Ethereum 公开身份、`ETH` 余额、`USDT` 余额、`USDC` 余额、Ethereum 签名、`ETH` 转账、`USDT` 转账、`USDC` 转账。
 
 ### 7.2 主要仓库落点
 
@@ -237,7 +239,7 @@
 
 ### 7.3 必须交付
 
-- 基于 `viem` 的地址推导
+- 基于 `viem` 的 Ethereum 公开身份推导（地址 + 公钥）
 - `ETH` 最小单位余额查询
 - `USDT` 最小单位余额查询
 - `USDC` 最小单位余额查询
@@ -260,6 +262,7 @@
 
 ### 7.5 验收标准
 
+- `ethereum.identity`
 - `ethereum.balance.eth`
 - `ethereum.balance.usdt`
 - `ethereum.balance.usdc`
@@ -270,6 +273,8 @@
 - `ethereum.tx_status`
 
 以上能力都能独立调用、独立报错、独立追踪状态。
+
+- `ethereum.identity` 必须同时返回 `address` 与 `publicKey`。
 
 ## 8. 阶段 5：MCP 与 Owner HTTP Gateway
 
@@ -339,8 +344,8 @@
 - 按精确地址查询匹配联系人
 - 联系人详情查看
 - 联系人新增/编辑表单
-- CKB 地址与余额展示
-- ETH 地址与余额展示
+- CKB 公开身份与余额展示
+- ETH 公开身份与余额展示
 - USDT 余额展示
 - USDC 余额展示
 - Nervos 消息签名面板

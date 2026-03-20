@@ -33,12 +33,12 @@
 
 开发者必须以此为最小实现集合：
 
-| 链 | 地址 | 余额 | 签名 | 转账 | Tx 状态 |
+| 链 | 身份 | 余额 | 签名 | 转账 | Tx 状态 |
 | --- | --- | --- | --- | --- | --- |
-| Nervos / CKB | `nervos.address` | `nervos.balance.ckb` | `nervos.sign_message` | `nervos.transfer.ckb` | `nervos.tx_status` |
-| Ethereum / ETH | `ethereum.address` | `ethereum.balance.eth` | `ethereum.sign_message` | `ethereum.transfer.eth` | `ethereum.tx_status` |
-| Ethereum / USDT | 复用 `ethereum.address` | `ethereum.balance.usdt` | 不单独提供第二个签名工具 | `ethereum.transfer.usdt` | 复用 `ethereum.tx_status` |
-| Ethereum / USDC | 复用 `ethereum.address` | `ethereum.balance.usdc` | 不单独提供第二个签名工具 | `ethereum.transfer.usdc` | 复用 `ethereum.tx_status` |
+| Nervos / CKB | `nervos.identity` | `nervos.balance.ckb` | `nervos.sign_message` | `nervos.transfer.ckb` | `nervos.tx_status` |
+| Ethereum / ETH | `ethereum.identity` | `ethereum.balance.eth` | `ethereum.sign_message` | `ethereum.transfer.eth` | `ethereum.tx_status` |
+| Ethereum / USDT | 复用 `ethereum.identity` | `ethereum.balance.usdt` | 不单独提供第二个签名工具 | `ethereum.transfer.usdt` | 复用 `ethereum.tx_status` |
+| Ethereum / USDC | 复用 `ethereum.identity` | `ethereum.balance.usdc` | 不单独提供第二个签名工具 | `ethereum.transfer.usdc` | 复用 `ethereum.tx_status` |
 
 实现要求：
 
@@ -47,6 +47,7 @@
 - 不允许只做 `USDC` 转账而缺失 `USDC` 余额查询。
 - 不允许把 `ETH`、`USDT`、`USDC` 合并成外部通用 transfer tool。
 - 不允许缺失 `nervos.tx_status` 或 `ethereum.tx_status`。
+- `nervos.identity` 与 `ethereum.identity` 必须同时返回 `address` 与 `publicKey`。
 - 必须提供按币种独立的日、周、月限额能力。
 
 地址簿能力最小集合：

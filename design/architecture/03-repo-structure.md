@@ -138,14 +138,14 @@ design/
 职责：
 
 - `@ckb-ccc/shell` 的二次封装
-- CKB 地址推导、签名、转账、余额查询
+- CKB 公开身份推导、签名、转账、余额查询
 
 ### 4.8 `packages/adapters-evm`
 
 职责：
 
 - `viem` 的二次封装
-- ETH 地址推导、ETH / USDT / USDC 余额查询、签名、转账
+- Ethereum 公开身份推导、ETH / USDT / USDC 余额查询、签名、转账
 
 ### 4.9 `packages/shared`
 

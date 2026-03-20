@@ -186,6 +186,12 @@ interface EvmTransactionStatusReader {
 }
 ```
 
+约束：
+
+- `getIdentity` 的返回结果必须至少包括链地址与同链验签所需的 `publicKey`
+- `nervos.identity` 与 `ethereum.identity` 复用同一身份推导能力，不允许各自维护第二套推导逻辑
+- `nervos.sign_message` 与 `ethereum.sign_message` 不重复返回公钥，验签所需公钥统一由对应 `identity` tool 提供
+
 `TxStatusResult.status` 的正式取值：
 
 - `NOT_FOUND`
@@ -197,7 +203,7 @@ interface EvmTransactionStatusReader {
 
 ### 6.1 查询能力
 
-- `getCkbAddress`
+- `getCkbIdentity`
 - `getCkbBalance`
 - `getCkbTxStatus`
 - `normalizeCkbAddress`
@@ -245,7 +251,7 @@ interface EvmTransactionStatusReader {
 
 ### 7.1 查询能力
 
-- `getEthAddress`
+- `getEvmIdentity`
 - `getEthBalance`
 - `getUsdtBalance`
 - `getUsdcBalance`
