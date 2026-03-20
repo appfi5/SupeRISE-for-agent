@@ -109,12 +109,12 @@
 - `address_book.create`
 - `address_book.update`
 - `address_book.delete`
-- `nervos.address`
+- `nervos.identity`
 - `nervos.balance.ckb`
 - `nervos.sign_message`
 - `nervos.transfer.ckb`
 - `nervos.tx_status`
-- `ethereum.address`
+- `ethereum.identity`
 - `ethereum.balance.eth`
 - `ethereum.balance.usdt`
 - `ethereum.balance.usdc`

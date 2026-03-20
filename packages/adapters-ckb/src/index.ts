@@ -35,8 +35,16 @@ export type CkbAdapterConfig =
 export class CkbCccWalletAdapter implements CkbWalletAdapter {
   constructor(private readonly config: CkbAdapterConfig) {}
 
+  async getIdentity(privateKey: string) {
+    const signer = this.createSigner(privateKey);
+    return {
+      address: await signer.getRecommendedAddress(),
+      publicKey: signer.publicKey,
+    };
+  }
+
   async deriveAddress(privateKey: string): Promise<string> {
-    return this.createSigner(privateKey).getRecommendedAddress();
+    return (await this.getIdentity(privateKey)).address;
   }
 
   async normalizeAddress(address: string): Promise<string> {

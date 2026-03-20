@@ -38,12 +38,12 @@ MCP 的定位是：
 8. `address_book.create`
 9. `address_book.update`
 10. `address_book.delete`
-11. `nervos.address`
+11. `nervos.identity`
 12. `nervos.balance.ckb`
 13. `nervos.sign_message`
 14. `nervos.transfer.ckb`
 15. `nervos.tx_status`
-16. `ethereum.address`
+16. `ethereum.identity`
 17. `ethereum.balance.eth`
 18. `ethereum.balance.usdt`
 19. `ethereum.balance.usdc`
@@ -314,16 +314,17 @@ MCP 的定位是：
 - `lookup_by_address` 按地址精确匹配，不支持地址字符串模糊匹配
 - 地址簿详情中不暴露内部数据库主键
 
-#### `nervos.address`
+#### `nervos.identity`
 
 用途：
 
-- 返回当前钱包的 Nervos 地址
+- 返回当前钱包的 Nervos 公开身份信息
 
 输出：
 
 - `chain`
 - `address`
+- `publicKey`
 
 #### `nervos.balance.ckb`
 
@@ -355,6 +356,12 @@ MCP 的定位是：
 - `chain`
 - `signature`
 - `signingAddress`
+- `publicKey`
+
+说明：
+
+- `nervos.sign_message` 必须直接返回用于验签的同链 `publicKey`
+- 返回的 `signingAddress` 与 `publicKey` 必须与 `nervos.identity` 保持一致
 
 #### `nervos.transfer.ckb`
 
@@ -402,16 +409,17 @@ MCP 的定位是：
 - `confirmations?`
 - `reason?`
 
-#### `ethereum.address`
+#### `ethereum.identity`
 
 用途：
 
-- 返回当前钱包的 Ethereum 地址
+- 返回当前钱包的 Ethereum 公开身份信息
 
 输出：
 
 - `chain`
 - `address`
+- `publicKey`
 
 #### `ethereum.balance.eth`
 
@@ -471,6 +479,12 @@ MCP 的定位是：
 - `chain`
 - `signature`
 - `signingAddress`
+- `publicKey`
+
+说明：
+
+- `ethereum.sign_message` 必须直接返回用于验签的同链 `publicKey`
+- 返回的 `signingAddress` 与 `publicKey` 必须与 `ethereum.identity` 保持一致
 
 #### `ethereum.transfer.eth`
 
@@ -737,9 +751,9 @@ UI 应在已登录状态下自行组合以下原子能力：
 - `wallet-tools/call(name=address_book.update)`
 - `wallet-tools/call(name=address_book.delete)`
 - `credential/status`
-- `wallet-tools/call(name=nervos.address)`
+- `wallet-tools/call(name=nervos.identity)`
 - `wallet-tools/call(name=nervos.balance.ckb)`
-- `wallet-tools/call(name=ethereum.address)`
+- `wallet-tools/call(name=ethereum.identity)`
 - `wallet-tools/call(name=ethereum.balance.eth)`
 - `wallet-tools/call(name=ethereum.balance.usdt)`
 - `wallet-tools/call(name=ethereum.balance.usdc)`
@@ -823,11 +837,11 @@ UI 应在已登录状态下自行组合以下原子能力：
 - 创建联系人
 - 更新联系人
 - 删除联系人
-- 查询 Nervos 地址
+- 查询 Nervos 公开身份
 - 查询 Nervos CKB 余额
 - Nervos 消息签名
 - Nervos CKB 转账
-- 查询 Ethereum 地址
+- 查询 Ethereum 公开身份
 - 查询 Ethereum ETH 余额
 - 查询 Ethereum USDT 余额
 - 查询 Ethereum USDC 余额

@@ -149,6 +149,10 @@ WalletModule 是本期核心业务模块。
 
 额外要求：
 
+- 多链公开身份查询必须按链返回 `address + publicKey`
+- 公开身份信息由当前私钥即时推导，不单独持久化
+- 签名结果必须按链返回 `signature + signingAddress + publicKey`
+- 签名返回中的 `signingAddress` 与 `publicKey` 必须与同链 `identity` 一致
 - 转账路径必须先解析 `to + toType`，得到最终链地址后再进入限额与链适配流程
 - `toType=address` 的转账不自动触发地址簿反查
 - Agent 转账路径必须在进入链适配器前完成限额评估与额度预占
@@ -289,7 +293,7 @@ WalletModule 是本期核心业务模块。
 
 - 注册 `CkbWalletAdapter`
 - 封装 `@ckb-ccc/shell`
-- 提供地址推导、CKB 余额查询、签名、CKB 转账、CKB `tx status` 查询
+- 提供 Nervos 公开身份推导、CKB 余额查询、签名、CKB 转账、CKB `tx status` 查询
 
 ### 4.15 `EvmModule`
 
@@ -297,7 +301,7 @@ WalletModule 是本期核心业务模块。
 
 - 注册 `EvmWalletAdapter`
 - 封装 `viem`
-- 提供地址推导、ETH 余额查询、USDT 余额查询、USDC 余额查询、签名、ETH 转账、USDT 转账、USDC 转账、EVM `tx status` 查询
+- 提供 Ethereum 公开身份推导、ETH 余额查询、USDT 余额查询、USDC 余额查询、签名、ETH 转账、USDT 转账、USDC 转账、EVM `tx status` 查询
 
 ### 4.16 `AuditModule`
 

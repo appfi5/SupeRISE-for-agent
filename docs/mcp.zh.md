@@ -57,7 +57,7 @@ English version: [mcp.md](./mcp.md).
 
 ### Nervos
 
-- `nervos.address`
+- `nervos.identity`
 - `nervos.balance.ckb`
 - `nervos.sign_message`
 - `nervos.transfer.ckb`
@@ -65,7 +65,7 @@ English version: [mcp.md](./mcp.md).
 
 ### Ethereum
 
-- `ethereum.address`
+- `ethereum.identity`
 - `ethereum.balance.eth`
 - `ethereum.balance.usdt`
 - `ethereum.balance.usdc`
@@ -83,7 +83,9 @@ English version: [mcp.md](./mcp.md).
 - `ethereum.balance.eth` 与 `ethereum.transfer.eth` 使用 `wei`
 - `ethereum.balance.usdt` 与 `ethereum.transfer.usdt` 使用 USDT 最小单位
 - `ethereum.balance.usdc` 与 `ethereum.transfer.usdc` 使用 USDC 最小单位
+- `nervos.identity` 与 `ethereum.identity` 会返回链地址和同链 `publicKey`
 - 余额查询结果会返回 `amount`、`decimals` 与 `symbol`
+- `nervos.sign_message` 与 `ethereum.sign_message` 会返回 `signature`、`signingAddress` 与 `publicKey`
 - transfer 工具返回的是服务端已接受并开始处理该操作的结果，不表示链上最终确认
 - `wallet.operation_status` 反映本地编排状态：`RESERVED`、`SUBMITTED`、`CONFIRMED`、`FAILED`
 - `nervos.tx_status` 与 `ethereum.tx_status` 反映链上观察状态：`NOT_FOUND`、`PENDING`、`CONFIRMED`、`FAILED`

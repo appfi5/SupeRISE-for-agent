@@ -9,9 +9,10 @@ import {
   txStatusSchema,
 } from "./_common";
 
-export const ethereumAddressSchema = z.object({
+export const ethereumIdentitySchema = z.object({
   chain: z.literal("ethereum"),
   address: z.string(),
+  publicKey: z.string(),
 });
 
 export const ethereumBalanceEthSchema = z.object({
@@ -50,6 +51,7 @@ export const ethereumSignMessageRequestSchema = z.object({
 export const ethereumSignMessageResponseSchema = z.object({
   chain: z.literal("ethereum"),
   signingAddress: z.string(),
+  publicKey: z.string(),
   signature: z.string(),
 });
 
@@ -118,7 +120,10 @@ export const ethereumTxStatusResponseSchema = z.object({
   reason: z.string().optional(),
 });
 
-export type EthereumAddressDto = z.infer<typeof ethereumAddressSchema>;
+export const ethereumAddressSchema = ethereumIdentitySchema;
+
+export type EthereumIdentityDto = z.infer<typeof ethereumIdentitySchema>;
+export type EthereumAddressDto = EthereumIdentityDto;
 export type EthereumBalanceEthDto = z.infer<typeof ethereumBalanceEthSchema>;
 export type EthereumBalanceUsdtDto = z.infer<typeof ethereumBalanceUsdtSchema>;
 export type EthereumBalanceUsdcDto = z.infer<typeof ethereumBalanceUsdcSchema>;

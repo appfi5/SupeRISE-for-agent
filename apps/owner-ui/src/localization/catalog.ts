@@ -36,11 +36,11 @@ export const EN_MESSAGES = {
   "section.overview.description":
     "A takeover-focused summary view that combines balances, risk reminders, and the current wallet state.",
   "section.wallet.description":
-    "Review the address and balances of the current wallet by chain without expanding transaction details by default.",
+    "Review the address, public key, and balances of the current wallet by chain without expanding transaction details by default.",
   "section.transfers.description":
     "Send transfers by asset and choose either a raw address or an address-book contact name as the target.",
   "section.signing.description":
-    "Sign on-chain messages and inspect the signing address and resulting signature.",
+    "Sign on-chain messages and inspect the signing address, public key, and resulting signature.",
   "section.address_book.description":
     "Manage shared contacts, filter them, edit entries, and perform exact address lookups.",
   "section.limits.description":
@@ -110,6 +110,7 @@ export const EN_MESSAGES = {
   "wallet.card.ethereum_balance": "Ethereum",
   "wallet.balance.label": "{asset} balance",
   "wallet.field.address": "Address",
+  "wallet.field.public_key": "Public key",
   "transfers.card.title": "{asset} transfer",
   "transfers.target_type": "Target type",
   "transfers.target_type.address": "Raw address",
@@ -126,6 +127,9 @@ export const EN_MESSAGES = {
   "signing.message": "Message",
   "signing.encoding": "Encoding",
   "signing.submit": "Submit signature",
+  "signing.result.address": "Signing address",
+  "signing.result.public_key": "Public key",
+  "signing.result.signature": "Signature",
   "address_book.card.contacts": "Contact list",
   "address_book.filter_placeholder": "Filter by name or note",
   "address_book.new_contact": "New contact",
@@ -322,10 +326,10 @@ export const ZH_MESSAGES: TranslationCatalog = {
   "section.overview.description":
     "面向人工接管场景的总览视图，聚合余额、风险提示和当前钱包状态。",
   "section.wallet.description":
-    "按链查看当前唯一钱包的地址与余额，不默认铺开交易细节。",
+    "按链查看当前唯一钱包的地址、公钥与余额，不默认铺开交易细节。",
   "section.transfers.description":
     "按资产拆分转账操作，支持直接输入地址或地址簿联系人名称。",
-  "section.signing.description": "执行链上消息签名，返回签名地址与签名结果。",
+  "section.signing.description": "执行链上消息签名，返回签名地址、公钥与签名结果。",
   "section.address_book.description":
     "维护共享联系人，支持筛选、编辑和精确地址反查。",
   "section.limits.description":
@@ -395,6 +399,7 @@ export const ZH_MESSAGES: TranslationCatalog = {
   "wallet.card.ethereum_balance": "Ethereum",
   "wallet.balance.label": "{asset} 余额",
   "wallet.field.address": "地址",
+  "wallet.field.public_key": "公钥",
   "transfers.card.title": "{asset} 转账",
   "transfers.target_type": "目标类型",
   "transfers.target_type.address": "原始地址",
@@ -411,6 +416,9 @@ export const ZH_MESSAGES: TranslationCatalog = {
   "signing.message": "消息",
   "signing.encoding": "编码",
   "signing.submit": "提交签名",
+  "signing.result.address": "签名地址",
+  "signing.result.public_key": "公钥",
+  "signing.result.signature": "签名结果",
   "address_book.card.contacts": "联系人列表",
   "address_book.filter_placeholder": "按名称或备注筛选",
   "address_book.new_contact": "新建联系人",

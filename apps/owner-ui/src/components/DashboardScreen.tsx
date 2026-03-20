@@ -655,11 +655,11 @@ function OverviewSection({
               dataSource={[
                 <Space key="nervos-address" direction="vertical" size={4}>
                   <Text type="secondary">{t("overview.summary.nervos_address")}</Text>
-                  {renderAddressValue(appState.nervos.address?.address)}
+                  {renderAddressValue(appState.nervos.identity?.address)}
                 </Space>,
                 <Space key="ethereum-address" direction="vertical" size={4}>
                   <Text type="secondary">{t("overview.summary.ethereum_address")}</Text>
-                  {renderAddressValue(appState.ethereum.address?.address)}
+                  {renderAddressValue(appState.ethereum.identity?.address)}
                 </Space>,
                 t("overview.summary.latest_audit_count", {
                   count: formatNumber(appState.audits.length),
@@ -728,7 +728,10 @@ function WalletSection({
             </Tooltip>
             <Descriptions column={1} size="small">
               <Descriptions.Item label={t("wallet.field.address")}>
-                {renderAddressValue(appState.nervos.address?.address)}
+                {renderAddressValue(appState.nervos.identity?.address)}
+              </Descriptions.Item>
+              <Descriptions.Item label={t("wallet.field.public_key")}>
+                {renderAddressValue(appState.nervos.identity?.publicKey)}
               </Descriptions.Item>
             </Descriptions>
           </Space>
@@ -811,7 +814,10 @@ function WalletSection({
             </Row>
             <Descriptions column={1} size="small">
               <Descriptions.Item label={t("wallet.field.address")}>
-                {renderAddressValue(appState.ethereum.address?.address)}
+                {renderAddressValue(appState.ethereum.identity?.address)}
+              </Descriptions.Item>
+              <Descriptions.Item label={t("wallet.field.public_key")}>
+                {renderAddressValue(appState.ethereum.identity?.publicKey)}
               </Descriptions.Item>
             </Descriptions>
           </Space>

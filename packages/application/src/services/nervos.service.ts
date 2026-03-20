@@ -1,5 +1,5 @@
 import type {
-  NervosAddressDto,
+  NervosIdentityDto,
   NervosBalanceCkbDto,
   NervosSignMessageRequest,
   NervosSignMessageResponse,
@@ -33,18 +33,18 @@ import {
 import { mapTransferErrorCode } from "../utils/transfer-errors";
 import { loadDecryptedPrivateKey } from "../utils/wallet-access";
 
-export class NervosAddressQueryService {
+export class NervosIdentityQueryService {
   constructor(
     private readonly wallets: WalletRepository,
     private readonly vault: VaultPort,
     private readonly ckb: CkbWalletAdapter,
   ) {}
 
-  async execute(): Promise<NervosAddressDto> {
+  async execute(): Promise<NervosIdentityDto> {
     const { privateKey } = await loadDecryptedPrivateKey(this.wallets, this.vault);
     return {
       chain: "nervos",
-      address: await this.ckb.deriveAddress(privateKey),
+      ...(await this.ckb.getIdentity(privateKey)),
     };
   }
 }
@@ -95,10 +95,11 @@ export class NervosMessageSigningService {
 
     try {
       const { privateKey } = await loadDecryptedPrivateKey(this.repos.wallets, this.vault);
-      const [signature, signingAddress] = await Promise.all([
+      const [signature, identity] = await Promise.all([
         this.ckb.signMessage(privateKey, decodeMessage(request.message, request.encoding)),
-        this.ckb.deriveAddress(privateKey),
+        this.ckb.getIdentity(privateKey),
       ]);
+      const signingAddress = identity.address;
 
       await Promise.all([
         this.repos.signs.save(
@@ -123,6 +124,7 @@ export class NervosMessageSigningService {
         chain: "nervos",
         signature,
         signingAddress,
+        publicKey: identity.publicKey,
       };
     } catch (error) {
       await Promise.all([
