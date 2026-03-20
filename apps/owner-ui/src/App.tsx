@@ -7,16 +7,16 @@ import type {
   AddressBookLookupByAddressResponse,
   AddressBookUpdateResponse,
   AuditLogDto,
-  EthereumAddressDto,
   EthereumBalanceEthDto,
   EthereumBalanceUsdcDto,
   EthereumBalanceUsdtDto,
+  EthereumIdentityDto,
   EthereumSignMessageResponse,
   EthereumTransferEthResponse,
   EthereumTransferUsdcResponse,
   EthereumTransferUsdtResponse,
-  NervosAddressDto,
   NervosBalanceCkbDto,
+  NervosIdentityDto,
   NervosSignMessageResponse,
   NervosTransferCkbResponse,
   OwnerAssetLimitEntryDto,
@@ -201,13 +201,13 @@ export function App() {
     const chainTasks: Array<Promise<void>> = [
       loadChainSlice(
         refreshToken,
-        () => callWalletTool<NervosAddressDto>("nervos.address"),
+        () => callWalletTool<NervosIdentityDto>("nervos.identity"),
         (value) =>
           setAppState((currentState) => ({
             ...currentState,
             nervos: {
               ...currentState.nervos,
-              address: value,
+              identity: value,
             },
           })),
       ),
@@ -225,13 +225,13 @@ export function App() {
       ),
       loadChainSlice(
         refreshToken,
-        () => callWalletTool<EthereumAddressDto>("ethereum.address"),
+        () => callWalletTool<EthereumIdentityDto>("ethereum.identity"),
         (value) =>
           setAppState((currentState) => ({
             ...currentState,
             ethereum: {
               ...currentState.ethereum,
-              address: value,
+              identity: value,
             },
           })),
       ),
@@ -385,7 +385,7 @@ export function App() {
       "nervos.sign_message",
       nervosSignForm,
     );
-    setNervosSignResult(formatSignResult(result.signingAddress, result.signature));
+    setNervosSignResult(formatSignResult(result, t));
     message.success(t("toast.sign.success", { chain: "Nervos" }));
     await refreshAuthenticatedState({ quiet: true });
   }
@@ -395,7 +395,7 @@ export function App() {
       "ethereum.sign_message",
       ethereumSignForm,
     );
-    setEthereumSignResult(formatSignResult(result.signingAddress, result.signature));
+    setEthereumSignResult(formatSignResult(result, t));
     message.success(t("toast.sign.success", { chain: "Ethereum" }));
     await refreshAuthenticatedState({ quiet: true });
   }
@@ -792,8 +792,15 @@ export function App() {
   );
 }
 
-function formatSignResult(signingAddress: string, signature: string): string {
-  return `${signingAddress}\n${signature}`;
+function formatSignResult(
+  result: NervosSignMessageResponse | EthereumSignMessageResponse,
+  t: ReturnType<typeof useLocalization>["t"],
+): string {
+  return [
+    `${t("signing.result.address")}: ${result.signingAddress}`,
+    `${t("signing.result.public_key")}: ${result.publicKey}`,
+    `${t("signing.result.signature")}: ${result.signature}`,
+  ].join("\n");
 }
 
 function createAssetLimitDraftMap(

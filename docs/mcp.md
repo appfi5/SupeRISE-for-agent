@@ -57,7 +57,7 @@ External Agents should discover and validate tool behavior from this metadata fi
 
 ### Nervos
 
-- `nervos.address`
+- `nervos.identity`
 - `nervos.balance.ckb`
 - `nervos.sign_message`
 - `nervos.transfer.ckb`
@@ -65,7 +65,7 @@ External Agents should discover and validate tool behavior from this metadata fi
 
 ### Ethereum
 
-- `ethereum.address`
+- `ethereum.identity`
 - `ethereum.balance.eth`
 - `ethereum.balance.usdt`
 - `ethereum.balance.usdc`
@@ -83,7 +83,9 @@ External Agents should discover and validate tool behavior from this metadata fi
 - `ethereum.balance.eth` and `ethereum.transfer.eth` use `wei`
 - `ethereum.balance.usdt` and `ethereum.transfer.usdt` use the smallest USDT unit
 - `ethereum.balance.usdc` and `ethereum.transfer.usdc` use the smallest USDC unit
+- `nervos.identity` and `ethereum.identity` return the chain address plus the same-chain `publicKey`
 - Balance responses include `amount`, `decimals`, and `symbol`
+- `nervos.sign_message` and `ethereum.sign_message` return `signature`, `signingAddress`, and `publicKey`
 - Transfer tools return the server-side acceptance result for a submitted operation, not final chain confirmation
 - `wallet.operation_status` reports local orchestration states: `RESERVED`, `SUBMITTED`, `CONFIRMED`, `FAILED`
 - `nervos.tx_status` and `ethereum.tx_status` report observed chain states: `NOT_FOUND`, `PENDING`, `CONFIRMED`, `FAILED`

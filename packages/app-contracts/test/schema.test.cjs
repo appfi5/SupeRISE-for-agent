@@ -4,8 +4,12 @@ const {
   addressBookCreateRequestSchema,
   addressBookLookupByAddressResponseSchema,
   assetLimitExceededDetailSchema,
+  ethereumIdentitySchema,
+  ethereumSignMessageResponseSchema,
   ethereumBalanceUsdcSchema,
   ethereumTransferEthRequestSchema,
+  nervosIdentitySchema,
+  nervosSignMessageResponseSchema,
   ownerUpdateAssetLimitRequestSchema,
   ownerWalletImportRequestSchema,
   MCP_TOOL_NAMES,
@@ -57,11 +61,43 @@ test("MCP tool names include ethereum.transfer.eth", () => {
   assert.ok(MCP_TOOL_NAMES.includes("address_book.list"));
   assert.ok(MCP_TOOL_NAMES.includes("address_book.lookup_by_address"));
   assert.ok(MCP_TOOL_NAMES.includes("address_book.delete"));
+  assert.ok(MCP_TOOL_NAMES.includes("nervos.identity"));
   assert.ok(MCP_TOOL_NAMES.includes("ethereum.transfer.eth"));
+  assert.ok(MCP_TOOL_NAMES.includes("ethereum.identity"));
   assert.ok(MCP_TOOL_NAMES.includes("ethereum.balance.usdc"));
   assert.ok(MCP_TOOL_NAMES.includes("ethereum.transfer.usdc"));
   assert.ok(MCP_TOOL_NAMES.includes("ethereum.tx_status"));
   assert.ok(MCP_TOOL_NAMES.includes("nervos.tx_status"));
+});
+
+test("identity and sign schemas include public keys", () => {
+  const nervosIdentity = nervosIdentitySchema.parse({
+    chain: "nervos",
+    address: "ckt1qyq...",
+    publicKey: "0x03abc",
+  });
+  const ethereumIdentity = ethereumIdentitySchema.parse({
+    chain: "ethereum",
+    address: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+    publicKey: "0x04def",
+  });
+  const nervosSign = nervosSignMessageResponseSchema.parse({
+    chain: "nervos",
+    signingAddress: "ckt1qyq...",
+    publicKey: "0x03abc",
+    signature: "0x123",
+  });
+  const ethereumSign = ethereumSignMessageResponseSchema.parse({
+    chain: "ethereum",
+    signingAddress: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+    publicKey: "0x04def",
+    signature: "0x456",
+  });
+
+  assert.equal(nervosIdentity.publicKey, "0x03abc");
+  assert.equal(ethereumIdentity.publicKey, "0x04def");
+  assert.equal(nervosSign.publicKey, "0x03abc");
+  assert.equal(ethereumSign.publicKey, "0x04def");
 });
 
 test("ethereum USDC balance schema exposes the fixed symbol and decimals", () => {

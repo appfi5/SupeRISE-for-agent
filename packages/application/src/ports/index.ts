@@ -189,7 +189,13 @@ export type ChainTxStatusResult = {
   reason?: string;
 };
 
+export type ChainIdentityResult = {
+  address: string;
+  publicKey: string;
+};
+
 export interface CkbWalletAdapter {
+  getIdentity(privateKey: string): Promise<ChainIdentityResult>;
   deriveAddress(privateKey: string): Promise<string>;
   normalizeAddress(address: string): Promise<string>;
   getBalance(privateKey: string): Promise<string>;
@@ -206,6 +212,7 @@ export interface CkbWalletAdapter {
 }
 
 export interface EvmWalletAdapter {
+  getIdentity(privateKey: string): Promise<ChainIdentityResult>;
   deriveAddress(privateKey: string): Promise<string>;
   normalizeAddress(address: string): Promise<string>;
   getEthBalance(privateKey: string): Promise<string>;

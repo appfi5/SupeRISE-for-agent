@@ -46,8 +46,16 @@ export type EvmAdapterConfig = {
 export class ViemEvmWalletAdapter implements EvmWalletAdapter {
   constructor(private readonly config: EvmAdapterConfig) {}
 
+  async getIdentity(privateKey: string) {
+    const account = this.createAccount(privateKey);
+    return {
+      address: account.address,
+      publicKey: account.publicKey,
+    };
+  }
+
   async deriveAddress(privateKey: string): Promise<string> {
-    return privateKeyToAccount(normalizePrivateKeyHex(privateKey)).address;
+    return (await this.getIdentity(privateKey)).address;
   }
 
   async normalizeAddress(address: string): Promise<string> {
@@ -91,7 +99,7 @@ export class ViemEvmWalletAdapter implements EvmWalletAdapter {
     privateKey: string,
     message: string | Uint8Array,
   ): Promise<string> {
-    const account = privateKeyToAccount(normalizePrivateKeyHex(privateKey));
+    const account = this.createAccount(privateKey);
     return account.signMessage({
       message: typeof message === "string" ? message : { raw: message },
     });
@@ -101,7 +109,7 @@ export class ViemEvmWalletAdapter implements EvmWalletAdapter {
     privateKey: string,
     request: EthereumTransferUsdtRequest,
   ): Promise<{ txHash: string }> {
-    const account = privateKeyToAccount(normalizePrivateKeyHex(privateKey));
+    const account = this.createAccount(privateKey);
     const chain = this.getChain();
     const publicClient = this.createPublicClient();
     const walletClient = createWalletClient({
@@ -126,7 +134,7 @@ export class ViemEvmWalletAdapter implements EvmWalletAdapter {
     privateKey: string,
     request: EthereumTransferUsdcRequest,
   ): Promise<{ txHash: string }> {
-    const account = privateKeyToAccount(normalizePrivateKeyHex(privateKey));
+    const account = this.createAccount(privateKey);
     const chain = this.getChain();
     const publicClient = this.createPublicClient();
     const walletClient = createWalletClient({
@@ -151,7 +159,7 @@ export class ViemEvmWalletAdapter implements EvmWalletAdapter {
     privateKey: string,
     request: EthereumTransferEthRequest,
   ): Promise<{ txHash: string }> {
-    const account = privateKeyToAccount(normalizePrivateKeyHex(privateKey));
+    const account = this.createAccount(privateKey);
     const walletClient = createWalletClient({
       account,
       chain: this.getChain(),
@@ -326,6 +334,10 @@ export class ViemEvmWalletAdapter implements EvmWalletAdapter {
       chain: this.getChain(),
       transport: http(this.getRpcUrl()),
     });
+  }
+
+  private createAccount(privateKey: string) {
+    return privateKeyToAccount(normalizePrivateKeyHex(privateKey));
   }
 
   private normalizeTxHash(txHash: string): `0x${string}` {

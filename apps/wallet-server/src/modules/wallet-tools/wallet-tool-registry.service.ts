@@ -18,8 +18,8 @@ import {
   addressBookSearchResponseSchema,
   addressBookUpdateRequestSchema,
   addressBookUpdateResponseSchema,
-  ethereumAddressSchema,
   ethereumBalanceEthSchema,
+  ethereumIdentitySchema,
   ethereumBalanceUsdcSchema,
   ethereumBalanceUsdtSchema,
   ethereumSignMessageRequestSchema,
@@ -32,8 +32,8 @@ import {
   ethereumTransferUsdtResponseSchema,
   ethereumTxStatusRequestSchema,
   ethereumTxStatusResponseSchema,
-  nervosAddressSchema,
   nervosBalanceCkbSchema,
+  nervosIdentitySchema,
   nervosSignMessageRequestSchema,
   nervosSignMessageResponseSchema,
   nervosTransferCkbRequestSchema,
@@ -50,18 +50,18 @@ import {
 import type {
   AddressBookService,
   CurrentWalletQueryService,
-  EthereumAddressQueryService,
   EthereumEthBalanceQueryService,
   EthereumEthTransferService,
+  EthereumIdentityQueryService,
   EthereumMessageSigningService,
   EthereumTxStatusQueryService,
   EthereumUsdcBalanceQueryService,
   EthereumUsdcTransferService,
   EthereumUsdtBalanceQueryService,
   EthereumUsdtTransferService,
-  NervosAddressQueryService,
   NervosCkbBalanceQueryService,
   NervosCkbTransferService,
+  NervosIdentityQueryService,
   NervosMessageSigningService,
   NervosTxStatusQueryService,
   OperationStatusQueryService,
@@ -105,8 +105,8 @@ export class WalletToolRegistryService {
     private readonly currentWalletQueryService: CurrentWalletQueryService,
     @Inject(TOKENS.ADDRESS_BOOK_SERVICE)
     private readonly addressBookService: AddressBookService,
-    @Inject(TOKENS.NERVOS_ADDRESS_QUERY_SERVICE)
-    private readonly nervosAddressQueryService: NervosAddressQueryService,
+    @Inject(TOKENS.NERVOS_IDENTITY_QUERY_SERVICE)
+    private readonly nervosIdentityQueryService: NervosIdentityQueryService,
     @Inject(TOKENS.NERVOS_CKB_BALANCE_QUERY_SERVICE)
     private readonly nervosBalanceQueryService: NervosCkbBalanceQueryService,
     @Inject(TOKENS.NERVOS_MESSAGE_SIGNING_SERVICE)
@@ -115,8 +115,8 @@ export class WalletToolRegistryService {
     private readonly nervosTransferService: NervosCkbTransferService,
     @Inject(TOKENS.NERVOS_TX_STATUS_QUERY_SERVICE)
     private readonly nervosTxStatusQueryService: NervosTxStatusQueryService,
-    @Inject(TOKENS.ETHEREUM_ADDRESS_QUERY_SERVICE)
-    private readonly ethereumAddressQueryService: EthereumAddressQueryService,
+    @Inject(TOKENS.ETHEREUM_IDENTITY_QUERY_SERVICE)
+    private readonly ethereumIdentityQueryService: EthereumIdentityQueryService,
     @Inject(TOKENS.ETHEREUM_ETH_BALANCE_QUERY_SERVICE)
     private readonly ethereumEthBalanceQueryService: EthereumEthBalanceQueryService,
     @Inject(TOKENS.ETHEREUM_USDT_BALANCE_QUERY_SERVICE)
@@ -354,17 +354,17 @@ export class WalletToolRegistryService {
           }),
       },
       {
-        name: "nervos.address",
-        title: "Get Nervos Address",
+        name: "nervos.identity",
+        title: "Get Nervos Identity",
         description:
-          "Return the active Nervos address derived from the current wallet. The result contains { chain, address }.",
+          "Return the active Nervos public identity derived from the current wallet. The result contains { chain, address, publicKey }.",
         arguments: [],
         inputShape: {},
-        outputSchema: apiEnvelopeSchema(nervosAddressSchema),
+        outputSchema: apiEnvelopeSchema(nervosIdentitySchema),
         annotations: createReadOnlyAnnotations(),
         parseArguments: (argumentsValue) =>
           this.parseArguments(EMPTY_TOOL_ARGUMENTS_SCHEMA, argumentsValue),
-        execute: async () => this.nervosAddressQueryService.execute(),
+        execute: async () => this.nervosIdentityQueryService.execute(),
       },
       {
         name: "nervos.balance.ckb",
@@ -383,7 +383,7 @@ export class WalletToolRegistryService {
         name: "nervos.sign_message",
         title: "Sign Nervos Message",
         description:
-          "Sign an application-provided message with the current Nervos wallet. Set encoding to utf8 for plain text or hex for raw bytes. The result contains { chain, signingAddress, signature }.",
+          "Sign an application-provided message with the current Nervos wallet. Set encoding to utf8 for plain text or hex for raw bytes. The result contains { chain, signingAddress, publicKey, signature }.",
         arguments: [
           createStringArgument("message", true, "Message to sign."),
           createStringArgument(
@@ -466,17 +466,17 @@ export class WalletToolRegistryService {
           this.nervosTxStatusQueryService.execute(argumentsValue.txHash as string),
       },
       {
-        name: "ethereum.address",
-        title: "Get Ethereum Address",
+        name: "ethereum.identity",
+        title: "Get Ethereum Identity",
         description:
-          "Return the active Ethereum address derived from the current wallet. The result contains { chain, address }.",
+          "Return the active Ethereum public identity derived from the current wallet. The result contains { chain, address, publicKey }.",
         arguments: [],
         inputShape: {},
-        outputSchema: apiEnvelopeSchema(ethereumAddressSchema),
+        outputSchema: apiEnvelopeSchema(ethereumIdentitySchema),
         annotations: createReadOnlyAnnotations(),
         parseArguments: (argumentsValue) =>
           this.parseArguments(EMPTY_TOOL_ARGUMENTS_SCHEMA, argumentsValue),
-        execute: async () => this.ethereumAddressQueryService.execute(),
+        execute: async () => this.ethereumIdentityQueryService.execute(),
       },
       {
         name: "ethereum.balance.eth",
@@ -521,7 +521,7 @@ export class WalletToolRegistryService {
         name: "ethereum.sign_message",
         title: "Sign Ethereum Message",
         description:
-          "Sign an application-provided message with the current Ethereum wallet. Set encoding to utf8 for plain text or hex for raw bytes. The result contains { chain, signingAddress, signature }.",
+          "Sign an application-provided message with the current Ethereum wallet. Set encoding to utf8 for plain text or hex for raw bytes. The result contains { chain, signingAddress, publicKey, signature }.",
         arguments: [
           createStringArgument("message", true, "Message to sign."),
           createStringArgument(

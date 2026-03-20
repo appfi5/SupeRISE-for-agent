@@ -9,9 +9,10 @@ import {
   txStatusSchema,
 } from "./_common";
 
-export const nervosAddressSchema = z.object({
+export const nervosIdentitySchema = z.object({
   chain: z.literal("nervos"),
   address: z.string(),
+  publicKey: z.string(),
 });
 
 export const nervosBalanceCkbSchema = z.object({
@@ -34,6 +35,7 @@ export const nervosSignMessageRequestSchema = z.object({
 export const nervosSignMessageResponseSchema = z.object({
   chain: z.literal("nervos"),
   signingAddress: z.string(),
+  publicKey: z.string(),
   signature: z.string(),
 });
 
@@ -68,7 +70,10 @@ export const nervosTxStatusResponseSchema = z.object({
   reason: z.string().optional(),
 });
 
-export type NervosAddressDto = z.infer<typeof nervosAddressSchema>;
+export const nervosAddressSchema = nervosIdentitySchema;
+
+export type NervosIdentityDto = z.infer<typeof nervosIdentitySchema>;
+export type NervosAddressDto = NervosIdentityDto;
 export type NervosBalanceCkbDto = z.infer<typeof nervosBalanceCkbSchema>;
 export type NervosDeriveAddressRequest = z.infer<typeof nervosDeriveAddressRequestSchema>;
 export type NervosSignMessageRequest = z.infer<typeof nervosSignMessageRequestSchema>;

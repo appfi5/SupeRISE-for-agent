@@ -21,9 +21,16 @@ function createRegistry() {
       update: async () => ({ contact: null }),
       delete: async () => ({ deleted: true, name: "Alice" }),
     },
-    { execute: async () => ({ chain: "nervos", address: "ckt1qyq..." }) },
+    { execute: async () => ({ chain: "nervos", address: "ckt1qyq...", publicKey: "0x03abc" }) },
     { execute: async () => ({ chain: "nervos", asset: "CKB", amount: "100000000", decimals: 8, symbol: "CKB" }) },
-    { execute: async () => ({ chain: "nervos", signingAddress: "ckt1qyq...", signature: "0xabc" }) },
+    {
+      execute: async () => ({
+        chain: "nervos",
+        signingAddress: "ckt1qyq...",
+        publicKey: "0x03abc",
+        signature: "0xabc",
+      }),
+    },
     {
       execute: async () => ({
         chain: "nervos",
@@ -36,11 +43,24 @@ function createRegistry() {
       }),
     },
     { execute: async () => ({ chain: "nervos", txHash: "0x1", status: "CONFIRMED" }) },
-    { execute: async () => ({ chain: "ethereum", address: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e" }) },
+    {
+      execute: async () => ({
+        chain: "ethereum",
+        address: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+        publicKey: "0x04def",
+      }),
+    },
     { execute: async () => ({ chain: "ethereum", asset: "ETH", amount: "1", decimals: 18, symbol: "ETH" }) },
     { execute: async () => ({ chain: "ethereum", asset: "USDT", amount: "1", decimals: 6, symbol: "USDT" }) },
     { execute: async () => ({ chain: "ethereum", asset: "USDC", amount: "1", decimals: 6, symbol: "USDC" }) },
-    { execute: async () => ({ chain: "ethereum", signingAddress: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e", signature: "0xdef" }) },
+    {
+      execute: async () => ({
+        chain: "ethereum",
+        signingAddress: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+        publicKey: "0x04def",
+        signature: "0xdef",
+      }),
+    },
     {
       execute: async () => ({
         chain: "ethereum",
@@ -137,4 +157,23 @@ test("WalletToolRegistryService exposes ethereum.tx_status for agent follow-up c
 
   assert.ok(definition);
   assert.equal(definition.annotations.readOnlyHint, true);
+});
+
+test("WalletToolRegistryService exposes identity tools with publicKey output", async () => {
+  const registry = createRegistry();
+  const definition = registry
+    .listDefinitions()
+    .find((item) => item.name === "nervos.identity");
+
+  assert.ok(definition);
+  assert.equal(
+    definition.outputSchema.safeParse(
+      apiSuccess({
+        chain: "nervos",
+        address: "ckt1qyq...",
+        publicKey: "0x03abc",
+      }),
+    ).success,
+    true,
+  );
 });

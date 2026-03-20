@@ -1,5 +1,5 @@
 import type {
-  EthereumAddressDto,
+  EthereumIdentityDto,
   EthereumBalanceEthDto,
   EthereumBalanceUsdcDto,
   EthereumBalanceUsdtDto,
@@ -39,18 +39,18 @@ import {
 import { mapTransferErrorCode } from "../utils/transfer-errors";
 import { loadDecryptedPrivateKey } from "../utils/wallet-access";
 
-export class EthereumAddressQueryService {
+export class EthereumIdentityQueryService {
   constructor(
     private readonly wallets: WalletRepository,
     private readonly vault: VaultPort,
     private readonly evm: EvmWalletAdapter,
   ) {}
 
-  async execute(): Promise<EthereumAddressDto> {
+  async execute(): Promise<EthereumIdentityDto> {
     const { privateKey } = await loadDecryptedPrivateKey(this.wallets, this.vault);
     return {
       chain: "ethereum",
-      address: await this.evm.deriveAddress(privateKey),
+      ...(await this.evm.getIdentity(privateKey)),
     };
   }
 }
@@ -139,10 +139,11 @@ export class EthereumMessageSigningService {
 
     try {
       const { privateKey } = await loadDecryptedPrivateKey(this.repos.wallets, this.vault);
-      const [signature, signingAddress] = await Promise.all([
+      const [signature, identity] = await Promise.all([
         this.evm.signMessage(privateKey, decodeMessage(request.message, request.encoding)),
-        this.evm.deriveAddress(privateKey),
+        this.evm.getIdentity(privateKey),
       ]);
+      const signingAddress = identity.address;
 
       await Promise.all([
         this.repos.signs.save(
@@ -167,6 +168,7 @@ export class EthereumMessageSigningService {
         chain: "ethereum",
         signature,
         signingAddress,
+        publicKey: identity.publicKey,
       };
     } catch (error) {
       await Promise.all([

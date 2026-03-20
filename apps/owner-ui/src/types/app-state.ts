@@ -1,12 +1,12 @@
 import type {
   AddressBookContactDto,
   AuditLogDto,
-  EthereumAddressDto,
   EthereumBalanceEthDto,
   EthereumBalanceUsdcDto,
   EthereumBalanceUsdtDto,
-  NervosAddressDto,
+  EthereumIdentityDto,
   NervosBalanceCkbDto,
+  NervosIdentityDto,
   OwnerAssetLimitEntryDto,
   OwnerCredentialStatusDto,
   WalletCurrentDto,
@@ -71,11 +71,11 @@ export type AppState = {
   credential: OwnerCredentialStatusDto | null;
   current: WalletCurrentDto | null;
   nervos: {
-    address: NervosAddressDto | null;
+    identity: NervosIdentityDto | null;
     ckbBalance: NervosBalanceCkbDto | null;
   };
   ethereum: {
-    address: EthereumAddressDto | null;
+    identity: EthereumIdentityDto | null;
     ethBalance: EthereumBalanceEthDto | null;
     usdtBalance: EthereumBalanceUsdtDto | null;
     usdcBalance: EthereumBalanceUsdcDto | null;
@@ -96,11 +96,11 @@ export const emptyAppState: AppState = {
   credential: null,
   current: null,
   nervos: {
-    address: null,
+    identity: null,
     ckbBalance: null,
   },
   ethereum: {
-    address: null,
+    identity: null,
     ethBalance: null,
     usdtBalance: null,
     usdcBalance: null,
