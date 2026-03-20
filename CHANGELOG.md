@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.3.0](https://github.com/appfi5/SupeRISE-for-agent/compare/superise-agent-wallet-v0.2.1...superise-agent-wallet-v0.3.0) (2026-03-20)
+## [0.3.0](https://github.com/appfi5/SupeRISE-for-agent/compare/v0.2.1...v0.3.0) (2026-03-20)
 
 
 ### Features
