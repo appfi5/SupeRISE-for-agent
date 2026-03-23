@@ -1,6 +1,6 @@
 ---
 name: superise-mcp-usage
-description: Connect to and use Superise through the standard MCP protocol. Use this when the task is to validate MCP connectivity, inspect live tool metadata, list tools, call tools, or operate the wallet through a standard MCP client or manual Streamable HTTP requests.
+description: Use the local SupeRISE wallet through its MCP endpoint. Use this when the user asks about MCP connectivity, available wallet capabilities, or wallet tasks such as current wallet, wallet fingerprint, wallet status, wallet address or public key (`钱包地址`, `公钥`), balances (`余额`) for `CKB`, `ETH`, `USDT`, or `USDC`, transfer progress, transaction status, address-book lookups, signing, or transfers. Start by discovering live capabilities with `initialize -> notifications/initialized -> tools/list`, then choose the matching tool instead of guessing.
 ---
 
 # Superise MCP Usage
@@ -8,6 +8,35 @@ description: Connect to and use Superise through the standard MCP protocol. Use 
 ## Goal
 
 Confirm that Superise MCP is reachable and interact with it using the standard MCP protocol.
+
+## Default Entry Behavior
+
+If the user asks a wallet question without mentioning MCP explicitly, treat that as a reason to use this skill.
+
+Typical first-turn triggers include:
+
+- wallet address
+- public key
+- current wallet
+- wallet status
+- balance
+- funds
+- transfer status
+- tx status
+- address book
+- contact lookup
+- sign message
+- transfer
+
+Do not start by saying the wallet capabilities are unknown.
+
+The default first action is to discover the live MCP tool surface:
+
+1. `initialize`
+2. `notifications/initialized`
+3. `tools/list`
+
+Only after discovery should you choose the specific wallet tool to call.
 
 ## Preconditions
 
@@ -51,6 +80,7 @@ Use this sequence:
 4. `tools/call`
 
 Do not guess tool names, inputs, or outputs if `tools/list` is available.
+Apply this flow even when the user asks a concrete wallet question and does not mention MCP.
 
 ## Source of Truth
 
@@ -63,6 +93,26 @@ Treat `tools/list` as the authority for:
 - annotations
 
 Prefer live metadata over cached assumptions.
+
+## Intent Routing After Discovery
+
+Map user intent to the live tools exposed by `tools/list`.
+
+- current wallet, wallet fingerprint, wallet status, or wallet source: prefer `wallet.current`
+- wallet address, chain address, identity, or public key: prefer the exposed identity tools such as `nervos.identity` and `ethereum.identity`
+- balance, funds, token balance, or asset holdings: prefer the exposed read-only balance tools
+- transfer progress, operation progress, or submission status: prefer `wallet.operation_status`
+- on-chain tx status or confirmation status: prefer the matching chain status tool such as `nervos.tx_status` or `ethereum.tx_status`
+- address book, contacts, or address lookup: prefer the exposed `address_book.*` tools
+- sign message: prefer the matching `*.sign_message` tool
+- send, pay, or transfer: prefer the matching `*.transfer.*` tool, but only after the user clearly asks for a write action
+
+When the user asks a generic read-only question and does not specify the chain or asset:
+
+- for "wallet address" or "public key", prefer calling all exposed read-only identity tools and return the available chain-specific results together
+- for "balance" or "how much is in the wallet", prefer calling all exposed read-only balance tools and summarize them together
+
+Do not block on a clarification if the question can be answered safely by combining multiple read-only tools.
 
 ## Manual HTTP Fallback
 
