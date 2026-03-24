@@ -1,6 +1,6 @@
 ---
 name: superise-bootstrap
-description: Bootstrap and minimally maintain a local Superise wallet service from the official Docker Hub image. Use this when the task is to install, start, restart, verify, or inspect a local Superise deployment, especially for first-run Docker quickstart setup, volume checks, health checks, log inspection, or basic container operations.
+description: Bootstrap and maintain a local Superise wallet service from the official Docker Hub image. Use this when the task is to install, start, stop, restart, verify, inspect, clean up, or upgrade a local Superise deployment, especially for first-run Docker quickstart setup, volume checks, health checks, log inspection, cleanup, or published-image refresh operations.
 ---
 
 # Superise Bootstrap
@@ -116,6 +116,8 @@ Included local maintenance scope:
 - restart
 - view logs
 - inspect runtime files and volume state
+- clean up the container while preserving wallet data
+- upgrade the published quickstart container while preserving wallet data
 
 Useful commands:
 
@@ -127,6 +129,79 @@ docker logs --tail=100 superise-agent-wallet
 docker exec superise-agent-wallet ls -la /app/runtime-data
 docker volume inspect superise-agent-wallet-data
 ```
+
+## Cleanup Guidance
+
+Treat cleanup as two different operations:
+
+1. non-destructive cleanup: remove or recreate the container while keeping the runtime volume
+2. destructive cleanup: remove the container and delete the runtime volume
+
+Default to non-destructive cleanup unless the user explicitly approves data loss.
+
+Preferred non-destructive cleanup sequence:
+
+```bash
+docker ps -a --filter name=superise-agent-wallet
+docker volume inspect superise-agent-wallet-data
+docker stop superise-agent-wallet
+docker rm superise-agent-wallet
+```
+
+After container cleanup, recreate the service with the official quickstart command and reuse the existing `superise-agent-wallet-data` volume.
+
+Destructive cleanup is allowed only when the user explicitly asks to wipe wallet state or delete local data:
+
+```bash
+docker stop superise-agent-wallet
+docker rm superise-agent-wallet
+docker volume rm superise-agent-wallet-data
+```
+
+Cleanup rules:
+
+- inspect the container and volume before removing anything
+- prefer removing only the container first when troubleshooting
+- do not delete the volume to "fix" a startup issue unless the user explicitly approves losing wallet state
+- if the user asks to uninstall or clean up without mentioning data removal, preserve the volume by default and say that wallet state still exists in Docker volume storage
+
+## Upgrade Guidance
+
+Treat upgrade as a published-image refresh that keeps the existing runtime volume.
+
+Preferred upgrade sequence:
+
+1. inspect the current container and runtime volume
+2. pull the latest published image
+3. stop and remove the existing container only
+4. recreate the container with the official quickstart command and the same named volume
+5. rerun the health and MCP success checks
+
+Useful commands:
+
+```bash
+docker ps -a --filter name=superise-agent-wallet
+docker volume inspect superise-agent-wallet-data
+docker pull superise/agent-wallet:latest
+docker stop superise-agent-wallet
+docker rm superise-agent-wallet
+docker run -d \
+  --name superise-agent-wallet \
+  --restart unless-stopped \
+  -p 127.0.0.1:18799:18799 \
+  -v superise-agent-wallet-data:/app/runtime-data \
+  superise/agent-wallet:latest
+docker logs --tail=100 superise-agent-wallet
+docker exec superise-agent-wallet node -e "fetch('http://127.0.0.1:18799/health').then(async (res) => { process.stdout.write(await res.text()); process.exit(res.ok ? 0 : 1); }).catch((error) => { console.error(error); process.exit(1); })"
+```
+
+Upgrade rules:
+
+- do not delete `superise-agent-wallet-data` during a normal upgrade
+- do not invent an in-place package-manager upgrade path inside the container
+- if the existing container was created with nonstandard ports or network settings, inspect first and preserve the user-approved exposure pattern unless it conflicts with the localhost safety rule
+- if the upgraded container reuses an existing volume and no first-run password appears, treat that as expected and do not reissue first-run credentials
+- after upgrade, return the local endpoints and the verification result
 
 ## Failure Handling
 

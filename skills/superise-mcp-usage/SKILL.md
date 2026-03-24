@@ -1,6 +1,6 @@
 ---
 name: superise-mcp-usage
-description: Use the local SupeRISE wallet through its MCP endpoint. Use this when the user asks about MCP connectivity, available wallet capabilities, or wallet tasks such as current wallet, wallet fingerprint, wallet status, wallet address or public key (`钱包地址`, `公钥`), balances (`余额`) for `CKB`, `ETH`, `USDT`, or `USDC`, transfer progress, transaction status, address-book lookups, signing, or transfers. Start by discovering live capabilities with `initialize -> notifications/initialized -> tools/list`, then choose the matching tool instead of guessing.
+description: Use the local SupeRISE wallet through its MCP endpoint. Use this whenever the user expects the agent to operate, inspect, manage, or use the Superise wallet, including MCP connectivity, available wallet capabilities, or wallet tasks such as current wallet, wallet fingerprint, wallet status, wallet address or public key (`钱包地址`, `公钥`), balances (`余额`) for `CKB`, `ETH`, `USDT`, or `USDC`, transfer progress, transaction status, address-book lookups, signing, or transfers. When wallet intent is present, first discover the live MCP capabilities with `initialize -> notifications/initialized -> tools/list`, then choose the matching tool instead of guessing.
 ---
 
 # Superise MCP Usage
@@ -12,6 +12,7 @@ Confirm that Superise MCP is reachable and interact with it using the standard M
 ## Default Entry Behavior
 
 If the user asks a wallet question without mentioning MCP explicitly, treat that as a reason to use this skill.
+If the user expects the agent to operate the Superise wallet in any way, treat that as a reason to use this skill first.
 
 Typical first-turn triggers include:
 
@@ -27,8 +28,19 @@ Typical first-turn triggers include:
 - contact lookup
 - sign message
 - transfer
+- operate wallet
+- use wallet
+- manage wallet
+- 钱包
+- 操作钱包
+- 使用钱包
+- 管理钱包
+- 查询钱包
+- 转账
+- 签名
 
 Do not start by saying the wallet capabilities are unknown.
+Do not guess which wallet abilities exist before reading the live MCP tool surface.
 
 The default first action is to discover the live MCP tool surface:
 
@@ -37,6 +49,8 @@ The default first action is to discover the live MCP tool surface:
 3. `tools/list`
 
 Only after discovery should you choose the specific wallet tool to call.
+
+This applies even when the user already asked for a concrete wallet action.
 
 ## Preconditions
 
@@ -81,6 +95,8 @@ Use this sequence:
 
 Do not guess tool names, inputs, or outputs if `tools/list` is available.
 Apply this flow even when the user asks a concrete wallet question and does not mention MCP.
+
+When the user expects a wallet operation, first check what MCP says the wallet supports now, then use the matching capability.
 
 ## Source of Truth
 
@@ -184,6 +200,15 @@ Default to read-first behavior:
 1. inspect tools with `tools/list`
 2. prefer read-only wallet queries first
 3. call write tools only when the user clearly asks
+
+Mandatory wallet-operation rule:
+
+1. detect that the user wants to operate or use the Superise wallet
+2. inspect the live MCP capability surface first
+3. choose the matching tool from that live surface
+4. execute it through MCP
+
+If a capability is not exposed by `tools/list`, do not imply that the wallet supports it.
 
 Important semantics:
 
