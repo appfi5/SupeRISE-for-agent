@@ -1,6 +1,6 @@
 ---
 name: superise-bootstrap
-description: Bootstrap and maintain a local Superise wallet service from the official Docker Hub image. Use this when the task is to install, start, stop, restart, verify, inspect, clean up, or upgrade a local Superise deployment, especially for first-run Docker quickstart setup, volume checks, health checks, log inspection, cleanup, or published-image refresh operations.
+description: Bootstrap and maintain a local Superise wallet service from the official Docker Hub image. Use this when the task is to install, start, stop, restart, verify, inspect, clean up, upgrade, or recover the initial Owner password for a local Superise deployment, especially for first-run Docker quickstart setup, volume checks, health checks, log inspection, cleanup, published-image refresh operations, or explicit initial-password lookup requests.
 ---
 
 # Superise Bootstrap
@@ -118,6 +118,7 @@ Included local maintenance scope:
 - inspect runtime files and volume state
 - clean up the container while preserving wallet data
 - upgrade the published quickstart container while preserving wallet data
+- look up the initial Owner password when the user explicitly asks for it
 
 Useful commands:
 
@@ -129,6 +130,46 @@ docker logs --tail=100 superise-agent-wallet
 docker exec superise-agent-wallet ls -la /app/runtime-data
 docker volume inspect superise-agent-wallet-data
 ```
+
+## Initial Password Lookup
+
+Use this path only when the user explicitly asks for the initial Owner password or says they missed it.
+
+Preferred lookup order:
+
+1. inspect only a bounded startup log prefix for the first-run bootstrap password output
+2. inspect the stored Owner notice file
+3. if neither exists, explain that the original plaintext password cannot be recovered from the database
+
+Quickstart log check:
+
+Do not dump the full container logs when looking up the initial password.
+`docker logs` supports `--tail` for end-of-log slices, but it does not provide a built-in "first N lines" option.
+If startup-prefix context is needed, trim it with shell tools such as `head` or `sed`.
+For this lookup, inspect only a small startup prefix and match the initial-password phrase directly instead of depending on the full log prefix format.
+
+```bash
+docker logs superise-agent-wallet 2>&1 | head -n 120 | grep -E "initial Owner password"
+```
+
+Stored notice file checks:
+
+```bash
+docker exec superise-agent-wallet cat /app/runtime-data/owner-credential.txt
+docker exec superise-agent-wallet ls -l /app/runtime-data/owner-credential.txt
+```
+
+Lookup rules:
+
+- report the password to the user only when they explicitly asked for it
+- when reporting it, clearly label it as the initial Owner password
+- always warn that this is sensitive secret material and should be changed immediately after login to avoid leakage
+- if a later password rotation may already have happened, say that the recovered value is only the initial password and may no longer be the current login password
+- do not review or paste the full log stream for this lookup; restrict log inspection to a short startup prefix and the matching bootstrap password handoff lines
+- if the bounded startup prefix does not contain the password, move to the notice file instead of scanning the full log history by default
+- if the logs do not contain the password but the notice file exists, prefer the notice file as the stored source of truth for the initial password
+- if the deployment is not using the official quickstart container name, inspect the actual container name and configured `OWNER_NOTICE_PATH` before reading files
+- if both logs and the notice file are missing, explain that the system stores only a password hash in the database and the original plaintext cannot be reconstructed
 
 ## Cleanup Guidance
 
